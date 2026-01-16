@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Неверный запрос - 400{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-container mt-5">
+                <h1 class="display-1 text-danger">400</h1>
+                <h2 class="mb-4">Неверный запрос</h2>
+                <p class="lead">Сервер не может обработать ваш запрос из-за некорректного синтаксиса.</p>
+                <div class="error-actions mt-4">
+                    <a href="{% url 'website:dashboard' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-home me-2"></i>На главную
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg ms-2">
+                        <i class="fas fa-arrow-left me-2"></i>Назад
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

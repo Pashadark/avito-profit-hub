@@ -1,0 +1,496 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Kanban доска - Селибри{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">📋 Доска системных задач</h4>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">
+                        <i class="ri-add-line me-2"></i>Новая задача
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Колонка "К выполнению" -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="ri-task-line me-2"></i>К выполнению
+                    <span class="badge bg-secondary ms-2">{{ todo_cards.count }}</span>
+                </h5>
+            </div>
+            <div class="card-body kanban-column" data-status="todo">
+                {% for card in todo_cards %}
+                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">{{ card.title }}</h6>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown">
+                                    <i class="ri-more-2-fill"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item edit-card" href="#" data-card-id="{{ card.id }}">
+                                        <i class="ri-edit-line me-2"></i>Редактировать
+                                    </a></li>
+                                    <li><a class="dropdown-item start-card" href="#" data-card-id="{{ card.id }}">
+                                        <i class="ri-play-line me-2"></i>Начать выполнение
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger delete-card" href="#"
+                                           data-card-id="{{ card.id }}">
+                                        <i class="ri-delete-bin-line me-2"></i>Удалить
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% if card.description %}
+                        <p class="card-text text-muted small">{{ card.description|truncatewords:10 }}</p>
+                        {% endif %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Создано: {{ card.created_at|date:"d.m.Y H:i" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted p-3">
+                    <i class="ri-inbox-line ri-2x mb-2"></i>
+                    <p>Нет задач</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Колонка "В процессе" -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-warning bg-opacity-25">
+                <h5 class="card-title mb-0">
+                    <i class="ri-loader-3-line me-2"></i>В процессе
+                    <span class="badge bg-warning ms-2">{{ in_progress_cards.count }}</span>
+                </h5>
+            </div>
+            <div class="card-body kanban-column" data-status="in_progress">
+                {% for card in in_progress_cards %}
+                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">{{ card.title }}</h6>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-warning dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown">
+                                    <i class="ri-more-2-fill"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item edit-card" href="#" data-card-id="{{ card.id }}">
+                                        <i class="ri-edit-line me-2"></i>Редактировать
+                                    </a></li>
+                                    <li><a class="dropdown-item complete-card" href="#" data-card-id="{{ card.id }}">
+                                        <i class="ri-checkbox-circle-line me-2"></i>Завершить
+                                    </a></li>
+                                    <li><a class="dropdown-item pause-card" href="#" data-card-id="{{ card.id }}">
+                                        <i class="ri-pause-circle-line me-2"></i>Вернуть в очередь
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger delete-card" href="#"
+                                           data-card-id="{{ card.id }}">
+                                        <i class="ri-delete-bin-line me-2"></i>Удалить
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% if card.description %}
+                        <p class="card-text text-muted small">{{ card.description|truncatewords:10 }}</p>
+                        {% endif %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-warning">
+                                <i class="ri-time-line me-1"></i>
+                                {{ card.get_completion_time }}
+                            </small>
+                            <small class="text-muted">
+                                Начато: {{ card.started_at|date:"d.m.Y H:i" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted p-3">
+                    <i class="ri-loader-3-line ri-2x mb-2"></i>
+                    <p>Нет активных задач</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Колонка "Выполнено" -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header bg-success bg-opacity-25">
+                <h5 class="card-title mb-0">
+                    <i class="ri-checkbox-circle-line me-2"></i>Выполнено
+                    <span class="badge bg-success ms-2">{{ done_cards.count }}</span>
+                </h5>
+            </div>
+            <div class="card-body kanban-column" data-status="done">
+                {% for card in done_cards %}
+                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0 text-decoration-line-through">{{ card.title }}</h6>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button"
+                                        data-bs-toggle="dropdown">
+                                    <i class="ri-more-2-fill"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item reopen-card" href="#" data-card-id="{{ card.id }}">
+                                        <i class="ri-refresh-line me-2"></i>Переоткрыть
+                                    </a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger delete-card" href="#"
+                                           data-card-id="{{ card.id }}">
+                                        <i class="ri-delete-bin-line me-2"></i>Удалить
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        {% if card.description %}
+                        <p class="card-text text-muted small">{{ card.description|truncatewords:10 }}</p>
+                        {% endif %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-success">
+                                <i class="ri-timer-line me-1"></i>
+                                Выполнено за: {{ card.get_completion_time }}
+                            </small>
+                            <small class="text-muted">
+                                Завершено: {{ card.completed_at|date:"d.m.Y H:i" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted p-3">
+                    <i class="ri-checkbox-circle-line ri-2x mb-2"></i>
+                    <p>Нет выполненных задач</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно создания карточки -->
+<div class="modal fade" id="createCardModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Создать новую задачу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createCardForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="cardTitle" class="form-label">Название задачи</label>
+                        <input type="text" class="form-control" id="cardTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cardDescription" class="form-label">Описание</label>
+                        <textarea class="form-control" id="cardDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="saveCardBtn">Создать</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно редактирования карточки -->
+<div class="modal fade" id="editCardModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактировать задачу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editCardForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editCardId">
+                    <div class="mb-3">
+                        <label for="editCardTitle" class="form-label">Название задачи</label>
+                        <input type="text" class="form-control" id="editCardTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCardDescription" class="form-label">Описание</label>
+                        <textarea class="form-control" id="editCardDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="updateCardBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.kanban-column {
+    min-height: 500px;
+    max-height: 700px;
+    overflow-y: auto;
+}
+
+.todo-card {
+    cursor: move;
+    transition: transform 0.2s;
+}
+
+.todo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card-header h5 {
+    font-size: 1.1rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Создание новой карточки
+    document.getElementById('saveCardBtn').addEventListener('click', function() {
+        const title = document.getElementById('cardTitle').value;
+        const description = document.getElementById('cardDescription').value;
+
+        if (!title) {
+            alert('Введите название задачи');
+            return;
+        }
+
+        fetch('/api/todo/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                status: 'todo'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    });
+
+    // Редактирование карточки
+    document.querySelectorAll('.edit-card').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const cardId = this.dataset.cardId;
+
+            fetch(`/api/todo/get/${cardId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        document.getElementById('editCardId').value = cardId;
+                        document.getElementById('editCardTitle').value = data.card.title;
+                        document.getElementById('editCardDescription').value = data.card.description || '';
+
+                        const modal = new bootstrap.Modal(document.getElementById('editCardModal'));
+                        modal.show();
+                    }
+                });
+        });
+    });
+
+    // Сохранение изменений карточки
+    document.getElementById('updateCardBtn').addEventListener('click', function() {
+        const cardId = document.getElementById('editCardId').value;
+        const title = document.getElementById('editCardTitle').value;
+        const description = document.getElementById('editCardDescription').value;
+
+        fetch(`/api/todo/update/${cardId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    });
+
+    // Управление статусами карточек
+    function updateCardStatus(cardId, newStatus) {
+        fetch(`/api/todo/update-status/${cardId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                status: newStatus
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Обновляем отображение времени
+                const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
+                if (cardElement && data.time_info) {
+                    const timeElement = cardElement.querySelector('.text-warning, .text-success');
+                    if (timeElement) {
+                        timeElement.innerHTML = `<i class="ri-time-line me-1"></i>${data.time_info.completion_time}`;
+                    }
+                }
+                location.reload(); // Перезагружаем для обновления позиции
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
+
+    // Обработчики для кнопок статусов
+    document.querySelectorAll('.start-card').forEach(btn => {
+        btn.addEventListener('click', function() {
+            updateCardStatus(this.dataset.cardId, 'in_progress');
+        });
+    });
+
+    document.querySelectorAll('.complete-card').forEach(btn => {
+        btn.addEventListener('click', function() {
+            updateCardStatus(this.dataset.cardId, 'done');
+        });
+    });
+
+    document.querySelectorAll('.pause-card').forEach(btn => {
+        btn.addEventListener('click', function() {
+            updateCardStatus(this.dataset.cardId, 'todo');
+        });
+    });
+
+    document.querySelectorAll('.reopen-card').forEach(btn => {
+        btn.addEventListener('click', function() {
+            updateCardStatus(this.dataset.cardId, 'todo');
+        });
+    });
+
+    // Удаление карточки
+    document.querySelectorAll('.delete-card').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (confirm('Удалить эту задачу?')) {
+                const cardId = this.dataset.cardId;
+
+                fetch(`/api/todo/delete/${cardId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        location.reload();
+                    } else {
+                        alert('Ошибка: ' + data.message);
+                    }
+                });
+            }
+        });
+    });
+
+    // Drag and Drop функциональность
+    let draggedCard = null;
+
+    document.querySelectorAll('.todo-card').forEach(card => {
+        card.setAttribute('draggable', 'true');
+
+        card.addEventListener('dragstart', function(e) {
+            draggedCard = this;
+            setTimeout(() => this.style.opacity = '0.5', 0);
+        });
+
+        card.addEventListener('dragend', function() {
+            this.style.opacity = '1';
+            draggedCard = null;
+        });
+    });
+
+    document.querySelectorAll('.kanban-column').forEach(column => {
+        column.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = 'rgba(0,0,0,0.05)';
+        });
+
+        column.addEventListener('dragleave', function() {
+            this.style.backgroundColor = '';
+        });
+
+        column.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.backgroundColor = '';
+
+            if (draggedCard) {
+                const newStatus = this.dataset.status;
+                const cardId = draggedCard.dataset.cardId;
+
+                updateCardStatus(cardId, newStatus);
+            }
+        });
+    });
+
+    // Функция для получения CSRF токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem; color: var(--accent-light);">Управление товарами</h1>
+
+<div class="card">
+    <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+        <h2>Отслеживаемые товары</h2>
+        <a href="{% url 'website:search' %}" class="btn">Добавить товар</a>
+    </div>
+
+    {% if products %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Цена</th>
+                <th>Статус</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.name }}</td>
+                <td>{{ product.price }} руб.</td>
+                <td>
+                    {% if product.status == 'Активен' %}
+                    <span class="badge badge-monitoring">Активен</span>
+                    {% else %}
+                    <span class="badge badge-cancelled">Неактивен</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-warning" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Редактировать</button>
+                    <button class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Удалить</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+        Нет отслеживаемых товаров. <a href="{% url 'website:search' %}" style="color: var(--accent-light);">Найти товары</a>
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

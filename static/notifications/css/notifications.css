@@ -1,0 +1,376 @@
+/* =========================================== */
+/* НАШИ СТИЛИ ДЛЯ TOASTR - КОМПАКТНЫЕ И ЧЕТКИЕ */
+/* =========================================== */
+
+/* ПЕРЕОПРЕДЕЛЯЕМ КОНТЕЙНЕР TOASTR */
+#toast-container.toast-top-right {
+    top: 15px !important;
+    right: 15px !important;
+    width: auto !important;
+    z-index: 999999 !important;
+}
+
+/* ПЕРЕОПРЕДЕЛЯЕМ БАЗОВЫЕ СТИЛИ TOASTR - КОМПАКТНЫЕ */
+#toast-container > div {
+    width: 380px !important;
+    min-height: 70px !important;
+    padding: 18px 45px 18px 65px !important;
+    margin: 0 0 12px 0 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15) !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Segoe UI Emoji', sans-serif !important;
+    background-size: 24px 24px !important;
+    background-position: 22px center !important;
+    background-repeat: no-repeat !important;
+    backdrop-filter: blur(8px) !important;
+    opacity: 1 !important;
+    transition: all 0.2s ease !important;
+    animation: notificationSlideIn 0.3s cubic-bezier(0.21, 0.61, 0.35, 1) !important;
+    position: relative !important;
+    overflow: hidden !important;
+    border-left: none !important; /* УБИРАЕМ ЧЕРНУЮ ПОЛОСКУ СЛЕВА */
+}
+
+/* Анимация появления */
+@keyframes notificationSlideIn {
+    0% {
+        opacity: 0;
+        transform: translateX(80px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* Анимация исчезновения */
+@keyframes notificationSlideOut {
+    0% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(80px) scale(0.95);
+    }
+}
+
+/* Класс для скрытия с анимацией */
+.toast.hiding {
+    animation: notificationSlideOut 0.3s ease forwards !important;
+}
+
+/* ============ ПЕРЕОПРЕДЕЛЯЕМ ЦВЕТА TOASTR ============ */
+
+/* УСПЕХ - СВЕТЛЫЙ ФОН */
+.toast-success {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232e7d32' opacity='0.9'%3E%3Cpath d='M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z'/%3E%3C/svg%3E") !important;
+}
+
+/* ОШИБКА - СВЕТЛЫЙ ФОН */
+.toast-error {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c62828' opacity='0.9'%3E%3Cpath d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/%3E%3C/svg%3E") !important;
+}
+
+/* ИНФОРМАЦИЯ - СВЕТЛЫЙ ФОН */
+.toast-info {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231565c0' opacity='0.9'%3E%3Cpath d='M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/%3E%3C/svg%3E") !important;
+}
+
+/* ПРЕДУПРЕЖДЕНИЕ - СВЕТЛЫЙ ФОН */
+.toast-warning {
+    background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ef6c00' opacity='0.9'%3E%3Cpath d='M13 14H11V9H13M13 18H11V16H13M1 21H23L12 2L1 21Z'/%3E%3C/svg%3E") !important;
+}
+
+/* ============ ТЕКСТ - КАК У ВАШИХ .form-label и .form-text ============ */
+
+/* УБИРАЕМ ВСЕ EMOJI ИЗ ЗАГОЛОВКОВ */
+.toast-success .toast-title::before,
+.toast-error .toast-title::before,
+.toast-warning .toast-title::before,
+.toast-info .toast-title::before {
+    display: none !important;
+}
+
+/* Заголовок - как .form-label с жирностью 600 */
+.toast-title {
+    font-size: 0.8125rem !important; /* 13px */
+    font-weight: 600 !important; /* .fw-semibold */
+    margin-bottom: 5px !important;
+    text-transform: inherit !important;
+    letter-spacing: inherit !important;
+    color: #3b4056 !important; /* Цвет .form-label */
+    line-height: 1.3 !important;
+    padding-right: 30px !important;
+    font-family: inherit !important; /* Наследуем шрифт */
+}
+
+/* Сообщение - как .form-text */
+.toast-message {
+    font-size: 0.8125rem !important; /* 13px */
+    line-height: 1.4 !important;
+    color: #676b7b !important; /* Цвет .form-text */
+    padding-right: 30px !important;
+    font-weight: 400 !important;
+    word-wrap: break-word !important;
+    max-width: 100% !important;
+    margin-top: 0.25rem !important; /* как .form-text */
+    font-family: inherit !important; /* Наследуем шрифт */
+}
+
+/* ============ КНОПКА ЗАКРЫТИЯ - БЛИЖЕ К УГЛУ ============ */
+
+.toast-close-button {
+    position: absolute !important;
+    right: 8px !important; /* БЛИЖЕ К УГЛУ (было 12px) */
+    top: 8px !important; /* БЛИЖЕ К УГЛУ (было 12px) */
+    width: 20px !important;
+    height: 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    color: #6c757d !important;
+    opacity: 0.7 !important;
+    font-weight: 400 !important;
+    transition: all 0.2s ease !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    border: none !important;
+    cursor: pointer !important;
+    z-index: 10 !important;
+    font-size: 0 !important;
+    font-family: inherit !important; /* Наследуем шрифт */
+}
+
+/* Крестик - простой текст */
+.toast-close-button::before {
+    content: '×' !important;
+    font-size: 18px !important; /* Немного меньше */
+    line-height: 1 !important;
+    display: block !important;
+    color: #676b7b !important; /* Цвет как .form-text */
+    font-weight: 300 !important;
+}
+
+.toast-close-button:hover {
+    opacity: 1 !important;
+    color: #3b4056 !important; /* Цвет как .form-label при наведении */
+    transform: scale(1.1) !important;
+}
+
+.toast-close-button:hover::before {
+    color: #3b4056 !important;
+}
+
+/* ============ ПРОГРЕСС-БАР - ПАУЗА ПРИ НАВЕДЕНИИ ============ */
+
+.toast-progress {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 3px !important;
+    background: rgba(0, 0, 0, 0.1) !important;
+    width: 100% !important;
+    border-radius: 0 0 10px 10px !important;
+    overflow: hidden !important;
+    z-index: 5 !important;
+    transition: transform 0.3s linear !important;
+}
+
+/* Останавливаем анимацию при наведении на все уведомление */
+#toast-container > div:hover .toast-progress {
+    animation-play-state: paused !important;
+    transform: scaleX(var(--progress-paused)) !important;
+}
+
+/* Анимированный внутренний прогресс-бар */
+.toast-progress::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100% !important;
+    width: 100% !important;
+    animation: progressBar 5s linear forwards !important;
+    transform-origin: left center !important;
+    border-radius: 0 0 10px 10px !important;
+    animation-play-state: running !important;
+}
+
+/* Останавливаем внутреннюю анимацию при наведении */
+#toast-container > div:hover .toast-progress::before {
+    animation-play-state: paused !important;
+}
+
+/* Цвета прогресс-баров */
+.toast-success .toast-progress::before {
+    background: #2e7d32 !important; /* Темнее для контраста */
+}
+
+.toast-error .toast-progress::before {
+    background: #c62828 !important; /* Темнее для контраста */
+}
+
+.toast-info .toast-progress::before {
+    background: #1565c0 !important; /* Темнее для контраста */
+}
+
+.toast-warning .toast-progress::before {
+    background: #ef6c00 !important; /* Темнее для контраста */
+}
+
+/* Анимация прогресс-бара */
+@keyframes progressBar {
+    0% {
+        transform: scaleX(1);
+    }
+    100% {
+        transform: scaleX(0);
+    }
+}
+
+/* ============ ОТКЛЮЧАЕМ ЗАКРЫТИЕ ПРИ НАВЕДЕНИИ ============ */
+/* В JS уже установлено tapToDismiss: false, но на всякий случай: */
+
+#toast-container > div {
+    cursor: default !important; /* Убираем курсор-указатель */
+}
+
+/* Отключаем стандартное поведение закрытия при наведении */
+#toast-container > div:hover {
+    transform: translateY(0) !important; /* Убираем поднятие при наведении */
+}
+
+/* ============ АДАПТИВНОСТЬ ============ */
+
+@media all and (max-width: 768px) {
+    #toast-container {
+        width: 95% !important;
+        left: 2.5% !important;
+        right: 2.5% !important;
+        top: 10px !important;
+    }
+
+    #toast-container > div {
+        width: 100% !important;
+        min-height: 65px !important;
+        padding: 15px 40px 15px 60px !important;
+        margin-bottom: 10px !important;
+        background-size: 22px 22px !important;
+        background-position: 18px center !important;
+    }
+
+    .toast-title {
+        font-size: 13px !important;
+        padding-right: 25px !important;
+    }
+
+    .toast-message {
+        font-size: 12px !important;
+        padding-right: 25px !important;
+    }
+
+    .toast-close-button {
+        right: 6px !important;
+        top: 6px !important;
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    .toast-close-button::before {
+        font-size: 16px !important;
+    }
+
+    .toast-progress {
+        height: 2px !important;
+    }
+}
+
+/* ============ ТЕМНАЯ ТЕМА ============ */
+
+.dark-style #toast-container > div {
+    background: #2d3748 !important;
+    border: 1px solid #4a5568 !important;
+    color: #e2e8f0 !important;
+}
+
+.dark-style .toast-success {
+    background: #2d5c2f !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2381c784' opacity='0.9'%3E%3Cpath d='M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z'/%3E%3C/svg%3E") !important;
+}
+
+.dark-style .toast-error {
+    background: #5c2d2d !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e57373' opacity='0.9'%3E%3Cpath d='M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/%3E%3C/svg%3E") !important;
+}
+
+.dark-style .toast-info {
+    background: #2d3e5c !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2364b5f6' opacity='0.9'%3E%3Cpath d='M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z'/%3E%3C/svg%3E") !important;
+}
+
+.dark-style .toast-warning {
+    background: #5c4d2d !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffb74d' opacity='0.9'%3E%3Cpath d='M13 14H11V9H13M13 18H11V16H13M1 21H23L12 2L1 21Z'/%3E%3C/svg%3E") !important;
+}
+
+/* Текст в темной теме */
+.dark-style .toast-title {
+    color: #e2e8f0 !important; /* Светлый текст в темной теме */
+}
+
+.dark-style .toast-message {
+    color: #a0aec0 !important; /* Серый текст в темной теме */
+}
+
+.dark-style .toast-close-button::before {
+    color: #a0aec0 !important;
+}
+
+.dark-style .toast-close-button:hover::before {
+    color: #ffffff !important;
+}
+
+.dark-style .toast-progress {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Убираем размытие в темной теме */
+.dark-style #toast-container > div {
+    backdrop-filter: none !important;
+}
+
+/* ============ ДОПОЛНИТЕЛЬНЫЕ ЭФФЕКТЫ ============ */
+
+/* Эффект пульсации при создании */
+@keyframes pulseCreate {
+    0% { transform: scale(0.95); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+#toast-container > div.new {
+    animation: pulseCreate 0.3s ease !important;
+}
+
+/* Убираем текстовые тени */
+.toast-title,
+.toast-message {
+    text-shadow: none !important;
+}
+
+/* Наследуем шрифт от body */
+#toast-container > div {
+    font-family: inherit !important;
+}
+
+/* ============ СТАНДАРТНЫЙ ШРИФТ КАК У ВАС ============ */
+/* Убедитесь, что body имеет тот же шрифт что и ваша система */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Segoe UI Emoji", "Segoe UI Symbol" !important;
+}

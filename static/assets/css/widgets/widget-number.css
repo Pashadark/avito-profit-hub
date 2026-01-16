@@ -1,0 +1,55 @@
+.widget-number {
+  --bs-card-spacer-y: 1.25rem;
+  --bs-card-spacer-x: 1.25rem;
+  --bs-card-title-spacer-y: 0.875rem;
+  --bs-card-title-color: #3b4056;
+  --bs-card-subtitle-color: #888a98;
+  --bs-card-border-width: 0;
+  --bs-card-border-color: #e5e6e8;
+  --bs-card-border-radius: 0.625rem;
+  --bs-card-box-shadow: 0 0.25rem 0.875rem 0 rgba(38, 43, 67, 0.16);
+  --bs-card-inner-border-radius: 0.625rem;
+  --bs-card-cap-padding-y: 1.25rem;
+  --bs-card-cap-padding-x: 1.25rem;
+  --bs-card-cap-bg: transparent;
+  --bs-card-cap-color: #3b4056;
+  --bs-card-height: ;
+  --bs-card-color: ;
+  --bs-card-bg: #fff;
+  --bs-card-img-overlay-padding: 1.25rem;
+  --bs-card-group-margin: 1.5rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: var(--bs-card-height);
+  color: var(--bs-body-color);
+  word-wrap: break-word;
+  background-color: var(--bs-card-bg);
+  background-clip: border-box;
+  border: var(--bs-card-border-width) solid var(--bs-card-border-color);
+  border-radius: var(--bs-card-border-radius);
+  background-clip: padding-box;
+  box-shadow: 0 0.25rem 0.875rem 0 rgba(38, 43, 67, 0.16);
+}
+
+.widget-number > .card-header + .list-group,
+.widget-number > .list-group + .card-footer {
+  border-top: 0;
+}
+
+.widget-number-body {
+  flex: 1 1 auto;
+  padding: var(--bs-card-spacer-y) var(--bs-card-spacer-x);
+  color: var(--bs-card-color);
+}
+
+.widget-number-title:not(h1):not(.h1):not(h2):not(.h2):not(h3):not(.h3):not(h4):not(.h4):not(h5):not(.h5):not(h6):not(.h6) {
+  color: #3b4056;
+}
+
+.widget-number-subtitle {
+  margin-top: calc(-0.5 * var(--bs-card-title-spacer-y));
+  margin-bottom: 0;
+  color: var(--bs-card-subtitle-color);
+}

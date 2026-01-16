@@ -1,0 +1,140 @@
+<!-- templates/search/advanced_search.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Расширенный поиск - Селибри{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ri-filter-3-line me-2"></i>
+                    Расширенный поиск
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="get" action="{% url 'website:advanced_search' %}" id="advanced-search-form">
+                    <div class="row">
+                        <!-- Основной запрос -->
+                        <div class="col-md-12 mb-4">
+                            <label class="form-label">Поисковый запрос</label>
+                            <input type="text"
+                                   name="q"
+                                   class="form-control"
+                                   placeholder="Введите запрос..."
+                                   value="{{ query }}">
+                            <div class="form-text">Ищет в названии, описании, категории и других полях</div>
+                        </div>
+
+                        <!-- Фильтры -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Категория</label>
+                            <select name="category" class="form-select">
+                                <option value="">Все категории</option>
+                                {% for category in categories %}
+                                <option value="{{ category }}" {% if filters.category == category %}selected{% endif %}>
+                                    {{ category }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Город</label>
+                            <select name="city" class="form-select">
+                                <option value="">Все города</option>
+                                {% for city in cities %}
+                                <option value="{{ city }}" {% if filters.city == city %}selected{% endif %}>
+                                    {{ city }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Цена -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Минимальная цена</label>
+                            <input type="number"
+                                   name="min_price"
+                                   class="form-control"
+                                   placeholder="0"
+                                   value="{{ filters.min_price }}">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Максимальная цена</label>
+                            <input type="number"
+                                   name="max_price"
+                                   class="form-control"
+                                   placeholder="1000000"
+                                   value="{{ filters.max_price }}">
+                        </div>
+
+                        <!-- Прибыль -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Мин. прибыль</label>
+                            <input type="number"
+                                   name="min_profit"
+                                   class="form-control"
+                                   placeholder="0"
+                                   value="{{ filters.min_profit }}">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Источник</label>
+                            <select name="source" class="form-select">
+                                <option value="all">Все источники</option>
+                                {% for source in sources %}
+                                <option value="{{ source }}" {% if filters.source == source %}selected{% endif %}>
+                                    {{ source }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Чекбоксы -->
+                        <div class="col-12 mb-4">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       name="profitable_only"
+                                       id="profitable_only"
+                                       value="true"
+                                       {% if filters.profitable_only %}checked{% endif %}>
+                                <label class="form-check-label" for="profitable_only">
+                                    Только выгодные товары
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       name="favorites_only"
+                                       id="favorites_only"
+                                       value="true"
+                                       {% if filters.favorites_only %}checked{% endif %}>
+                                <label class="form-check-label" for="favorites_only">
+                                    Только избранное
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Кнопки -->
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between">
+                                <button type="reset" class="btn btn-outline-secondary">
+                                    <i class="ri-refresh-line me-2"></i>Сбросить
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="ri-search-line me-2"></i>Искать
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

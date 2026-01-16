@@ -1,0 +1,46 @@
+{% if query %}
+<div class="search-results">
+    <h6 class="mb-3">📊 Результаты поиска: "{{ query }}"</h6>
+
+    {% if search_type == 'all' or search_type == 'items' %}
+    {% if results.found_items %}
+    <div class="mb-4">
+        <h6><i class="ri-shopping-bag-3-line me-2"></i>Товары</h6>
+        {% for item in results.found_items|slice:":5" %}
+        <div class="card mb-2">
+            <div class="card-body py-2">
+                <h6 class="card-title mb-1">{{ item.title|truncatewords:6 }}</h6>
+                <p class="card-text text-muted small mb-1">
+                    {{ item.price }} ₽
+                    {% if item.target_price %} | Цель: {{ item.target_price }} ₽{% endif %}
+                </p>
+                <small class="text-muted">{{ item.found_at|date:"d.m.Y H:i" }}</small>
+            </div>
+        </div>
+        {% endfor %}
+        {% if results.found_items|length > 5 %}
+        <div class="text-center">
+            <small class="text-muted">... и еще {{ results.found_items|length|add:"-5" }} результатов</small>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Аналогично для других типов результатов -->
+
+    {% if results.total_count == 0 %}
+    <div class="text-center py-3">
+        <i class="ri-search-off-line display-4 text-muted"></i>
+        <p class="text-muted mt-2">Ничего не найдено</p>
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-3">
+        <a href="{% url 'website:search' %}?q={{ query|urlencode }}&type={{ search_type }}"
+           class="btn btn-outline-primary btn-sm">
+            <i class="ri-external-link-line me-1"></i>Открыть полный поиск
+        </a>
+    </div>
+</div>
+{% endif %}

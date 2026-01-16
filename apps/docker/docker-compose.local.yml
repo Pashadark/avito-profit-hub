@@ -1,0 +1,12 @@
+# Локальная разработка на Windows
+
+services:
+  django:
+    environment:
+      COMPOSE_CONVERT_WINDOWS_PATHS: "1"
+    stdin_open: true
+    tty: true
+
+  postgres:
+    volumes:
+      - postgres_data:/var/lib/postgresql/data

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Ошибка безопасности - Селибри</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+        .error-container {
+            background: rgba(255,255,255,0.1);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            max-width: 500px;
+            margin: 20px;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .btn {
+            background: #fff;
+            color: #667eea;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.3s ease;
+            margin: 5px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .reasons {
+            text-align: left;
+            margin: 20px 0;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>🔒 Ошибка безопасности</h1>
+        <p>Обнаружена проблема с проверкой безопасности. Это может произойти если:</p>
+
+        <div class="reasons">
+            <ul>
+                <li>Страница была открыта слишком долго</li>
+                <li>Вы используете закладку со старой сессией</li>
+                <li>Произошел сброс сессии браузера</li>
+                <li>Вы пытаетесь отправить форму с другого сайта</li>
+            </ul>
+        </div>
+
+        <p>Пожалуйста, обновите страницу или войдите заново.</p>
+
+        <a href="/" class="btn">На главную</a>
+        <button onclick="location.reload()" class="btn">Обновить страницу</button>
+        <a href="{% url 'login' %}" class="btn">Войти заново</a>
+    </div>
+</body>
+</html>

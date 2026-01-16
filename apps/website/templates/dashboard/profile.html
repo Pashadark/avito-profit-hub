@@ -1,0 +1,800 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Профиль пользователя - ProfitHub{% endblock %}
+
+{% block content %}
+<!-- Переопределение ширины контейнера для этой страницы -->
+<style>
+    .container-xxl.flex-grow-1.container-p-y {
+        max-width: 1800px !important;
+        margin: 0 auto !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    @media (max-width: 1800px) {
+        .container-xxl.flex-grow-1.container-p-y {
+            max-width: 100% !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container-xxl.flex-grow-1.container-p-y {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+    }
+</style>
+
+<div class="row">
+    <!-- Левая колонка - Информация о пользователе -->
+    <div class="col-xl-4 col-lg-5 col-md-5 order-1 order-md-0">
+        <!-- Карточка пользователя -->
+        <div class="card mb-4">
+            <div class="card-body pt-4">
+                <div class="user-avatar-section">
+    <div class="d-flex align-items-center flex-column">
+        <img class="img-fluid rounded-3 mb-3"
+             src="{% if user_profile.avatar %}/{{ user_profile.avatar }}{% else %}{% static 'assets/img/avatars/1.png' %}{% endif %}"
+             height="120"
+             width="120"
+             alt="User avatar"
+             style="object-fit: cover;"
+             onerror="this.src='{% static 'assets/img/avatars/1.png' %}'">
+        <div class="user-info text-center">
+            <h5>{{ request.user.get_full_name|default:request.user.username }}</h5>
+            <span class="badge bg-label-primary rounded-pill">Пользователь</span>
+        </div>
+    </div>
+</div>
+                <div class="d-flex justify-content-around flex-wrap my-4 py-3 border-top border-bottom">
+                    <div class="d-flex align-items-center me-3 me-md-4 gap-3">
+                        <div class="avatar">
+                            <div class="avatar-initial bg-label-primary rounded-3">
+                                <i class="ri-check-line ri-lg"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">{{ found_items_count }}</h5>
+                            <span>Находок</span>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar">
+                            <div class="avatar-initial bg-label-primary rounded-3">
+                                <i class="ri-briefcase-line ri-lg"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">{{ good_deals_count }}</h5>
+                            <span>Выгодных</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="pb-3 border-bottom mb-3">Детали аккаунта</h5>
+                <div class="info-container">
+                    <ul class="list-unstyled mb-4">
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Имя пользователя:</span>
+                            <span>{{ request.user.username }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Email:</span>
+                            <span>{{ request.user.email }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Имя:</span>
+                            <span>{{ request.user.first_name|default:"Не указано" }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Фамилия:</span>
+                            <span>{{ request.user.last_name|default:"Не указана" }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Телефон:</span>
+                            <span>{{ user_profile.phone|default:"Не указан" }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Пол:</span>
+                            <span>
+                                {% if user_profile.gender == 'male' %}Мужской
+                                {% elif user_profile.gender == 'female' %}Женский
+                                {% else %}Не указан{% endif %}
+                            </span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Статус:</span>
+                            <span class="badge bg-label-success rounded-pill">Активен</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium">Текущий баланс:</span>
+                            <span class="h5 mb-0 text-primary">{{ user_profile.balance|floatformat:2 }} ₽</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Дата регистрации:</span>
+                            <span>{{ request.user.date_joined|date:"d.m.Y" }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <span class="fw-medium text-heading me-2">Последний вход:</span>
+                            <span>{{ request.user.last_login|date:"d.m.Y H:i"|default:"Недавно" }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <!-- /Карточка пользователя -->
+    </div>
+    <!--/ Левая колонка -->
+
+    <!-- Правая колонка - Контент пользователя -->
+    <div class="col-xl-8 col-lg-7 col-md-7 order-0 order-md-1">
+        <!-- Навигационные вкладки -->
+        <div class="nav-align-top mb-4">
+            <ul class="nav nav-pills flex-column flex-md-row mb-3 row-gap-2" role="tablist">
+                <li class="nav-item">
+                    <button type="button" class="nav-link active" role="tab" data-bs-toggle="tab" data-bs-target="#accountTab" aria-controls="accountTab" aria-selected="true">
+                        <i class="ri-user-3-line me-2"></i>Аккаунт
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#telegramTab" aria-controls="telegramTab" aria-selected="false">
+                        <i class="ri-telegram-line me-2"></i>Telegram
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#securityTab" aria-controls="securityTab" aria-selected="false">
+                        <i class="ri-lock-2-line me-2"></i>Безопасность
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button type="button" class="nav-link" role="tab" data-bs-toggle="tab" data-bs-target="#paymentsTab" aria-controls="paymentsTab" aria-selected="false">
+                        <i class="ri-coin-line me-2"></i>Платежи
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Вкладка Аккаунт -->
+                <div class="tab-pane fade show active" id="accountTab" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">📝 Редактирование профиля</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="profileForm" method="POST" action="{% url 'website:update_profile' %}" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="firstName" class="form-label">Имя</label>
+                                        <input type="text" class="form-control" id="firstName" name="first_name"
+                                               value="{{ request.user.first_name }}" placeholder="Введите ваше имя">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="lastName" class="form-label">Фамилия</label>
+                                        <input type="text" class="form-control" id="lastName" name="last_name"
+                                               value="{{ request.user.last_name }}" placeholder="Введите вашу фамилию">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="email" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="email" name="email"
+                                               value="{{ request.user.email }}" placeholder="Введите ваш email">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="phone" class="form-label">Телефон</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone"
+                                               value="{{ user_profile.phone|default:'' }}" placeholder="+7 (999) 999-99-99">
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Пол</label>
+                                        <div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="gender" id="genderMale" value="male"
+                                                       {% if user_profile.gender == 'male' %}checked{% endif %}>
+                                                <label class="form-check-label" for="genderMale">Мужской</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="gender" id="genderFemale" value="female"
+                                                       {% if user_profile.gender == 'female' %}checked{% endif %}>
+                                                <label class="form-check-label" for="genderFemale">Женский</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="avatar" class="form-label">Аватарка</label>
+
+                                        <!-- Предпросмотр текущего аватара -->
+                                        <div class="mb-3 text-center">
+                                            <img id="avatarPreview"
+                                                 src="{% if user_profile.avatar %}/{{ user_profile.avatar }}{% else %}{% static 'assets/img/avatars/1.png' %}{% endif %}"
+                                                 class="rounded-circle border"
+                                                 width="100" height="100"
+                                                 style="object-fit: cover;"
+                                                 alt="Текущий аватар">
+                                        </div>
+
+                                        <input type="file" class="form-control" id="avatar" name="avatar" accept="image/*"
+                                               onchange="previewAvatar(this)">
+                                        <div class="form-text">Рекомендуемый размер: 200x200 px</div>
+
+                                        <!-- Информация о текущем аватаре -->
+                                        {% if user_profile.avatar %}
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearAvatar()">
+                                                <i class="ri-delete-bin-line me-1"></i>Удалить аватар
+                                            </button>
+                                            <small class="text-muted ms-2">Текущий: {{ user_profile.avatar.name }}</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ri-save-line me-2"></i>Сохранить изменения
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка Telegram -->
+                <div class="tab-pane fade" id="telegramTab" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="ri-telegram-line me-2"></i>Настройки Telegram
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="telegramStatus">
+                                <!-- Статус будет загружен через AJAX -->
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-md-6">
+                                    <div class="border rounded p-4">
+                                        <h6>📱 Быстрая привязка</h6>
+                                        <button class="btn btn-primary w-100 mb-3" onclick="generateTelegramCode()">
+                                            <i class="ri-qr-code-line me-2"></i>Получить код привязки
+                                        </button>
+
+                                        <div id="verificationCode" style="display: none;">
+                                            <div class="alert alert-info">
+                                                <strong>Код верификации:</strong>
+                                                <h3 id="telegramCode" class="text-center my-3"></h3>
+                                                <small>Действителен 10 минут</small>
+                                            </div>
+                                            <div class="input-group mb-3">
+                                                <input type="text" class="form-control" id="codeInput" placeholder="Введите код в боте">
+                                                <button class="btn btn-success" onclick="verifyTelegramCode()">
+                                                    <i class="ri-check-line"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="border rounded p-4">
+                                        <h6>🔗 Альтернативные способы</h6>
+                                        <div class="mb-3">
+                                            <label class="form-label">Команда в боте:</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" id="botCommand"
+                                                       value="/link {{ user.username }}" readonly>
+                                                <button class="btn btn-outline-secondary" onclick="copyBotCommand()">
+                                                    <i class="ri-file-copy-line"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <label class="form-label">Ваш логин для привязки:</label>
+                                            <div class="input-group">
+                                                <input type="text" class="form-control" value="{{ user.username }}" readonly>
+                                                <button class="btn btn-outline-secondary" onclick="copyUsername()">
+                                                    <i class="ri-file-copy-line"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-4" id="telegramControls" style="display: none;">
+                                <div class="col-12">
+                                    <div class="border rounded p-3">
+                                        <h6>⚙️ Управление привязкой</h6>
+                                        <button class="btn btn-outline-danger me-2" onclick="unlinkTelegram()">
+                                            <i class="ri-link-unlink-line me-2"></i>Отвязать Telegram
+                                        </button>
+                                        <button class="btn btn-outline-primary" onclick="testBotConnection()">
+                                            <i class="ri-test-tube-line me-2"></i>Тест связи
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка Безопасность -->
+                <div class="tab-pane fade" id="securityTab" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="ri-lock-2-line me-2"></i>Настройки безопасности
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Смена пароля</h6>
+                                    <form id="passwordForm">
+                                        {% csrf_token %}
+                                        <div class="mb-3">
+                                            <label class="form-label">Текущий пароль</label>
+                                            <input type="password" class="form-control" id="currentPassword" name="current_password" placeholder="Введите текущий пароль">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Новый пароль</label>
+                                            <input type="password" class="form-control" id="newPassword" name="new_password" placeholder="Введите новый пароль">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Подтвердите пароль</label>
+                                            <input type="password" class="form-control" id="confirmPassword" name="confirm_password" placeholder="Подтвердите новый пароль">
+                                        </div>
+                                        <button type="button" class="btn btn-primary" onclick="changePassword()">
+                                            <i class="ri-lock-password-line me-2"></i>Сменить пароль
+                                        </button>
+                                    </form>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3">
+                                        <h6>Рекомендации по безопасности:</h6>
+                                        <ul class="mb-3">
+                                            <li>Используйте сложный пароль</li>
+                                            <li>Не передавайте учетные данные</li>
+                                            <li>Регулярно обновляйте пароль</li>
+                                            <li>Используйте двухфакторную аутентификацию</li>
+                                        </ul>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="twoFactorAuth">
+                                            <label class="form-check-label" for="twoFactorAuth">
+                                                Двухфакторная аутентификация
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Вкладка Платежи -->
+                <div class="tab-pane fade" id="paymentsTab" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="ri-coin-line me-2"></i>История операций
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Дата</th>
+                                            <th>Тип операции</th>
+                                            <th>Сумма</th>
+                                            <th>Статус</th>
+                                            <th>Описание</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for transaction in transactions %}
+                                        <tr>
+                                            <td>{{ transaction.created_at|date:"d.m.Y H:i" }}</td>
+                                            <td>{{ transaction.get_transaction_type_display }}</td>
+                                            <td class="{% if transaction.amount > 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                                                {% if transaction.amount > 0 %}+{% endif %}{{ transaction.amount }} ₽
+                                            </td>
+                                            <td>
+                                                <span class="badge
+                                                    {% if transaction.status == 'completed' %}bg-label-success
+                                                    {% elif transaction.status == 'pending' %}bg-label-warning
+                                                    {% else %}bg-label-danger{% endif %}">
+                                                    {{ transaction.get_status_display }}
+                                                </span>
+                                            </td>
+                                            <td>{{ transaction.description }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="5" class="text-center">Нет операций</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--/ Навигационные вкладки -->
+    </div>
+    <!--/ Правая колонка -->
+</div>
+
+<!-- Модальное окно смены пароля -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Смена пароля</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="passwordChangeForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Текущий пароль</label>
+                        <input type="password" class="form-control" name="current_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Новый пароль</label>
+                        <input type="password" class="form-control" name="new_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Подтвердите новый пароль</label>
+                        <input type="password" class="form-control" name="confirm_password" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="submitPasswordChange()">Сменить пароль</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.subscription-status {
+    background: rgba(105, 108, 255, 0.05);
+    border-left: 4px solid #696cff;
+}
+
+.avatar-initial {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-avatar-section img {
+    padding: 3px;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #696cff;
+    border-color: #696cff;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(105, 108, 255, 0.04);
+}
+
+.tab-content {
+    min-height: 400px;
+}
+
+.info-container ul li {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-container ul li:last-child {
+    border-bottom: none;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+</style>
+
+<script>
+// Функции для управления Telegram
+function loadTelegramStatus() {
+    fetch('/api/telegram/status/')
+        .then(response => {
+            if (!response.ok) throw new Error('Network error');
+            return response.json();
+        })
+        .then(data => {
+            const statusDiv = document.getElementById('telegramStatus');
+
+            if (data.status === 'success' && data.telegram_verified) {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="ri-checkbox-circle-line me-2"></i>
+                        <strong>Telegram привязан!</strong>
+                        <button class="btn btn-sm btn-outline-success float-end" onclick="testBotConnection()">
+                            <i class="ri-test-tube-line me-1"></i>Тест связи
+                        </button>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h6>👤 Информация</h6>
+                                <p class="mb-1"><small>User ID:</small><br><strong>${data.telegram_user_id}</strong></p>
+                                <p class="mb-0"><small>Username:</small><br><strong>@${data.telegram_username || 'не указан'}</strong></p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h6>🔔 Статус</h6>
+                                <p class="mb-1"><span class="badge bg-success">✅ Активна</span></p>
+                                <p class="mb-0"><span class="badge bg-success">✅ Включены</span></p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h6>⚡ Действия</h6>
+                                <button class="btn btn-sm btn-outline-danger w-100 mb-2" onclick="unlinkTelegram()">
+                                    <i class="ri-link-unlink-line me-1"></i>Отвязать
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary w-100" onclick="sendTestMessage()">
+                                    <i class="ri-send-plane-line me-1"></i>Тест сообщение
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="ri-error-warning-line me-2"></i>
+                        <strong>Telegram не привязан</strong>
+                        <p class="mb-0 mt-2">Для полного доступа к функциям бота привяжите ваш Telegram аккаунт.</p>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light">
+                                <h6>📱 Способ 1: Через код</h6>
+                                <button class="btn btn-primary w-100 mb-2" onclick="generateTelegramCode()">
+                                    <i class="ri-qr-code-line me-2"></i>Получить код
+                                </button>
+                                <small class="text-muted">Код действителен 10 минут</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded p-3 bg-light">
+                                <h6>🔗 Способ 2: Через команду</h6>
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" value="/link {{ user.username }}" readonly>
+                                    <button class="btn btn-outline-secondary" onclick="copyText('/link {{ user.username }}')">
+                                        <i class="ri-file-copy-line"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">Отправьте команду боту</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки статуса:', error);
+            document.getElementById('telegramStatus').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="ri-error-warning-line me-2"></i>
+                    <strong>Ошибка загрузки статуса</strong>
+                    <p class="mb-0 mt-2">Попробуйте обновить страницу.</p>
+                </div>
+            `;
+        });
+}
+
+function generateTelegramCode() {
+    showToast('🔄 Генерируем код...', 'info');
+
+    fetch('/api/telegram/generate-code/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            // Показываем код в модальном окне
+            const modal = new bootstrap.Modal(document.getElementById('codeModal'));
+            document.getElementById('generatedCode').textContent = data.code;
+            modal.show();
+
+            showToast('✅ Код сгенерирован!', 'success');
+        } else {
+            showToast('❌ Ошибка: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showToast('❌ Ошибка сети', 'error');
+    });
+}
+
+function verifyCodeInBot() {
+    const code = document.getElementById('generatedCode').textContent;
+
+    // Инструкция для пользователя
+    const instruction = `Отправьте боту команду:\n\n/verify ${code}\n\nИли нажмите кнопку ниже чтобы скопировать команду:`;
+
+    document.getElementById('verificationInstruction').innerHTML = instruction;
+
+    // Показываем кнопку копирования
+    document.getElementById('copyCommandBtn').style.display = 'block';
+}
+
+function copyVerificationCommand() {
+    const code = document.getElementById('generatedCode').textContent;
+    const command = `/verify ${code}`;
+    copyText(command);
+    showToast('✅ Команда скопирована! Отправьте её боту.', 'success');
+}
+
+function testBotConnection() {
+    console.log('🔄 Начинаем тест связи с ботом...');
+    showToast('🔧 Тестируем связь с ботом...', 'info');
+
+    // Используем правильный URL из ваших urls.py
+    fetch('/api/test-bot-connection/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({}) // Пустое тело, так как view не ожидает данных
+    })
+    .then(response => {
+        console.log('📨 Получен ответ:', response.status, response.statusText);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('📊 Данные ответа:', data);
+
+        if (data.status === 'success') {
+            showToast('✅ ' + data.message, 'success');
+        } else {
+            showToast('❌ ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Ошибка запроса:', error);
+        showToast('❌ Ошибка: ' + error.message, 'error');
+    });
+}
+
+function sendTestMessage() {
+    showToast('📨 Отправляем тестовое сообщение...', 'info');
+
+    // Используем ту же функцию что и testBotConnection
+    testBotConnection();
+}
+
+function unlinkTelegram() {
+    if (!confirm('Вы уверены, что хотите отвязать Telegram? Все уведомления будут отключены.')) {
+        return;
+    }
+
+    fetch('/api/telegram/unlink/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast('✅ ' + data.message, 'success');
+            setTimeout(() => {
+                loadTelegramStatus(); // Перезагружаем статус
+            }, 1000);
+        } else {
+            showToast('❌ ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showToast('❌ Ошибка сети', 'error');
+    });
+}
+
+// Вспомогательные функции
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('✅ Скопировано в буфер обмена!', 'success');
+    }).catch(() => {
+        // Fallback для старых браузеров
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showToast('✅ Скопировано!', 'success');
+    });
+}
+
+function showToast(message, type = 'info') {
+    // Создаем или находим контейнер для тостов
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toastContainer';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        document.body.appendChild(toastContainer);
+    }
+
+    const toastId = 'toast-' + Date.now();
+    const typeClass = type === 'success' ? 'text-bg-success' :
+                     type === 'error' ? 'text-bg-danger' :
+                     type === 'warning' ? 'text-bg-warning' : 'text-bg-info';
+
+    const toastHtml = `
+        <div id="${toastId}" class="toast ${typeClass} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 3000 });
+    toast.show();
+
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+}
+
+// Загружаем статус при открытии вкладки Telegram
+document.addEventListener('DOMContentLoaded', function() {
+    // Отслеживаем переключение вкладок
+    const telegramTab = document.querySelector('[data-bs-target="#telegramTab"]');
+    if (telegramTab) {
+        telegramTab.addEventListener('shown.bs.tab', function() {
+            loadTelegramStatus();
+        });
+    }
+
+    // Если вкладка Telegram уже активна при загрузке
+    if (document.getElementById('telegramTab')?.classList.contains('active')) {
+        loadTelegramStatus();
+    }
+});
+</script>
+{% endblock %}

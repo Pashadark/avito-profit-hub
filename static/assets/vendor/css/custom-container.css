@@ -1,0 +1,76 @@
+/* ТОЧНАЯ ШИРИНА КОНТЕЙНЕРА 1645px ДЛЯ ВСЕХ СТРАНИЦ */
+
+/* Основной контейнер контента - ТОЧНО 1645px */
+html body .layout-page .container-xxl.flex-grow-1.container-p-y,
+html body .layout-content .container-xxl.flex-grow-1.container-p-y,
+html body .container-xxl.flex-grow-1.container-p-y {
+    max-width: 1645px !important;
+    margin: 0 auto !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    width: 100% !important;
+}
+
+/* Переопределение всех возможных контейнеров */
+html body .layout-page .container-xxl,
+html body .layout-content .container-xxl,
+html body .container-xxl {
+    max-width: 1645px !important;
+}
+
+/* Адаптивность */
+@media (max-width: 1700px) {
+    html body .layout-page .container-xxl.flex-grow-1.container-p-y,
+    html body .layout-content .container-xxl.flex-grow-1.container-p-y,
+    html body .container-xxl.flex-grow-1.container-p-y,
+    html body .layout-page .container-xxl,
+    html body .layout-content .container-xxl,
+    html body .container-xxl {
+        max-width: 95% !important;
+    }
+}
+
+@media (max-width: 1400px) {
+    html body .layout-page .container-xxl.flex-grow-1.container-p-y,
+    html body .layout-content .container-xxl.flex-grow-1.container-p-y,
+    html body .container-xxl.flex-grow-1.container-p-y,
+    html body .layout-page .container-xxl,
+    html body .layout-content .container-xxl,
+    html body .container-xxl {
+        max-width: 98% !important;
+    }
+}
+
+@media (max-width: 768px) {
+    html body .layout-page .container-xxl.flex-grow-1.container-p-y,
+    html body .layout-content .container-xxl.flex-grow-1.container-p-y,
+    html body .container-xxl.flex-grow-1.container-p-y,
+    html body .layout-page .container-xxl,
+    html body .layout-content .container-xxl,
+    html body .container-xxl {
+        max-width: 100% !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+}
+/* УНИФИКАЦИЯ GUTTER ДЛЯ ВСЕХ СТРАНИЦ */
+.row {
+    --bs-gutter-x: 1.5rem !important;
+    --bs-gutter-y: 1.5rem !important;
+}
+
+/* Переопределение всех возможных gutter классов */
+.row.g-4 { --bs-gutter-x: 1.5rem !important; --bs-gutter-y: 1.5rem !important; }
+.row.g-6 { --bs-gutter-x: 1.5rem !important; --bs-gutter-y: 1.5rem !important; }
+
+/* Гарантия для всех row элементов */
+[class*="row"] {
+    --bs-gutter-x: 1.5rem !important;
+    --bs-gutter-y: 1.5rem !important;
+}
+
+/* Переопределение конкретных gutter в found-items */
+.row.g-4 {
+    --bs-gutter-x: 1.5rem !important;
+    --bs-gutter-y: 1.5rem !important;
+}

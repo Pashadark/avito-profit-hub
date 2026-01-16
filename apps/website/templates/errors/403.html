@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Доступ запрещен - 403{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-6 text-center">
+            <div class="error-container mt-5">
+                <h1 class="display-1 text-warning">403</h1>
+                <h2 class="mb-4">Доступ запрещен</h2>
+                <p class="lead">У вас недостаточно прав для доступа к этой странице.</p>
+                {% if not user.is_authenticated %}
+                <div class="alert alert-info mt-3">
+                    <p>Возможно, вам нужно <a href="{% url 'login' %}" class="alert-link">войти в систему</a>.</p>
+                </div>
+                {% endif %}
+                <div class="error-actions mt-4">
+                    <a href="{% url 'website:dashboard' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-home me-2"></i>На главную
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg ms-2">
+                        <i class="fas fa-arrow-left me-2"></i>Назад
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

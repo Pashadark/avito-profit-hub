@@ -1,0 +1,1171 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru" class="light-style layout-navbar-fixed layout-menu-fixed layout-compact" dir="ltr" data-theme="theme-default" data-assets-path="{% static 'assets/' %}" data-template="vertical-menu-template">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+    <title>{% block title %}Селибри - Система поиска объявлений{% endblock %}</title>
+    <meta name="description" content="" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'assets/img/favicon/favicon.ico' %}" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="http://192.168.3.15:8000/" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="{% static 'assets/vendor/fonts/remixicon/remixicon.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/vendor/fonts/flag-icons.css' %}" />
+
+    <!-- Menu waves for no-customizer fix -->
+    <link rel="stylesheet" href="{% static 'assets/vendor/libs/node-waves/node-waves.css' %}" />
+
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="{% static 'assets/css/base.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/vendor/css/rtl/core.css' %}" class="template-customizer-core-css" />
+    <link rel="stylesheet" href="{% static 'assets/vendor/css/rtl/theme-default.css' %}" class="template-customizer-theme-css" />
+    <link rel="stylesheet" href="{% static 'assets/css/demo.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/vendor/css/custom-container.css' %}" />
+
+    <!-- Widgets CSS -->
+    <link rel="stylesheet" href="{% static 'assets/css/widgets/widget-number.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/widgets/widget-progressbar.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/widgets/card-seller.css' %}" />
+
+    <!-- Сard CSS -->
+    <link rel="stylesheet" href="{% static 'assets/css/card/product-card.css' %}" />
+
+    <!-- Toastr CSS -->
+    <link rel="stylesheet" href="{% static 'assets/vendor/libs/toastr/toastr.css' %}" />
+
+    <!-- НАШИ НОВЫЕ УВЕДОМЛЕНИЯ CSS -->
+    <link rel="stylesheet" href="{% static 'notifications/css/notifications.css' %}" />
+
+    <!-- Vendor CSS -->
+    {% block vendor_css %}
+    <link rel="stylesheet" href="{% static 'assets/css/enhanced-search.css' %}" />
+    {% endblock vendor_css %}
+
+    <!-- Helpers -->
+    <script src="{% static 'assets/vendor/js/helpers.js' %}"></script>
+    <!--? Config:  Mandatory theme config file contain global vars & default theme options, Set your preferred theme option in this file.  -->
+    <script src="{% static 'assets/js/config.js' %}"></script>
+
+    <!-- Page specific CSS -->
+    {% block page_css %}{% endblock page_css %}
+
+</head>
+
+<body>
+    <!-- Layout wrapper -->
+    <div class="layout-wrapper layout-content-navbar">
+        <div class="layout-container">
+            <!-- Menu -->
+            {% if not request.path == '/login/' and not request.path == '/admin/' %}
+            <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+                <div class="app-brand demo">
+                    <a href="{% url 'website:dashboard' %}" class="app-brand-link">
+                        <span class="app-brand-logo demo">
+                            <img src="{% static 'assets/img/logo/logo.svg' %}" alt="Кардинал" width="32" onerror="this.style.display='none'">
+                        </span>
+                        <span class="app-brand-text demo menu-text fw-semibold ms-2">Селибри</span>
+                    </a>
+
+                    <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-xl-none">
+                        <i class="ri-close-line ri-lg"></i>
+                    </a>
+                </div>
+
+                <div class="menu-inner-shadow"></div>
+                <ul class="menu-inner py-1">
+                    <!-- Dashboard -->
+                    <li class="menu-header small mt-5">
+                        <span class="menu-header-text">Основное меню</span>
+                    </li>
+                    <li class="menu-item {% if request.path == '/' %}active{% endif %}">
+                        <a href="{% url 'website:dashboard' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-home-smile-line"></i>
+                            <div>Панель управления</div>
+                        </a>
+                    </li>
+
+                    <!-- Товары -->
+                    <li class="menu-item {% if request.path == '/found-items/' %}active{% endif %}">
+                        <a href="{% url 'website:found_items' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-shopping-bag-3-line"></i>
+                            <div>Объявление</div>
+                        </a>
+                    </li>
+
+                    <!-- Поиск -->
+                    <li class="menu-item {% if request.path == '/search/' %}active{% endif %}">
+                        <a href="{% url 'website:search' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-search-line"></i>
+                            <div>Поиск</div>
+                        </a>
+                    </li>
+
+                    <!-- Парсер -->
+                    <li class="menu-item {% if request.path == '/parser-settings/' %}active{% endif %}">
+                        <a href="{% url 'website:parser_settings' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-game-line"></i>
+                            <div>Парсер</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {% if request.path == '/profile/' %}active{% endif %}">
+                        <a href="{% url 'website:profile' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-user-line"></i>
+                            <div>Профиль</div>
+                        </a>
+                    </li>
+                    <!-- Админ панель - только для администраторов -->
+                    {% if request.user.is_staff or request.user.is_superuser %}
+                    <li class="menu-header small mt-5">
+                        <span class="menu-header-text">Управление</span>
+                    </li>
+
+                    <li class="menu-item {% if request.path == '/debug-settings/' %}active{% endif %}">
+                        <a href="{% url 'website:debug_settings' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-bug-line" style="color: #ff4757;"></i>
+                            <div style="color: #ff4757;">Админ панель</div>
+                        </a>
+                    </li>
+
+                    <!-- Пользователи - только для администраторов -->
+                    <li class="menu-item {% if request.path == '/admin-users/' %}active{% endif %}">
+                        <a href="{% url 'website:admin_users' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-group-line" style="color: #ff4757;"></i>
+                            <div style="color: #ff4757;">Акаунты</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {% if request.path == '/todo/' %}active{% endif %}">
+                        <a href="{% url 'website:todo_kanban' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-drag-drop-line" style="color: #ff4757;"></i>
+                            <div style="color: #ff4757;">Задачи</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {% if request.path == '#' %}active{% endif %}">
+                        <a href="{% url 'website:todo_kanban' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-bar-chart-2-line" style="color: #ff4757;"></i>
+                            <div style="color: #ff4757;">Статистика</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {% if request.path == '#' %}active{% endif %}">
+                        <a href="{% url 'website:help' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-archive-2-line" style="color: #ff4757;"></i>
+                            <div style="color: #ff4757;">Структура</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {% if '/vision-statistics/' in request.path %}active{% endif %}">
+                        <a href="{% url 'website:vision_statistics' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-brain-line" style="color: #ff4757;"></i>
+                            <div style="color: #ff4757;">Интеллект ML</div>
+                        </a>
+                    </li>
+                    <li class="menu-item {% if 'statistics/parser/' in request.path %}active{% endif %}">
+                        <a href="{% url 'website:parser_statistics' %}" class="menu-link">
+                            <i class="menu-icon tf-icons ri-game-line" style="color: #ff4757;"></i>
+                            <div style="color: #ff4757;">Статистика парсера</div>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <!-- Кнопка выхода в самом низу -->
+                    <li class="menu-item mt-auto" style="margin-bottom: 1rem;">
+                        <form method="post" action="{% url 'logout' %}" class="d-inline w-100">
+                            {% csrf_token %}
+                            <a href="#" onclick="this.closest('form').submit(); return false;" class="menu-link" style="color: #ff4757;">
+                                <i class="menu-icon tf-icons ri-logout-box-r-line" style="color: #ff4757;"></i>
+                                <div style="color: #ff4757;">Выйти</div>
+                            </a>
+                        </form>
+                    </li>
+                </ul>
+            </aside>
+            {% endif %}
+            <!-- / Menu -->
+
+            <!-- Layout container -->
+            <div class="layout-page">
+                {% if not request.path == '/login/' and not request.path == '/admin/' %}
+                <!-- Navbar -->
+                <nav class="layout-navbar container-xxl navbar navbar-expand-xl navbar-detached align-items-center bg-navbar-theme" id="layout-navbar">
+                    <div class="layout-menu-toggle navbar-nav align-items-xl-center me-4 me-xl-0 d-xl-none">
+                        <a class="nav-item nav-link px-0 me-xl-6" href="javascript:void(0)">
+                            <i class="ri-menu-fill ri-lg"></i>
+                        </a>
+                    </div>
+
+                    <div class="navbar-nav-right d-flex align-items-center" id="navbar-collapse">
+                        <!-- Search -->
+                        <div class="navbar-nav align-items-center">
+                            <div class="nav-item navbar-search-wrapper mb-0">
+                                <a class="nav-item nav-link search-toggler fw-normal px-0" href="javascript:void(0);">
+                                    <i class="ri-search-line ri-lg scaleX-n1-rtl me-3"></i>
+                                    <span class="d-none d-md-inline-block text-muted">Поиск... (Ctrl+/)</span>
+                                </a>
+                            </div>
+                        </div>
+                        <!-- /Search -->
+
+                        <ul class="navbar-nav flex-row align-items-center ms-auto">
+                            <!-- Кнопка поиска для мобильных -->
+                            <li class="nav-item me-2 me-xl-0 d-xl-none">
+                                <a class="nav-link btn btn-text-secondary rounded-pill btn-icon search-toggler" href="javascript:void(0);" title="Поиск">
+                                    <i class="ri-search-line ri-lg"></i>
+                                </a>
+                            </li>
+
+                            <!-- Fullscreen кнопка -->
+                            <li class="nav-item me-2 me-xl-0">
+                                <a class="nav-link btn btn-text-secondary rounded-pill btn-icon" href="javascript:void(0);" id="fullscreen-btn" title="Полноэкранный режим">
+                                    <i class="ri-fullscreen-line ri-lg"></i>
+                                </a>
+                            </li>
+
+                            <!-- Style Switcher -->
+                            <li class="nav-item me-2 me-xl-0">
+                                <a class="nav-link btn btn-text-secondary rounded-pill btn-icon theme-toggle" href="javascript:void(0);" id="theme-toggle-btn">
+                                    <i class="ri-sun-line ri-lg theme-icon"></i>
+                                </a>
+                            </li>
+                            <!-- / Style Switcher-->
+
+                            <!-- Notification -->
+                            <li class="nav-item dropdown-notifications navbar-dropdown dropdown me-3 me-xl-1">
+                                <a class="nav-link btn btn-text-secondary rounded-pill btn-icon dropdown-toggle hide-arrow waves-effect waves-light" href="javascript:void(0);" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                                    <i class="ri-notification-2-line ri-lg"></i>
+                                    <span class="position-absolute top-0 start-50 translate-middle-y badge badge-dot bg-danger mt-2 border"></span>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end py-0">
+                                    <li class="dropdown-menu-header border-bottom py-50">
+                                        <div class="dropdown-header d-flex align-items-center py-2">
+                                            <h6 class="mb-0 me-auto">Уведомление</h6>
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge rounded-pill bg-label-primary fs-xsmall me-2">3 Новых</span>
+                                                <a href="javascript:void(0)" class="btn btn-text-secondary rounded-pill btn-icon dropdown-notifications-all waves-effect waves-light" data-bs-toggle="tooltip" data-bs-placement="top" aria-label="Mark all as read" data-bs-original-title="Mark all as read"><i class="ri-mail-open-line text-heading ri-lg"></i></a>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="dropdown-notifications-list scrollable-container ps">
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item list-group-item-action dropdown-notifications-item waves-effect">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <div class="avatar">
+                                                            <span class="avatar-initial rounded-circle bg-label-success"><i class="ri-shopping-bag-3-line"></i></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h6 class="small mb-1">Найдены новые товары</h6>
+                                                        <small class="mb-1 d-block text-body">Найдено 5 новых товаров</small>
+                                                        <small class="text-muted">5 минут назад</small>
+                                                    </div>
+                                                    <div class="flex-shrink-0 dropdown-notifications-actions">
+                                                        <a href="javascript:void(0)" class="dropdown-notifications-read"><span class="badge badge-dot"></span></a>
+                                                        <a href="javascript:void(0)" class="dropdown-notifications-archive"><span class="ri-close-line ri-lg"></span></a>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                    <li class="border-top">
+                                        <div class="d-grid p-4">
+                                            <a class="btn btn-primary btn-sm d-flex waves-effect waves-light" href="javascript:void(0);">
+                                                <small class="align-middle">Посмотреть все уведомления</small>
+                                            </a>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                            <!--/ Notification -->
+
+                            <!-- User -->
+                            <li class="nav-item navbar-dropdown dropdown-user dropdown">
+                                <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <div class="avatar avatar-online">
+                                        <img src="{% if user_profile.avatar %}/{{ user_profile.avatar }}{% else %}{% static 'assets/img/avatars/1.png' %}{% endif %}"
+                                             alt="Аватар пользователя"
+                                             class="rounded-circle"
+                                             onerror="this.src='{% static 'images/default-avatar.png' %}'">
+                                    </div>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item waves-effect" href="/profile/">
+                                            <div class="d-flex">
+                                                <div class="flex-shrink-0 me-2">
+                                                    <div class="avatar avatar-online">
+                                                        <img src="{% if user_profile.avatar %}/{{ user_profile.avatar }}{% else %}{% static 'assets/img/avatars/1.png' %}{% endif %}"
+                                                             alt="Аватар пользователя"
+                                                             class="rounded-circle"
+                                                             onerror="this.src='{% static 'images/default-avatar.png' %}'">
+                                                    </div>
+                                                </div>
+                                                <div class="flex-grow-1">
+                                                    <span class="fw-medium d-block small">{% if user.username %}{{ user.username }}{% else %}Пользователь{% endif %}</span>
+                                                    <small class="text-muted">Пользователь</small>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <div class="dropdown-divider"></div>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item waves-effect" href="/profile/">
+                                            <i class="ri-settings-4-line me-3"></i><span class="align-middle">Профиль</span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <div class="dropdown-divider"></div>
+                                    </li>
+                                    <li>
+                                        <div class="d-grid px-4 pt-2 pb-1">
+                                            <form method="post" action="/logout/" class="d-inline w-100">
+                                                <input type="hidden" name="csrfmiddlewaretoken" value="sD3Mic2TR7Y0yLgTEmOZsXIqBL5ER0pb32ApzbqFQsUN3pu249IB2JaW9CeWQjuW">
+                                                <button type="submit" class="btn btn-sm btn-danger d-flex w-100 waves-effect waves-light">
+                                                    <small class="align-middle">Выйти</small>
+                                                    <i class="ri-logout-box-r-line ms-2"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </li>
+                            <!--/ User -->
+                        </ul>
+                    </div>
+
+                    <!-- Search Small Screens -->
+                    <div class="navbar-search-wrapper search-input-wrapper d-none">
+                        <input type="text" class="form-control search-input container-xxl border-0" placeholder="Search..." aria-label="Search...">
+                        <i class="ri-close-fill search-toggler cursor-pointer"></i>
+                    </div>
+                </nav>
+                <!-- / Navbar -->
+                {% endif %}
+
+                <!-- Content wrapper -->
+                <div class="content-wrapper">
+                    <!-- Content -->
+                    <div class="container-xxl flex-grow-1 container-p-y">
+                        {% if request.path == '/login/' or request.path == '/admin/' %}
+                        <div class="login-container-dtf">
+                            {% block login_content %}
+                            {% endblock %}
+                        </div>
+                        {% else %}
+                        {% block content %}
+                        {% endblock %}
+                        {% endif %}
+                    </div>
+                    <!-- / Content -->
+
+                    <!-- Footer -->
+                    <footer class="content-footer footer bg-footer-theme">
+                        <div class="container-xxl">
+                            <div class="footer-container d-flex align-items-center justify-content-between py-4 flex-md-row flex-column">
+                                <div class="text-body mb-2 mb-md-0 text-center w-100" style="font-size: 12px;">
+                                    ©
+                                    <script>
+                                        document.write(new Date().getFullYear());
+                                    </script>
+                                    Селибри Внимание! Все данные собраны из открытых источников и не противоречат ФЗ «О персональных данных» на основании п. 4 ч. 2 ст. 22 ФЗ
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                    <!-- / Footer -->
+
+                    <div class="content-backdrop fade"></div>
+                </div>
+                <!-- Content wrapper -->
+            </div>
+            <!-- / Layout page -->
+        </div>
+
+        <!-- Overlay -->
+        <div class="layout-overlay layout-menu-toggle"></div>
+
+        <!-- Drag Target Area To SlideIn Menu On Small Screens -->
+        <div class="drag-target"></div>
+    </div>
+    <!-- / Layout wrapper -->
+
+    <!-- Core JS -->
+    <script src="{% static 'assets/vendor/libs/jquery/jquery.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/popper/popper.js' %}"></script>
+    <script src="{% static 'assets/vendor/js/bootstrap.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/node-waves/node-waves.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/hammer/hammer.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/i18n/i18n.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/typeahead-js/typeahead.js' %}"></script>
+    <script src="{% static 'assets/vendor/js/menu.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/apex-charts/apexcharts.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/swiper/swiper.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js' %}"></script>
+
+    <!-- Template customizer для search и других функций -->
+    <script src="{% static 'assets/vendor/js/template-customizer.js' %}"></script>
+    <script src="{% static 'assets/js/theme-switcher.js' %}"></script>
+    <script src="{% static 'js/weather-widget.js' %}"></script>
+
+    <script src="{% static 'assets/vendor/libs/toastr/toastr.js' %}"></script>
+    <script src="{% static 'notifications/js/notifications.js' %}"></script>
+
+    <!-- Main JS -->
+    <script src="{% static 'assets/js/main.js' %}"></script>
+    <script src="{% static 'assets/js/fullscreen.js' %}"></script>
+    <script src="{% static 'assets/js/theme-toggle.js' %}"></script>
+
+    <!-- Page JS -->
+    {% block page_js %}{% endblock page_js %}
+
+    <!-- Модальное окно для отображения списка файлов -->
+    <div class="modal fade" id="filesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">📊 Используемые файлы на странице</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="fileSearch" placeholder="Поиск файлов...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="clearSearch()">❌</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th width="50">№</th>
+                                    <th>Тип</th>
+                                    <th>Файл</th>
+                                    <th>Размер</th>
+                                    <th width="100">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="filesList">
+                                <!-- Список файлов будет заполнен JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="alert alert-info mb-3">
+                            <h6 class="alert-heading">📋 Список для копирования:</h6>
+                            <textarea id="copyList" class="form-control" rows="4" readonly></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-success" onclick="copyToClipboard()">
+                                📋 Копировать список
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="exportToFile()">
+                                💾 Экспорт в файл
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="showUnusedFiles()">
+                                ❌ Неиспользуемые
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <small class="text-muted me-auto" id="statsInfo"></small>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для структуры проекта -->
+    <div class="modal fade" id="projectStructureModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">🌳 Структура проекта</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="structureSearch" placeholder="Поиск файлов и папок...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="clearStructureSearch()">❌</button>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">📁 Дерево структуры</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="structureTree" style="max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px;">
+                                        <!-- Структура будет загружена здесь -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">📊 Статистика</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div id="structureStats">
+                                        <!-- Статистика будет загружена здесь -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Тип</th>
+                                    <th>Файл</th>
+                                    <th>Размер</th>
+                                    <th>Путь</th>
+                                </tr>
+                            </thead>
+                            <tbody id="structureFilesList">
+                                <!-- Список файлов будет заполнен -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-3">
+                        <div class="alert alert-info mb-3">
+                            <h6 class="alert-heading">📋 Полная структура для копирования:</h6>
+                            <textarea id="structureText" class="form-control" rows="6" readonly></textarea>
+                        </div>
+
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-success" onclick="copyStructureToClipboard()">
+                                📋 Копировать структуру
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="exportStructureToFile()">
+                                💾 Экспорт в файл
+                            </button>
+                            <button class="btn btn-outline-warning" onclick="refreshProjectStructure()">
+                                🔄 Обновить структуру
+                            </button>
+                            <button class="btn btn-outline-info" onclick="showLargeFiles()">
+                                💾 Большие файлы (>100KB)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <small class="text-muted me-auto">Последнее обновление: <span id="lastUpdateTime">--:--</span></small>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Лоадер -->
+    <div id="structureLoader" class="loader-overlay" style="display: none; position: fixed; z-index: 9999;">
+        <div class="loader-content text-center">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+            <p class="mt-3">Загружаю структуру проекта...</p>
+        </div>
+    </div>
+
+    <!-- Временные кнопки для тестирования -->
+    {% if debug or request.user.is_staff %}
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;">
+        <button onclick="testNotifications()" class="btn btn-warning btn-sm shadow-sm" style="border-radius: 20px; padding: 8px 16px;">
+            <i class="ri-notification-3-line me-1"></i> Test Toast
+        </button>
+
+        <!-- Кнопка для анализа файлов -->
+        <button onclick="analyzePageFiles()" class="btn btn-info btn-sm shadow-sm" style="border-radius: 20px; padding: 8px 16px;">
+            <i class="ri-file-list-line me-1"></i> File Audit
+        </button>
+
+        <!-- Новая кнопка для структуры проекта -->
+        <button onclick="loadProjectStructure()" class="btn btn-success btn-sm shadow-sm" style="border-radius: 20px; padding: 8px 16px;">
+            <i class="ri-folder-tree-line me-1"></i> Project Structure
+        </button>
+    </div>
+    {% endif %}
+
+    <script>
+    // ========== ФУНКЦИИ ДЛЯ СТРУКТУРЫ ПРОЕКТА ==========
+
+    function showStructureLoader() {
+        document.getElementById('structureLoader').style.display = 'flex';
+    }
+
+    function hideStructureLoader() {
+        document.getElementById('structureLoader').style.display = 'none';
+    }
+
+    function loadProjectStructure() {
+        showStructureLoader();
+        
+        fetch('/export-project-structure/', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            hideStructureLoader();
+            
+            if (data.status === 'success') {
+                showProjectStructureModal(data);
+            } else {
+                notificationError(data.message || 'Ошибка загрузки структуры', 'Ошибка');
+            }
+        })
+        .catch(error => {
+            hideStructureLoader();
+            console.error('Ошибка загрузки структуры:', error);
+            
+            // Если API недоступен, показываем пример структуры
+            if (error.message.includes('404')) {
+                showExampleStructure();
+            } else {
+                notificationError('Ошибка загрузки: ' + error.message, 'Ошибка сети');
+            }
+        });
+    }
+
+    function showExampleStructure() {
+        const exampleData = {
+            structure: [
+                "project/",
+                "  manage.py",
+                "  requirements.txt",
+                "  README.md",
+                "  .gitignore",
+                "  static/",
+                "    css/",
+                "      base.css",
+                "      parser-settings.css",
+                "    js/",
+                "      main.js",
+                "    images/",
+                "  templates/",
+                "    base.html",
+                "    dashboard.html",
+                "  app/",
+                "    __init__.py",
+                "    models.py",
+                "    views.py",
+                "    urls.py",
+                "    admin.py"
+            ],
+            important_files: [
+                "manage.py",
+                "requirements.txt",
+                "README.md",
+                ".gitignore",
+                "static/css/base.css",
+                "static/css/parser-settings.css",
+                "templates/base.html",
+                "app/models.py",
+                "app/views.py",
+                "app/urls.py"
+            ],
+            statistics: {
+                total_files: 15,
+                python_files: 5,
+                html_files: 2,
+                css_files: 2,
+                js_files: 1,
+                other_files: 5,
+                total_size: "245 KB"
+            }
+        };
+        
+        showProjectStructureModal(exampleData);
+    }
+
+    function showProjectStructureModal(data) {
+        const treeElement = document.getElementById('structureTree');
+        const filesListElement = document.getElementById('structureFilesList');
+        const statsElement = document.getElementById('structureStats');
+        const structureTextElement = document.getElementById('structureText');
+        
+        // Обновляем время
+        document.getElementById('lastUpdateTime').textContent = 
+            new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        
+        // Отображаем дерево структуры
+        treeElement.innerHTML = '';
+        if (data.structure && Array.isArray(data.structure)) {
+            data.structure.forEach(line => {
+                const div = document.createElement('div');
+                div.className = 'structure-line';
+                div.textContent = line;
+                treeElement.appendChild(div);
+            });
+        } else {
+            treeElement.innerHTML = '<div class="text-muted">Структура не найдена</div>';
+        }
+        
+        // Отображаем список важных файлов
+        filesListElement.innerHTML = '';
+        if (data.important_files && Array.isArray(data.important_files)) {
+            data.important_files.forEach((file, index) => {
+                const row = document.createElement('tr');
+                
+                // Определяем тип файла по расширению
+                let type = '📄';
+                let typeClass = 'text-info';
+                if (file.endsWith('.py')) {
+                    type = '🐍';
+                    typeClass = 'text-success';
+                } else if (file.endsWith('.html')) {
+                    type = '🌐';
+                    typeClass = 'text-warning';
+                } else if (file.endsWith('.css')) {
+                    type = '🎨';
+                    typeClass = 'text-primary';
+                } else if (file.endsWith('.js')) {
+                    type = '⚡';
+                    typeClass = 'text-warning';
+                }
+                
+                row.innerHTML = `
+                    <td><span class="${typeClass}">${type}</span></td>
+                    <td><code>${file}</code></td>
+                    <td><span class="badge bg-secondary">${data.file_sizes && data.file_sizes[file] ? data.file_sizes[file] : '?'}</span></td>
+                    <td><small class="text-muted">/${file}</small></td>
+                `;
+                filesListElement.appendChild(row);
+            });
+        }
+        
+        // Отображаем статистику
+        statsElement.innerHTML = '';
+        if (data.statistics) {
+            const stats = data.statistics;
+            statsElement.innerHTML = `
+                <div class="mb-2">
+                    <strong>📊 Общая статистика:</strong>
+                </div>
+                <div class="row g-2 small">
+                    <div class="col-6">
+                        <span class="text-muted">Всего файлов:</span>
+                        <div class="fw-semibold">${stats.total_files || 0}</div>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted">Python файлы:</span>
+                        <div class="fw-semibold">${stats.python_files || 0}</div>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted">HTML файлы:</span>
+                        <div class="fw-semibold">${stats.html_files || 0}</div>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted">CSS файлы:</span>
+                        <div class="fw-semibold">${stats.css_files || 0}</div>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted">JS файлы:</span>
+                        <div class="fw-semibold">${stats.js_files || 0}</div>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted">Общий размер:</span>
+                        <div class="fw-semibold">${stats.total_size || '?'}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Заполняем текст для копирования
+        let fullText = "СТРУКТУРА ПРОЕКТА СЕЛИБРИ\n";
+        fullText += "=".repeat(50) + "\n\n";
+        
+        if (data.structure) {
+            fullText += "🌳 ДЕРЕВО СТРУКТУРЫ:\n";
+            fullText += data.structure.join('\n') + "\n\n";
+        }
+        
+        if (data.important_files) {
+            fullText += "📁 ВАЖНЫЕ ФАЙЛЫ:\n";
+            data.important_files.forEach(file => {
+                fullText += `  • ${file}\n`;
+            });
+            fullText += "\n";
+        }
+        
+        if (data.statistics) {
+            fullText += "📊 СТАТИСТИКА:\n";
+            Object.entries(data.statistics).forEach(([key, value]) => {
+                fullText += `  ${key}: ${value}\n`;
+            });
+        }
+        
+        structureTextElement.value = fullText;
+        
+        // Показываем модальное окно
+        const modal = new bootstrap.Modal(document.getElementById('projectStructureModal'));
+        modal.show();
+    }
+
+    function refreshProjectStructure() {
+        notificationInfo('Обновляю структуру проекта...', 'Обновление');
+        loadProjectStructure();
+    }
+
+    function copyStructureToClipboard() {
+        const textarea = document.getElementById('structureText');
+        textarea.select();
+        textarea.setSelectionRange(0, 99999);
+        
+        navigator.clipboard.writeText(textarea.value).then(() => {
+            notificationSuccess('Структура скопирована в буфер обмена!', 'Копирование');
+        });
+    }
+
+    function exportStructureToFile() {
+        const content = document.getElementById('structureText').value;
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const date = new Date().toISOString().slice(0, 10);
+        a.download = `project-structure-${date}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        notificationSuccess('Структура экспортирована в файл!', 'Экспорт');
+    }
+
+    function clearStructureSearch() {
+        document.getElementById('structureSearch').value = '';
+        // Здесь можно добавить фильтрацию
+    }
+
+    function showLargeFiles() {
+        notificationInfo('Функция поиска больших файлов в разработке', 'Информация');
+    }
+
+    // ========== ФУНКЦИИ ДЛЯ АНАЛИЗА ФАЙЛОВ СТРАНИЦЫ ==========
+
+    async function analyzePageFiles() {
+        showLoading('🔍 Анализирую файлы на странице...');
+
+        try {
+            const files = {
+                css: [],
+                js: [],
+                images: [],
+                fonts: [],
+                other: []
+            };
+
+            // Собираем все файлы
+            document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+                if (link.href) {
+                    files.css.push({
+                        url: link.href,
+                        type: 'CSS'
+                    });
+                }
+            });
+
+            document.querySelectorAll('script[src]').forEach(script => {
+                if (script.src) {
+                    files.js.push({
+                        url: script.src,
+                        type: 'JS'
+                    });
+                }
+            });
+
+            document.querySelectorAll('img[src]').forEach(img => {
+                if (img.src) {
+                    files.images.push({
+                        url: img.src,
+                        type: 'Image'
+                    });
+                }
+            });
+
+            document.querySelectorAll('link[rel*="icon"], link[rel*="apple-touch-icon"]').forEach(link => {
+                if (link.href) {
+                    files.images.push({
+                        url: link.href,
+                        type: 'Icon'
+                    });
+                }
+            });
+
+            document.querySelectorAll('link[rel*="font"], link[href*="fonts.googleapis.com"]').forEach(link => {
+                if (link.href) {
+                    files.fonts.push({
+                        url: link.href,
+                        type: 'Font'
+                    });
+                }
+            });
+
+            document.querySelectorAll('link[rel="preconnect"], link[rel="preload"]').forEach(link => {
+                if (link.href) {
+                    files.other.push({
+                        url: link.href,
+                        type: 'Preload'
+                    });
+                }
+            });
+
+            await checkFileSizes(files);
+            showFilesModal(files);
+
+        } catch (error) {
+            console.error('Ошибка анализа файлов:', error);
+            notificationError('Ошибка при анализе файлов', 'File Audit Error');
+        }
+    }
+
+    async function checkFileSizes(files) {
+        const allFiles = [...files.css, ...files.js, ...files.images, ...files.fonts, ...files.other];
+
+        for (const file of allFiles) {
+            try {
+                if (file.url.startsWith('http') && !file.url.includes(window.location.origin) ||
+                    file.url.startsWith('data:')) {
+                    file.size = 'External';
+                    continue;
+                }
+
+                const response = await fetch(file.url, { method: 'HEAD' });
+                const size = response.headers.get('content-length');
+
+                if (size) {
+                    file.size = formatBytes(size);
+                } else {
+                    file.size = 'Unknown';
+                }
+            } catch {
+                file.size = 'Error';
+            }
+        }
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showFilesModal(files) {
+        const filesList = document.getElementById('filesList');
+        const copyList = document.getElementById('copyList');
+        const statsInfo = document.getElementById('statsInfo');
+
+        filesList.innerHTML = '';
+
+        const allFiles = [
+            ...files.css.map(f => ({...f, category: 'CSS'})),
+            ...files.js.map(f => ({...f, category: 'JS'})),
+            ...files.images.map(f => ({...f, category: 'Images'})),
+            ...files.fonts.map(f => ({...f, category: 'Fonts'})),
+            ...files.other.map(f => ({...f, category: 'Other'}))
+        ];
+
+        const totalFiles = allFiles.length;
+        const cssCount = files.css.length;
+        const jsCount = files.js.length;
+        const imagesCount = files.images.length;
+
+        let copyText = '';
+        allFiles.forEach((file, index) => {
+            const row = document.createElement('tr');
+
+            let icon = '📄';
+            if (file.category === 'CSS') icon = '🎨';
+            else if (file.category === 'JS') icon = '⚡';
+            else if (file.category === 'Images') icon = '🖼️';
+            else if (file.category === 'Fonts') icon = '🔤';
+
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><span class="badge bg-primary">${icon} ${file.category}</span></td>
+                <td>
+                    <div style="font-family: monospace; font-size: 12px;">
+                        ${extractFileName(file.url)}
+                    </div>
+                    <small class="text-muted">${file.url}</small>
+                </td>
+                <td><span class="badge bg-secondary">${file.size || 'N/A'}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="copyFileUrl('${escapeString(file.url)}')" title="Копировать URL">
+                        📋
+                    </button>
+                    <button class="btn btn-sm btn-outline-info" onclick="openInNewTab('${escapeString(file.url)}')" title="Открыть в новой вкладке">
+                        ↗️
+                    </button>
+                </td>
+            `;
+
+            filesList.appendChild(row);
+            copyText += `${file.category}: ${file.url}\n`;
+        });
+
+        copyList.value = copyText;
+        statsInfo.innerHTML = `Всего файлов: ${totalFiles} | CSS: ${cssCount} | JS: ${jsCount} | Изображения: ${imagesCount}`;
+
+        const modal = new bootstrap.Modal(document.getElementById('filesModal'));
+        modal.show();
+    }
+
+    function extractFileName(url) {
+        try {
+            const urlObj = new URL(url);
+            const pathname = urlObj.pathname;
+            return pathname.split('/').pop() || url;
+        } catch {
+            return url.split('/').pop() || url;
+        }
+    }
+
+    function escapeString(str) {
+        return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    function copyFileUrl(url) {
+        navigator.clipboard.writeText(url).then(() => {
+            notificationSuccess('URL скопирован в буфер обмена!', 'Копирование');
+        });
+    }
+
+    function openInNewTab(url) {
+        window.open(url, '_blank');
+    }
+
+    function copyToClipboard() {
+        const copyText = document.getElementById('copyList');
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+
+        navigator.clipboard.writeText(copyText.value).then(() => {
+            notificationSuccess('Список файлов скопирован!', 'Копирование');
+        });
+    }
+
+    function exportToFile() {
+        const content = document.getElementById('copyList').value;
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `file-audit-${new Date().toISOString().slice(0, 10)}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        notificationSuccess('Файл экспортирован!', 'Экспорт');
+    }
+
+    function clearSearch() {
+        document.getElementById('fileSearch').value = '';
+    }
+
+    function showUnusedFiles() {
+        notificationInfo('Функция анализа неиспользуемых файлов в разработке', 'Info');
+    }
+
+    function showLoading(message) {
+        toastr.info(message, 'Анализ', {
+            timeOut: 2000,
+            positionClass: 'toast-top-right'
+        });
+    }
+
+    // ========== ТЕСТ УВЕДОМЛЕНИЙ ==========
+
+    function testNotifications() {
+        notificationSuccess('✅ Успешная операция завершена!', 'Успех');
+
+        setTimeout(() => {
+            notificationError('❌ Произошла ошибка при обработке запроса', 'Ошибка');
+        }, 600);
+
+        setTimeout(() => {
+            notificationInfo('ℹ️ Это информационное сообщение для пользователя', 'Информация');
+        }, 1200);
+
+        setTimeout(() => {
+            notificationWarning('⚠️ Внимание! Проверьте настройки', 'Предупреждение');
+        }, 1800);
+
+        setTimeout(() => {
+            notificationImportant('🚨 ВНИМАНИЕ! Важное сообщение!', 'Важно!');
+        }, 2400);
+    }
+
+    // Экспортируем функции в глобальную область
+    window.analyzePageFiles = analyzePageFiles;
+    window.loadProjectStructure = loadProjectStructure;
+    window.testToast = testNotifications;
+    </script>
+
+    <style>
+    .loader-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(5px);
+        z-index: 10000;
+    }
+    
+    .structure-line {
+        font-family: 'Courier New', monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        padding: 1px 0;
+        white-space: pre;
+    }
+    
+    .structure-line:hover {
+        background-color: #f8f9fa;
+    }
+    
+    @media (max-width: 768px) {
+        #projectStructureModal .modal-dialog {
+            margin: 0.5rem;
+        }
+        
+        #structureTree {
+            max-height: 300px;
+            font-size: 10px;
+        }
+    }
+    </style>
+</body>
+</html>

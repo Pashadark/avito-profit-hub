@@ -1,0 +1,98 @@
+<!-- Модальное окно редактирования профиля -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Редактирование профиля</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form class="row g-3">
+                    {% csrf_token %}
+                    <div class="col-12 col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="firstName" placeholder="Иван" value="{{ request.user.first_name }}">
+                            <label for="firstName">Имя</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="lastName" placeholder="Иванов" value="{{ request.user.last_name }}">
+                            <label for="lastName">Фамилия</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <input type="email" class="form-control" id="email" value="{{ request.user.email }}">
+                            <label for="email">Email</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="phone" placeholder="+7 (999) 999-99-99">
+                            <label for="phone">Телефон</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary">Сохранить изменения</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно пополнения баланса -->
+<div class="modal fade" id="upgradePlanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Пополнение баланса</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Сумма пополнения</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">₽</span>
+                            <input type="number" class="form-control" name="amount" min="100" value="3000" required>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Способ оплаты</label>
+                        <div class="payment-methods">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="payment_method" value="card" id="card" checked>
+                                <label class="form-check-label" for="card">
+                                    <i class="ri-bank-card-line me-2"></i>
+                                    Банковская карта
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="payment_method" value="yoomoney" id="yoomoney">
+                                <label class="form-check-label" for="yoomoney">
+                                    <i class="ri-wallet-3-line me-2"></i>
+                                    ЮMoney
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method" value="qiwi" id="qiwi">
+                                <label class="form-check-label" for="qiwi">
+                                    <i class="ri-smartphone-line me-2"></i>
+                                    QIWI
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary">Перейти к оплате</button>
+            </div>
+        </div>
+    </div>
+</div>

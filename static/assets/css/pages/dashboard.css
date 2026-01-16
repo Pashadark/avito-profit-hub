@@ -1,0 +1,780 @@
+/* static/assets/css/pages/dashboard.css */
+
+/* ============================================= */
+/* ОСНОВНЫЕ СТИЛИ ТАБЛИЦЫ */
+/* ============================================= */
+.dashboard-table {
+    font-size: 14px !important;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+    vertical-align: middle !important;
+    padding: 12px 8px !important;
+    line-height: 1.4 !important;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.dashboard-table th {
+    font-weight: 600;
+    color: #566a7f;
+    background-color: #f8f9fa;
+    font-size: 13px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.dashboard-table td {
+    font-size: 14px;
+    color: #697a8d;
+    text-align: center;
+}
+
+/* ИСКЛЮЧЕНИЕ ДЛЯ НАЗВАНИЯ ТОВАРА */
+.dashboard-table td:nth-child(3) {
+    text-align: left !important;
+    vertical-align: middle !important;
+    width: 315px !important;
+    max-width: 315px !important;
+    min-width: 315px !important;
+}
+
+/* ТОЧНАЯ ШИРИНА ДЛЯ 45 СИМВОЛОВ */
+.item-title {
+    font-weight: 500;
+    color: #2d3748;
+    line-height: 1.4;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+    width: 315px;
+    max-width: 315px;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+/* ОСОБОЕ ВЫДЕЛЕНИЕ ЦЕНЫ */
+.price-cell {
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    color: #2d3748 !important;
+}
+
+/* ВЫРАВНИВАНИЕ ПО ЦЕНТРУ */
+.table-cell-center {
+    text-align: center !important;
+}
+
+/* СТИЛИ ДЛЯ ИКОНОК */
+.dashboard-table thead th i {
+    font-weight: 400 !important;
+    font-size: 14px;
+    opacity: 0.7;
+    color: #6c757d;
+    width: 16px;
+    text-align: center;
+}
+
+/* ИЗОБРАЖЕНИЯ В ТАБЛИЦЕ */
+.table-img {
+    width: 45px;
+    height: 45px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+/* КЛИКАБЕЛЬНЫЕ СТРОКИ */
+.clickable-row {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.clickable-row:hover {
+    background-color: #f8f9fa !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn {
+    cursor: default !important;
+}
+
+.action-btn a {
+    cursor: pointer !important;
+    padding: 6px 10px !important;
+}
+
+.image-placeholder {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 50px;
+    width: 50px;
+    min-width: 50px;
+    border-radius: 4px;
+    margin: 0 auto;
+}
+
+.image-placeholder i {
+    font-size: 20px;
+}
+
+.image-placeholder p {
+    font-size: 10px;
+    margin-top: 2px;
+}
+
+.table-cell-center {
+    vertical-align: middle !important;
+}
+
+/* КРЕСТИК ВМЕСТО ПРОЧЕРКА */
+.no-data {
+    color: #dc3545 !important;
+    font-weight: 600;
+}
+
+/* ML СТИЛИ */
+.ml-progress-container {
+    position: relative;
+    margin: 15px 0;
+}
+
+.ml-progress {
+    background: #f0f0f0;
+    overflow: visible;
+    height: 20px;
+    border-radius: 10px;
+}
+
+.ml-progress-bar {
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    background: linear-gradient(90deg, #dc3545, #fd7e14, #ffc107, #20c997, #28a745);
+    border-radius: 10px;
+}
+
+.ml-value {
+    font-weight: 700;
+    font-size: 0.9em;
+}
+
+.ml-metric {
+    padding: 5px;
+    text-align: center;
+}
+
+.ml-metric h6 {
+    font-weight: 600;
+    margin-bottom: 2px;
+    font-size: 1rem;
+}
+
+.ml-labels small {
+    font-weight: 600;
+    font-size: 0.7rem;
+}
+
+/* СТИЛИ СКОРОСТИ ПАРСЕРА */
+.speed-progress-container {
+    position: relative;
+    margin: 15px 0;
+}
+
+.speed-progress {
+    background: #f0f0f0;
+    overflow: visible;
+    height: 20px;
+    border-radius: 10px;
+}
+
+.speed-progress-bar {
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+    border-radius: 10px;
+}
+
+.speed-value {
+    font-weight: 700;
+    font-size: 0.9em;
+}
+
+.speed-metric {
+    padding: 5px;
+    text-align: center;
+}
+
+.speed-metric h6 {
+    font-weight: 600;
+    margin-bottom: 2px;
+    font-size: 1rem;
+}
+
+.speed-labels small {
+    font-weight: 600;
+    font-size: 0.7rem;
+}
+
+/* НЕАКТИВНЫЕ СОСТОЯНИЯ */
+.parser-inactive .speed-progress-bar {
+    background: #6c757d !important;
+    opacity: 0.5;
+}
+
+.ml-inactive .ml-progress-bar {
+    background: #6c757d !important;
+    opacity: 0.5;
+}
+
+/* АНИМАЦИИ */
+.new-table-item {
+    background-color: rgba(40, 167, 69, 0.1) !important;
+    animation: highlightNew 2s ease;
+}
+
+@keyframes highlightNew {
+    0% { background-color: rgba(40, 167, 69, 0.3); }
+    100% { background-color: rgba(40, 167, 69, 0.1); }
+}
+
+.table-update-indicator {
+    font-size: 0.75rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* СНЕГОВИК И АНИМАЦИИ */
+.snowman-effect {
+    position: absolute;
+    left: -100px;
+    bottom: -20px;
+    height: 110px;
+    z-index: 2;
+    transition: all 2s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+    opacity: 1;
+    transform: translateX(0) scale(1);
+}
+
+.snowman-effect.active {
+    left: -10px;
+}
+
+.snowman-effect:hover {
+    transform: scale(1.05);
+}
+
+.floating-snowman {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-10px) rotate(5deg);
+    }
+}
+
+/* СНЕЖНАЯ АНИМАЦИЯ */
+.snow-animation {
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+.snow-layer-1 {
+    animation-name: snowfall-continuous;
+    animation-duration: 20s;
+    animation-delay: 0s;
+}
+
+.snow-layer-2 {
+    animation-name: snowfall-continuous;
+    animation-duration: 20s;
+    animation-delay: 10s;
+}
+
+@keyframes snowfall-continuous {
+    0% {
+        transform: translateY(-50%);
+    }
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+/* ТРОФЕЙ */
+.floating-trophy {
+    animation: trophy-float 6s ease-in-out infinite;
+}
+
+@keyframes trophy-float {
+    0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-8px) rotate(3deg);
+    }
+}
+
+/* МОДАЛЬНОЕ ОКНО */
+.message-container {
+    font-size: 1.1rem;
+    line-height: 1.5;
+    text-align: center;
+    color: #000000;
+}
+
+@keyframes typeChar {
+    0% {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.promo-code-card {
+    border: 2px dashed #dee2e6;
+    transition: all 0.3s ease;
+}
+
+.promo-code-card:hover {
+    border-color: #666cff;
+    transform: translateY(-2px);
+}
+
+/* ТЕКСТ ПРИВЕТСТВИЯ */
+.welcome-title {
+    font-size: 1.3rem;
+    line-height: 1.4;
+    margin-bottom: 1.5rem !important;
+}
+
+.stats-text {
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+}
+
+/* КНОПКИ */
+.btn.btn-outline {
+    background-color: transparent;
+    border: 1px solid #fff;
+    color: #fff;
+    text-transform: none;
+    font-weight: 500;
+}
+
+.btn.btn-outline:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: #fff;
+}
+
+.btn i.left {
+    margin-right: 8px;
+    float: left;
+}
+
+/* ============================================= */
+/* СТИЛИ ДЛЯ ПОГОДНОГО ВИДЖЕТА В КАРТОЧКЕ */
+/* ============================================= */
+
+/* СТИЛИ ДЛЯ КАРТОЧКИ ПРИВЕТСТВИЯ */
+#welcome-card {
+    position: relative !important;
+    overflow: hidden !important;
+    min-height: 300px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 0.5rem !important;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Убираем все Bootstrap стили для этой карточки */
+#welcome-card.card {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    box-shadow: var(--bs-card-box-shadow) !important;
+}
+
+/* Погодный фон - занимает всю карточку */
+#welcome-card .weather-background {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 1 !important;
+    border-radius: 0.5rem !important;
+    transition: background 1.5s ease-in-out !important;
+}
+
+/* Убираем белый фон у card-body */
+#welcome-card .card-body {
+    background: transparent !important;
+    border: none !important;
+    padding: 1.5rem !important;
+    color: white !important;
+    box-shadow: 0 0.25rem 0.875rem 0 rgba(38, 43, 67, 0.16);
+}
+
+/* Текст должен быть поверх */
+#welcome-card .welcome-title,
+#welcome-card .stats-text {
+    position: relative !important;
+    z-index: 11 !important;
+}
+
+/* Блок с погодой */
+.weather-info {
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(10px) !important;
+    transition: all 0.3s ease !important;
+    border-radius: 10px !important;
+    max-width: 300px !important;
+}
+
+.weather-icon {
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Если есть инлайн-стили, переопределяем их */
+#welcome-card[style*="background"] {
+    background: transparent !important;
+}
+
+/* ============================================= */
+/* ФОНЫ ВРЕМЕНИ СУТОК (ТОЛЬКО ДЛЯ КАРТОЧКИ!) */
+/* ============================================= */
+
+/* Полночь: 22:00 - 03:59 */
+#welcome-card.midnight-bg,
+#welcome-card .weather-background.midnight-bg {
+    background: linear-gradient(135deg, #000000 0%, #0A0A0A 25%, #141414 66%, #282825 100%) !important;
+}
+
+/* Рассвет: 04:00 - 05:59 */
+#welcome-card.dawn-bg,
+#welcome-card .weather-background.dawn-bg {
+    background: linear-gradient(135deg, #0F2027 0%, #2C5364 25%, #FF9966 66%, #FFD89B 100%) !important;
+}
+
+/* Утро: 06:00 - 09:59 */
+#welcome-card.morning-bg,
+#welcome-card .weather-background.morning-bg {
+    background: linear-gradient(135deg, #FFD89B 0%, #FF9966 25%, #4C9AFF 100%) !important;
+}
+
+/* День: 10:00 - 15:59 */
+#welcome-card.day-bg,
+#welcome-card .weather-background.day-bg {
+    background: linear-gradient(135deg, #1E90FF 0%, #4C9AFF 50%, #6495ED 100%) !important;
+}
+
+/* Вечер: 16:00 - 18:59 */
+#welcome-card.evening-bg,
+#welcome-card .weather-background.evening-bg {
+    background: linear-gradient(135deg, #FF7E5F 0%, #FEB47B 33%, #8A2BE2 66%, #4B0082 100%) !important;
+}
+
+/* Ночь: 19:00 - 21:59 */
+#welcome-card.night-bg,
+#welcome-card .weather-background.night-bg {
+    background: linear-gradient(135deg, #0F2027 0%, #203A43 33%, #2C5364 66%, #282825 100%) !important;
+}
+
+/* ДЕФОЛТНЫЙ ФОН (когда JS еще не загрузился) */
+#welcome-card:not(.midnight-bg):not(.dawn-bg):not(.morning-bg):not(.day-bg):not(.evening-bg):not(.night-bg),
+#welcome-card .weather-background:not(.midnight-bg):not(.dawn-bg):not(.morning-bg):not(.day-bg):not(.evening-bg):not(.night-bg) {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+/* ============================================= */
+/* АНИМАЦИИ ПОГОДНОГО ВИДЖЕТА */
+/* ============================================= */
+
+@keyframes sunGlow {
+    0% { box-shadow: 0 0 40px #ffeb3b, 0 0 80px rgba(255, 235, 59, 0.5); }
+    100% { box-shadow: 0 0 80px #ffeb3b, 0 0 160px rgba(255, 235, 59, 0.7); }
+}
+
+@keyframes sunRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes moonFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+@keyframes moonGlow {
+    0% { box-shadow: 0 0 20px rgba(245, 245, 245, 0.8); }
+    100% { box-shadow: 0 0 40px rgba(245, 245, 245, 0.9); }
+}
+
+@keyframes starTwinkle {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* АНИМАЦИИ ОБЛАКОВ */
+@keyframes slowCloudFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    33% { transform: translate(5px, -3px) scale(1.02); }
+    66% { transform: translate(-3px, 2px) scale(0.98); }
+}
+
+@keyframes fastCloudMove {
+    0% { transform: translateX(0); opacity: 0.1; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateX(calc(100vw + 200px)); opacity: 0.1; }
+}
+
+@keyframes rainFall {
+    0% { transform: translateY(-20px); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(100vh); opacity: 0; }
+}
+
+@keyframes snowFall {
+    0% { transform: translateY(-10px) translateX(0); }
+    100% { transform: translateY(100vh) translateX(var(--sway-distance, 0)); }
+}
+
+@keyframes snowSway {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(var(--sway-distance, 20px)); }
+}
+
+@keyframes lightningFlash {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 0.6; }
+}
+
+@keyframes fogMove {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* СТИЛИ ДЛЯ КОНТЕЙНЕРОВ АНИМАЦИЙ */
+#weather-animation {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: visible !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+}
+
+#time-of-day {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow: visible !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+
+/* ОБЛАКА */
+.cloud {
+    pointer-events: none;
+}
+
+.slow-cloud {
+    z-index: 2 !important;
+}
+
+.fast-cloud {
+    z-index: 1 !important;
+}
+
+.sun-animation,
+.moon-animation {
+    z-index: 10 !important;
+}
+
+.star {
+    z-index: 5 !important;
+}
+
+.raindrop,
+.snowflake {
+    z-index: 15 !important;
+}
+
+.lightning-flash {
+    z-index: 20 !important;
+}
+
+.fog-layer {
+    z-index: 25 !important;
+}
+
+/* ИНДИКАТОР ВРЕМЕНИ СУТОК */
+#time-indicator {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    z-index: 10000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: none;
+}
+
+#time-indicator.show {
+    display: block;
+    opacity: 1;
+}
+
+/* АДАПТИВНОСТЬ */
+@media (max-width: 768px) {
+    #welcome-card {
+        min-height: 250px;
+    }
+
+    .welcome-title {
+        font-size: 1.1rem !important;
+    }
+
+    .weather-info {
+        max-width: 100% !important;
+    }
+
+    #time-indicator {
+        font-size: 10px;
+        padding: 3px 6px;
+        bottom: 5px;
+        right: 5px;
+    }
+
+    .dashboard-table td:nth-child(3) {
+        width: 200px !important;
+        max-width: 200px !important;
+        min-width: 200px !important;
+    }
+
+    .item-title {
+        width: 200px;
+        max-width: 200px;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-table {
+        font-size: 12px !important;
+    }
+
+    .dashboard-table th,
+    .dashboard-table td {
+        padding: 8px 4px !important;
+    }
+
+    .dashboard-table td:nth-child(3) {
+        width: 150px !important;
+        max-width: 150px !important;
+        min-width: 150px !important;
+    }
+
+    .item-title {
+        width: 150px;
+        max-width: 150px;
+        font-size: 12px;
+    }
+}
+/* Блок времени суток */
+.time-of-day-display {
+    text-align: center;
+    border-radius: 10px;
+    min-width: 80px;
+    transition: all 0.3s ease;
+}
+
+#time-of-day-icon {
+    font-size: 24px;
+    margin-bottom: 2px;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+}
+
+#time-of-day-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#current-time {
+    font-size: 11px;
+    font-family: 'Monaco', 'Consolas', monospace;
+    opacity: 0.8;
+}
+/* ============================================= */
+/* СТИЛИ БЕЙДЖЕЙ ДЛЯ ТАБЛИЦЫ DASHBOARD */
+/* ============================================= */
+
+/* БАЗОВЫЕ СТИЛИ ДЛЯ БЕЙДЖЕЙ В ТАБЛИЦЕ */
+.dashboard-table .site-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 5px 8px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    height: 22px !important;
+    margin: 0 auto !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    transition: all 0.2s ease !important;
+}
+
+/* АДАПТИВНОСТЬ ДЛЯ БЕЙДЖЕЙ */
+@media (max-width: 768px) {
+    .dashboard-table .site-badge {
+        padding: 4px 6px !important;
+        font-size: 10px !important;
+        height: 20px !important;
+    }
+
+    .dashboard-table .site-badge i {
+        font-size: 9px !important;
+    }
+}

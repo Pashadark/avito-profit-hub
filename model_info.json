@@ -1,0 +1,15 @@
+{
+  "performance": [
+    {
+      "timestamp": "2026-01-15T12:54:10.908618",
+      "train_score": 0.7941719802749907,
+      "cv_score_mean": 0.18332350310621537,
+      "samples": 1971,
+      "feature_count": 31,
+      "model_type": "price"
+    }
+  ],
+  "version": "v2.2_fixed_freshness",
+  "trained_at": "2026-01-15T12:54:10.932702",
+  "feature_count": 31
+}

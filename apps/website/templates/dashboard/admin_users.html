@@ -1,0 +1,790 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Переопределение ширины контейнера для этой страницы -->
+<style>
+    .container-xxl.flex-grow-1.container-p-y {
+        max-width: 1800px !important;
+        margin: 0 auto !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    @media (max-width: 1800px) {
+        .container-xxl.flex-grow-1.container-p-y {
+            max-width: 100% !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container-xxl.flex-grow-1.container-p-y {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+    }
+
+    /* Стили для компактных карточек статистики */
+    .compact-stats-card {
+        padding: 1rem !important;
+        height: 100%;
+    }
+
+    .compact-stats-card .avatar {
+        width: 40px !important;
+        height: 40px !important;
+    }
+
+    .compact-stats-card .avatar-initial {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 1rem !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .compact-stats-card h4 {
+        font-size: 1.5rem !important;
+        margin-bottom: 0.25rem !important;
+    }
+
+    .compact-stats-card .text-heading {
+        font-size: 0.875rem !important;
+        margin-bottom: 0.5rem !important;
+        font-weight: 600;
+    }
+
+    .compact-stats-card small {
+        font-size: 0.75rem !important;
+        color: #6c757d !important;
+    }
+</style>
+
+<!-- Контейнер для уведомлений -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999"></div>
+
+<div class="row">
+    <div class="col-12">
+        <!-- Компактная статистика -->
+        <div class="row mb-4">
+            <div class="col-sm-6 col-xl-3 mb-3">
+                <div class="card compact-stats-card">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="me-2">
+                                <p class="text-heading mb-1">Всего пользователей</p>
+                                <h4 class="mb-1">{{ total_users }}</h4>
+                                <small class="text-muted">Зарегистрировано в системе</small>
+                            </div>
+                            <div class="avatar">
+                                <div class="avatar-initial bg-label-primary rounded">
+                                    <i class="ri-group-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3 mb-3">
+                <div class="card compact-stats-card">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="me-2">
+                                <p class="text-heading mb-1">Администраторы</p>
+                                <h4 class="mb-1">{{ admin_count }}</h4>
+                                <small class="text-muted">С правами администратора</small>
+                            </div>
+                            <div class="avatar">
+                                <div class="avatar-initial bg-label-danger rounded">
+                                    <i class="ri-shield-keyhole-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3 mb-3">
+                <div class="card compact-stats-card">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="me-2">
+                                <p class="text-heading mb-1">Активные парсеры</p>
+                                <h4 class="mb-1">{{ active_parsers }}</h4>
+                                <small class="text-muted">Сейчас работают</small>
+                            </div>
+                            <div class="avatar">
+                                <div class="avatar-initial bg-label-info rounded">
+                                    <i class="ri-robot-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-xl-3 mb-3">
+                <div class="card compact-stats-card">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="me-2">
+                                <p class="text-heading mb-1">Найдено товаров</p>
+                                <h4 class="mb-1">{{ total_found_items }}</h4>
+                                <small class="text-muted">Всего за сегодня</small>
+                            </div>
+                            <div class="avatar">
+                                <div class="avatar-initial bg-label-success rounded">
+                                    <i class="ri-shopping-bag-line"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Фильтры и поиск -->
+        <div class="card mb-4">
+            <div class="card-header border-bottom">
+                <h5 class="card-title mb-0">Расширенные фильтры</h5>
+                <div class="d-flex justify-content-between align-items-center row gx-5 pt-4 gap-5 gap-md-0">
+                    <div class="col-md-3">
+                        <div class="form-floating form-floating-outline">
+                            <input type="text" class="form-control" id="searchInput" placeholder="Поиск пользователей..."
+                                   value="{{ search_query }}">
+                            <label for="searchInput">Поиск пользователей</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-floating form-floating-outline">
+                            <select class="form-select" id="roleFilter">
+                                <option value="">Все роли</option>
+                                <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Администраторы</option>
+                                <option value="user" {% if role_filter == 'user' %}selected{% endif %}>Пользователи</option>
+                            </select>
+                            <label for="roleFilter">Роль</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-floating form-floating-outline">
+                            <select class="form-select" id="statusFilter">
+                                <option value="">Все статусы</option>
+                                <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активные</option>
+                                <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Неактивные</option>
+                            </select>
+                            <label for="statusFilter">Статус</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-floating form-floating-outline">
+                            <select class="form-select" id="subscriptionFilter">
+                                <option value="">Все подписки</option>
+                                <option value="active" {% if subscription_filter == 'active' %}selected{% endif %}>Активная</option>
+                                <option value="expired" {% if subscription_filter == 'expired' %}selected{% endif %}>Истекшая</option>
+                                <option value="none" {% if subscription_filter == 'none' %}selected{% endif %}>Без подписки</option>
+                            </select>
+                            <label for="subscriptionFilter">Подписка</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-floating form-floating-outline">
+                            <select class="form-select" id="parserFilter">
+                                <option value="">Все парсеры</option>
+                                <option value="active" {% if parser_filter == 'active' %}selected{% endif %}>Активные</option>
+                                <option value="inactive" {% if parser_filter == 'inactive' %}selected{% endif %}>Неактивные</option>
+                            </select>
+                            <label for="parserFilter">Парсер</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица пользователей -->
+        <div class="card">
+            <div class="card-datatable table-responsive">
+                <table class="datatables-users table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Пользователь</th>
+                            <th>Email</th>
+                            <th>Баланс</th>
+                            <th>Роль</th>
+                            <th>Подписка</th>
+                            <th>Окончание подписки</th>
+                            <th>Telegram ID</th>
+                            <th>Активность</th>
+                            <th>Парсер</th>
+                            <th>Найдено товаров</th>
+                            <th>Последний вход</th>
+                            <th>Группа/Канал</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in users_with_info %}
+                    {% with user=item.user profile=user.userprofile subscription=item.active_subscription settings=user.parsersettings_set.first %}
+                    <tr>
+                        <td><strong>#{{ user.id }}</strong></td>
+                        <td>
+                            <div class="d-flex justify-content-start align-items-center">
+                                <div class="avatar-wrapper">
+                                    <div class="avatar avatar-sm me-3">
+                                        {% if profile.avatar %}
+                                            <img src="/{{ profile.avatar }}" alt="{{ user.username }}" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
+                                        {% else %}
+                                            <span class="avatar-initial rounded-circle bg-label-primary" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                                                {{ user.username|first|upper }}
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column">
+                                    <span class="fw-semibold">{{ user.username }}</span>
+                                    <small class="text-muted">
+                                        {% if user.first_name or user.last_name %}
+                                        {{ user.first_name }} {{ user.last_name }}
+                                        {% else %}
+                                        Не указано
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {{ user.email|default:"Не указан" }}
+                        </td>
+                        <td>
+                            <span class="fw-semibold">
+                                {% if profile %}
+                                    {{ profile.balance|default:0 }} ₽
+                                {% else %}
+                                    0 ₽
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if user.is_superuser %}
+                            <span class="badge bg-label-danger">Суперадмин</span>
+                            {% elif user.is_staff %}
+                            <span class="badge bg-label-warning">Админ</span>
+                            {% else %}
+                            <span class="badge bg-label-primary">Пользователь</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.active_subscription %}
+                            <span class="badge bg-label-success">{{ item.active_subscription.plan.name|default:"Активная" }}</span>
+                            <small class="d-block text-muted">{{ item.active_subscription.plan.plan_type|default:"" }}</small>
+                            {% else %}
+                            <span class="badge bg-label-secondary">Нет подписки</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.active_subscription %}
+                                {% if item.active_subscription.end_date >= now %}
+                                <span class="text-success">
+                                    {{ item.active_subscription.end_date|date:"d.m.Y" }}
+                                </span>
+                                <small class="d-block text-muted" data-end-date="{{ item.active_subscription.end_date|date:'c' }}">
+                                    Осталось: {{ item.active_subscription.end_date|timeuntil:now }}
+                                </small>
+                                {% else %}
+                                <span class="text-danger">
+                                    {{ item.active_subscription.end_date|date:"d.m.Y" }}
+                                </span>
+                                <small class="d-block text-muted">Истекла</small>
+                                {% endif %}
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if profile and profile.telegram_chat_id %}
+                            <span class="badge bg-label-info">{{ profile.telegram_chat_id }}</span>
+                            {% if profile.telegram_notifications and profile.telegram_verified %}
+                            <small class="d-block text-success">Уведомления вкл</small>
+                            {% else %}
+                            <small class="d-block text-muted">Уведомления выкл</small>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted">Не подключен</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.is_online %}
+                            <span class="badge bg-label-success">
+                                <i class="ri-checkbox-blank-circle-fill me-1"></i>Онлайн
+                            </span>
+                            <small class="d-block text-success">Сейчас активен</small>
+                            {% else %}
+                            <span class="badge bg-label-secondary">
+                                <i class="ri-checkbox-blank-circle-line me-1"></i>Офлайн
+                            </span>
+                            <small class="d-block text-muted">{{ item.last_activity_display }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if settings %}
+                                {% if settings.is_active %}
+                                <span class="badge bg-label-success">Активен</span>
+                                <small class="d-block text-muted">{{ settings.keywords|truncatewords:2|default:"—" }}</small>
+                                {% else %}
+                                <span class="badge bg-label-secondary">Неактивен</span>
+                                {% endif %}
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="fw-semibold">{{ user.founditem_set.count }}</span>
+                            <small class="d-block text-muted">{{ user.searchquery_set.count }} запросов</small>
+                        </td>
+                        <td>
+                            {{ user.last_login|date:"d.m.Y H:i"|default:"Никогда" }}
+                        </td>
+                        <td>
+                            {% if profile and profile.telegram_group_id %}
+                            <span class="badge bg-label-info">{{ profile.telegram_group_id }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-inline-block">
+                                <button class="btn btn-sm btn-icon dropdown-toggle hide-arrow" data-bs-toggle="dropdown">
+                                    <i class="ri-more-2-line"></i>
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-end">
+                                    <!-- Основные действия -->
+                                    <a href="{% url 'website:edit_user' user.id %}" class="dropdown-item">
+                                        <i class="ri-edit-line me-2"></i>Редактировать профиль
+                                    </a>
+
+                                    <!-- Управление парсером -->
+                                    {% if settings %}
+                                    <div class="dropdown-divider"></div>
+                                    {% if settings.is_active %}
+                                    <a href="#" class="dropdown-item text-warning" onclick="toggleUserParser({{ user.id }}, false)">
+                                        <i class="ri-pause-circle-line me-2"></i>Остановить парсер
+                                    </a>
+                                    {% else %}
+                                    <a href="#" class="dropdown-item text-success" onclick="toggleUserParser({{ user.id }}, true)">
+                                        <i class="ri-play-circle-line me-2"></i>Запустить парсер
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'website:parser_settings' %}?user_id={{ user.id }}" class="dropdown-item">
+                                        <i class="ri-settings-3-line me-2"></i>Настройки парсера
+                                    </a>
+                                    {% endif %}
+
+                                    <!-- Управление подпиской -->
+                                    <div class="dropdown-divider"></div>
+                                    {% if item.active_subscription %}
+                                    <a href="#" class="dropdown-item text-info" onclick="extendSubscription({{ user.id }}, 30)">
+                                        <i class="ri-calendar-event-line me-2"></i>Продлить на 30 дней
+                                    </a>
+                                    <a href="#" class="dropdown-item text-warning" onclick="extendSubscription({{ user.id }}, 7)">
+                                        <i class="ri-calendar-line me-2"></i>Продлить на 7 дней
+                                    </a>
+                                    {% else %}
+                                    <a href="#" class="dropdown-item text-success" onclick="addSubscription({{ user.id }}, 'pro')">
+                                        <i class="ri-vip-crown-line me-2"></i>Добавить подписку
+                                    </a>
+                                    {% endif %}
+
+                                    <!-- Финансовые операции -->
+                                    <div class="dropdown-divider"></div>
+                                    <a href="#" class="dropdown-item text-success" onclick="addBalance({{ user.id }}, 1000)">
+                                        <i class="ri-wallet-3-line me-2"></i>Пополнить +1000₽
+                                    </a>
+                                    <a href="#" class="dropdown-item text-warning" onclick="addBalance({{ user.id }}, 5000)">
+                                        <i class="ri-wallet-line me-2"></i>Пополнить +5000₽
+                                    </a>
+                                    <a href="#" class="dropdown-item text-danger" onclick="resetBalance({{ user.id }})">
+                                        <i class="ri-refresh-line me-2"></i>Обнулить баланс
+                                    </a>
+
+                                    <!-- Опасные действия -->
+                                    <div class="dropdown-divider"></div>
+                                    <a href="#" class="dropdown-item text-danger" onclick="clearUserData({{ user.id }})">
+                                        <i class="ri-delete-bin-7-line me-2"></i>Очистить данные
+                                    </a>
+                                    <a href="#" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ user.id }}">
+                                        <i class="ri-user-unlink-line me-2"></i>Удалить аккаунт
+                                    </a>
+
+                                    <!-- Информация -->
+                                    {% if profile and profile.telegram_chat_id %}
+                                    <div class="dropdown-divider"></div>
+                                    <a href="#" class="dropdown-item">
+                                        <i class="ri-telegram-line me-2"></i>TG: {{ profile.telegram_chat_id }}
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Модальное окно подтверждения удаления -->
+                            <div class="modal fade" id="deleteModal{{ user.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Подтверждение удаления</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p>Вы уверены, что хотите удалить пользователя <strong>{{ user.username }}</strong>?</p>
+                                            <p class="text-danger">Это действие нельзя отменить! Будут удалены все данные пользователя.</p>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <form method="POST" action="{% url 'website:delete_user' user.id %}">
+                                                {% csrf_token %}
+                                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                <button type="submit" class="btn btn-danger">Удалить навсегда</button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="14" class="text-center py-4">
+                            <i class="ri-user-search-line ri-3x text-muted mb-3"></i>
+                            <p class="text-muted">Пользователи не найдены</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                </table>
+            </div>
+
+            <!-- Пагинация -->
+            {% if users_with_info.has_other_pages %}
+            <div class="card-footer">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        {% if users_with_info.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users_with_info.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if subscription_filter %}&subscription={{ subscription_filter }}{% endif %}{% if parser_filter %}&parser={{ parser_filter }}{% endif %}">
+                                <i class="ri-arrow-left-s-line"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        {% for i in users_with_info.paginator.page_range %}
+                        {% if users_with_info.number == i %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ i }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if subscription_filter %}&subscription={{ subscription_filter }}{% endif %}{% if parser_filter %}&parser={{ parser_filter }}{% endif %}">{{ i }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if users_with_info.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ users_with_info.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if subscription_filter %}&subscription={{ subscription_filter }}{% endif %}{% if parser_filter %}&parser={{ parser_filter }}{% endif %}">
+                                <i class="ri-arrow-right-s-line"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-wrapper {
+    position: relative;
+}
+
+.datatables-users th {
+    font-weight: 600;
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.datatables-users td {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.dropdown-menu {
+    min-width: 220px;
+}
+
+.page-link {
+    border-radius: 6px;
+    margin: 0 2px;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Стили для статусов онлайн/офлайн */
+.bg-label-success { background-color: #e8f5e8; color: #28a745; }
+.bg-label-danger { background-color: #fde8e8; color: #dc3545; }
+.bg-label-info { background-color: #e8f4fde8; color: #17a2b8; }
+.bg-label-warning { background-color: #fff3cd; color: #856404; }
+.bg-label-primary { background-color: #e3f2fd; color: #007bff; }
+.bg-label-secondary { background-color: #f8f9fa; color: #6c757d; }
+</style>
+
+<script>
+// Функция для применения фильтров
+function applyFilters() {
+    const search = document.getElementById('searchInput').value;
+    const role = document.getElementById('roleFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const subscription = document.getElementById('subscriptionFilter').value;
+    const parser = document.getElementById('parserFilter').value;
+
+    let url = '?';
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+    if (role) url += `role=${role}&`;
+    if (status) url += `status=${status}&`;
+    if (subscription) url += `subscription=${subscription}&`;
+    if (parser) url += `parser=${parser}`;
+
+    // Убираем последний & если он есть
+    if (url.endsWith('&')) {
+        url = url.slice(0, -1);
+    }
+
+    window.location.href = url;
+}
+
+// Обработчики событий для фильтров
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        applyFilters();
+    }
+});
+
+document.getElementById('roleFilter').addEventListener('change', applyFilters);
+document.getElementById('statusFilter').addEventListener('change', applyFilters);
+document.getElementById('subscriptionFilter').addEventListener('change', applyFilters);
+document.getElementById('parserFilter').addEventListener('change', applyFilters);
+
+// Функция для изменения статуса пользователя
+function toggleUserStatus(userId, activate) {
+    if (confirm(activate ? 'Активировать пользователя?' : 'Заблокировать пользователя?')) {
+        fetch(`/admin-users/toggle-status/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ activate: activate })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Произошла ошибка');
+        });
+    }
+}
+
+// Управление парсером пользователя
+function toggleUserParser(userId, activate) {
+    const action = activate ? 'запустить' : 'остановить';
+    if (confirm(`${action} парсер пользователя?`)) {
+        fetch(`/api/admin/toggle-parser/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ activate: activate })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
+}
+
+// Управление балансом
+function addBalance(userId, amount) {
+    if (confirm(`Пополнить баланс пользователя на ${amount}₽?`)) {
+        fetch(`/api/admin/add-balance/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ amount: amount })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
+}
+
+function resetBalance(userId) {
+    if (confirm('Обнулить баланс пользователя?')) {
+        fetch(`/api/admin/reset-balance/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+
+// Управление подпиской
+function extendSubscription(userId, days) {
+    if (confirm(`Продлить подписку пользователя на ${days} дней?`)) {
+        fetch(`/api/admin/extend-subscription/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ days: days })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
+}
+
+function addSubscription(userId, planType) {
+    if (confirm(`Добавить подписку пользователю?`)) {
+        fetch(`/api/admin/add-subscription/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ plan_type: planType })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
+}
+
+// Очистка данных пользователя
+function clearUserData(userId) {
+    if (confirm('ВНИМАНИЕ! Очистить ВСЕ данные пользователя?\n\nЭто удалит:\n• Все найденные товары\n• Поисковые запросы\n• Настройки парсера\n\nДействие нельзя отменить!')) {
+        fetch(`/api/admin/clear-user-data/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.message);
+            }
+        });
+    }
+}
+
+// Автоматическое обновление времени подписок
+function updateSubscriptionTimes() {
+    document.querySelectorAll('[data-end-date]').forEach(element => {
+        const endDate = new Date(element.dataset.endDate);
+        const now = new Date();
+        const diff = endDate - now;
+
+        if (diff > 0) {
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            element.textContent = `Осталось: ${days}д ${hours}ч`;
+        } else {
+            element.textContent = 'Истекла';
+            element.classList.add('text-danger');
+        }
+    });
+}
+
+// Обновляем время каждую минуту
+setInterval(updateSubscriptionTimes, 60000);
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    updateSubscriptionTimes();
+});
+
+// Универсальная функция показа alert
+function showAlert(message, type) {
+    const toastContainer = document.querySelector('.toast-container');
+    const toastId = 'toast-' + Date.now();
+
+    const toastHTML = `
+        <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    const toast = new bootstrap.Toast(document.getElementById(toastId));
+    toast.show();
+
+    // Удаляем toast после скрытия
+    document.getElementById(toastId).addEventListener('hidden.bs.toast', function () {
+        this.remove();
+    });
+}
+
+// Получение CSRF токена
+function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends 'base_auth.html' %}
+{% load static %}
+
+{% block title %}Подтверждение регистрации - Селибри{% endblock %}
+
+{% block auth_content %}
+<div class="card p-md-4 p-3" style="max-width: 400px; margin: 0 auto;">
+    <div class="app-brand justify-content-center mt-3 mb-2">
+        <a href="{% url 'website:dashboard' %}" class="app-brand-link gap-2 text-decoration-none">
+            <span class="app-brand-text demo text-heading fw-semibold fs-4">Селибри</span>
+        </a>
+    </div>
+
+    <div class="card-body">
+        <center>
+            <h4 class="mb-2 text-gradient-primary fw-semibold">Подтверждение</h4>
+            <p class="text-muted mb-4 small">
+                Введите код из Telegram<br>
+                <small>Отправлен на: {{ phone }}</small>
+            </p>
+        </center>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="ri-alert-{% if message.tags == 'error' %}line{% else %}success-line{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        {% if debug_code %}
+<div class="alert alert-warning">
+    <div class="d-flex align-items-center">
+        <i class="ri-bug-line me-2"></i>
+        <div>
+            <strong>Режим отладки</strong><br>
+            <small>Код для тестирования: <code>{{ debug_code }}</code></small>
+        </div>
+    </div>
+</div>
+{% endif %}
+        <div class="alert alert-info">
+            <div class="d-flex align-items-center">
+                <i class="ri-time-line me-2"></i>
+                <div>
+                    <strong>Осталось времени: {{ minutes_left }} минут</strong><br>
+                    <small>После истечения времени потребуется новая регистрация</small>
+                </div>
+            </div>
+        </div>
+
+        <form method="post" class="mb-3">
+            {% csrf_token %}
+
+            <div class="form-floating form-floating-outline mb-3">
+                <input type="text"
+                       class="form-control text-center"
+                       id="confirmation_code"
+                       name="confirmation_code"
+                       placeholder="000000"
+                       maxlength="6"
+                       pattern="[0-9]{6}"
+                       required
+                       style="font-size: 1.5rem; font-weight: bold; letter-spacing: 5px;">
+                <label for="confirmation_code">Код подтверждения</label>
+            </div>
+
+            <div class="mb-3">
+                <button class="btn btn-primary w-100 py-2" type="submit">
+                    <i class="ri-check-line me-2"></i>Подтвердить регистрацию
+                </button>
+            </div>
+        </form>
+
+        <div class="text-center">
+            <p class="small text-muted mb-2">
+                Не пришел код?<br>
+                <a href="{% url 'website:register' %}">Пройти регистрацию заново</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+.text-gradient-primary {
+    background: linear-gradient(135deg, #666cff 0%, #5a61e0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.form-control {
+    border-radius: 8px;
+}
+
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Автофокус на поле кода
+    const codeInput = document.getElementById('confirmation_code');
+    if (codeInput) {
+        codeInput.focus();
+
+        // Разрешаем только цифры
+        codeInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, '');
+        });
+    }
+
+    // Таймер обратного отсчета
+    let minutesLeft = {{ minutes_left }};
+    const timerElement = document.querySelector('.alert-info strong');
+
+    if (minutesLeft > 0) {
+        const timerInterval = setInterval(function() {
+            minutesLeft--;
+
+            if (minutesLeft <= 0) {
+                clearInterval(timerInterval);
+                timerElement.textContent = 'Время истекло!';
+                document.querySelector('button[type="submit"]').disabled = true;
+
+                // Показываем сообщение
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger mt-3';
+                alertDiv.innerHTML = '<i class="ri-time-line me-2"></i>Время подтверждения истекло. Пожалуйста, пройдите регистрацию заново.';
+                document.querySelector('form').before(alertDiv);
+            } else {
+                timerElement.textContent = `Осталось времени: ${minutesLeft} минут`;
+            }
+        }, 60000); // Обновляем каждую минуту
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru" class="light-style customizer-hide" dir="ltr" data-theme="theme-default">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+    <title>{% block title %}Селибри - Система поиска объявлений{% endblock %}</title>
+    <meta name="description" content="Арбитражная торговля на Avito" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{% static 'assets/img/favicon/favicon.ico' %}" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="{% static 'assets/vendor/fonts/remixicon/remixicon.css' %}" />
+
+    <!-- Core CSS -->
+    <link rel="stylesheet" href="{% static 'assets/vendor/css/core.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/vendor/css/theme-default.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/demo.css' %}" />
+
+    <!-- Vendors CSS -->
+    <link rel="stylesheet" href="{% static 'assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/vendor/libs/node-waves/node-waves.css' %}" />
+
+    <!-- Page CSS -->
+    <link rel="stylesheet" href="{% static 'assets/vendor/css/pages/page-auth.css' %}" />
+
+    <!-- Helpers -->
+    <script src="{% static 'assets/vendor/js/helpers.js' %}"></script>
+
+    <style>
+        .app-brand-logo svg path {
+            fill: #666cff;
+        }
+        .btn-primary {
+            background-color: #666cff;
+            border-color: #666cff;
+        }
+        .btn-primary:hover {
+            background-color: #5a61e0;
+            border-color: #5a61e0;
+        }
+        .text-primary {
+            color: #666cff !important;
+        }
+        .btn-logout {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+        }
+
+        /* Кастомный фон для страниц аутентификации */
+        .authentication-wrapper {
+            background: url('{% static "assets/img/backgrounds/auth-bg.jpg" %}') no-repeat center center;
+            background-size: cover;
+            min-height: 100vh;
+        }
+
+        .authentication-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 0;
+        }
+
+        .authentication-inner {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Скрываем стандартное изображение */
+        .authentication-image {
+            display: none !important;
+        }
+
+        /* Стили для карточки */
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Content -->
+    <div class="position-relative">
+        <div class="authentication-wrapper authentication-basic container-p-y p-4 p-sm-0">
+            <div class="authentication-inner py-6">
+                {% block auth_content %}{% endblock %}
+                <!-- Стандартное изображение скрыто через CSS -->
+                <img
+                    alt="mask"
+                    src="{% static 'assets/img/illustrations/auth-basic-login-mask-light.png' %}"
+                    class="authentication-image d-none d-lg-block"
+                    data-app-light-img="illustrations/auth-basic-login-mask-light.png"
+                    data-app-dark-img="illustrations/auth-basic-login-mask-dark.png" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Core JS -->
+    <script src="{% static 'assets/vendor/libs/jquery/jquery.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/popper/popper.js' %}"></script>
+    <script src="{% static 'assets/vendor/js/bootstrap.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/node-waves/node-waves.js' %}"></script>
+    <script src="{% static 'assets/vendor/libs/perfect-scrollbar/perfect-scrollbar.js' %}"></script>
+    <script src="{% static 'assets/vendor/js/menu.js' %}"></script>
+
+    <!-- Main JS -->
+    <script src="{% static 'assets/js/main.js' %}"></script>
+
+    <!-- Page JS -->
+    <script src="{% static 'assets/js/pages-auth.js' %}"></script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

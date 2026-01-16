@@ -1,0 +1,294 @@
+{% extends 'base_auth.html' %}
+{% load static %}
+
+{% block title %}Вход - Селибри{% endblock %}
+
+{% block auth_content %}
+<!-- Login -->
+<div class="card p-md-4 p-3" style="max-width: 480px; margin: 0 auto;">
+    <!-- Logo -->
+    <div class="app-brand justify-content-center mt-3 mb-2">
+        <a href="{% url 'website:dashboard' %}" class="app-brand-link gap-2 text-decoration-none">
+            <span class="app-brand-logo demo">
+                <img src="{% static 'assets/img/logo/logo.svg' %}" alt="Селибри" width="38" onerror="this.style.display='none'">
+            </span>
+            <span class="app-brand-text demo text-heading fw-semibold fs-4">Селибри</span>
+        </a>
+    </div>
+    <!-- /Logo -->
+
+    <div class="card-body mt-1">
+        <center>
+            <p class="text-muted mb-4 small">Войдите в свой аккаунт</p>
+        </center>
+
+        {% if form.errors %}
+        <div class="alert alert-danger alert-dismissible fade show mb-3 py-2" role="alert">
+            <i class="ri-error-warning-line me-1"></i>
+            <small>Неверное имя пользователя или пароль</small>
+            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>
+        </div>
+        {% endif %}
+
+        <!-- Стандартная форма входа -->
+        <form method="post" class="mb-3">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Имя пользователя</label>
+                <input
+                    type="text"
+                    class="form-control"
+                    id="username"
+                    name="username"
+                    placeholder="Введите ваше имя пользователя"
+                    required
+                    autofocus />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Пароль</label>
+                <div class="input-group">
+                    <input
+                        type="password"
+                        id="password"
+                        class="form-control"
+                        name="password"
+                        placeholder="Введите ваш пароль"
+                        required />
+                    <span class="input-group-text cursor-pointer bg-transparent">
+                        <i class="ri-eye-off-line" style="font-size: 14px;"></i>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Аккуратное выравнивание "Запомнить меня" и "Забыли пароль?" -->
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div class="form-check m-0">
+                    <input class="form-check-input" type="checkbox" id="remember-me" />
+                    <label class="form-check-label" for="remember-me">Запомнить меня</label>
+                </div>
+                <a href="#" class="text-primary text-decoration-none">
+                    Забыли пароль?
+                </a>
+            </div>
+
+            <div class="mb-3">
+                <button class="btn btn-primary d-flex align-items-center justify-content-center w-100 py-2" type="submit">
+                    <i class="ri-login-box-line me-2"></i>
+                    <span>Войти</span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Кнопка регистрации -->
+        <div class="mb-3">
+            <a href="{% url 'website:register' %}" class="btn btn-outline-primary d-flex align-items-center justify-content-center w-100 py-2">
+                <i class="ri-user-add-line me-2"></i>
+                <span>Регистрация</span>
+            </a>
+        </div>
+
+        <div class="divider my-3">
+            <div class="divider-text" style="font-size: 12px;">или</div>
+        </div>
+
+        <!-- Telegram Login Button -->
+        <div class="mb-3">
+            <a href="#" class="btn btn-primary d-flex align-items-center justify-content-center w-100 py-2"
+               id="telegramLoginBtn"
+               style="background-color: #0088cc; border-color: #0088cc;">
+                <i class="ri-telegram-line me-2"></i>
+                <span>Telegram</span>
+            </a>
+            <div class="text-center mt-2">
+                <small class="text-muted" style="font-size: 11px;">Будет доступно после запуска</small>
+            </div>
+        </div>
+
+        <!-- Техподдержка -->
+        <div class="text-center mt-2">
+            <p class="text-muted mb-0" style="font-size: 11px;">
+                Нужна помощь?
+                <a href="#" class="text-decoration-none">Свяжитесь с нами</a>
+            </p>
+        </div>
+    </div>
+</div>
+<!-- /Login -->
+
+<style>
+    .text-gradient-primary {
+        background: linear-gradient(135deg, #666cff 0%, #5a61e0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .btn-telegram:hover {
+        background: linear-gradient(135deg, #0077b5, #0099e8) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 136, 204, 0.3);
+    }
+
+    .form-control {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    .form-control:focus {
+        border-color: #666cff;
+        box-shadow: 0 0 0 0.2rem rgba(102, 108, 255, 0.25);
+        outline: 0;
+    }
+
+    .form-label {
+        font-weight: 500;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        display: block;
+        color: #495057;
+    }
+
+    .divider {
+        display: flex;
+        align-items: center;
+        margin: 1rem 0;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .divider-text {
+        padding: 0 0.8rem;
+        color: #6c757d;
+        font-size: 0.75rem;
+    }
+
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .btn {
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .alert {
+        border-radius: 8px;
+        font-size: 0.85rem;
+    }
+
+    /* Специальные стили для аккуратного выравнивания */
+    .form-check {
+        display: flex;
+        align-items: center;
+        min-height: 20px;
+        margin-bottom: 0;
+    }
+
+    .form-check-input {
+        margin-right: 0.5rem;
+        margin-top: 0 !important;
+        flex-shrink: 0;
+    }
+
+    .form-check-label {
+        white-space: nowrap;
+        margin-bottom: 0;
+        font-size: 0.9rem;
+        color: #495057;
+    }
+
+    /* Выравнивание по базовой линии */
+    .d-flex.justify-content-between.align-items-center {
+        align-items: baseline !important;
+    }
+
+    /* Input group styles */
+    .input-group-text {
+        border: 1px solid #dee2e6;
+        background-color: #f8f9fa;
+        transition: border-color 0.15s ease-in-out;
+    }
+
+    .input-group:focus-within .input-group-text {
+        border-color: #666cff;
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Анимация кнопки Telegram
+    const telegramBtn = document.getElementById('telegramLoginBtn');
+    if (telegramBtn) {
+        telegramBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showTelegramInfo();
+        });
+    }
+
+    // Toggle password visibility
+    const passwordToggles = document.querySelectorAll('.cursor-pointer');
+    passwordToggles.forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const passwordInput = this.closest('.input-group').querySelector('input[type="password"]');
+            const icon = this.querySelector('i');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.className = 'ri-eye-line';
+            } else {
+                passwordInput.type = 'password';
+                icon.className = 'ri-eye-off-line';
+            }
+        });
+    });
+
+    function showTelegramInfo() {
+        Swal.fire({
+            title: 'Вход через Telegram',
+            html: `
+                <div class="text-start">
+                    <p class="mb-2 small">Функция будет доступна после настройки бота</p>
+                    <p class="text-muted small">Используйте стандартный вход для тестирования</p>
+                </div>
+            `,
+            icon: 'info',
+            confirmButtonText: 'Понятно',
+            confirmButtonColor: '#666cff',
+            width: 320
+        });
+    }
+
+    // Автозаполнение демо-данных
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('demo') === 'true') {
+        document.getElementById('username').value = 'demo';
+        document.getElementById('password').value = 'demodemo';
+    }
+});
+</script>
+
+<!-- Подключаем SweetAlert для красивых уведомлений -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+{% endblock %}

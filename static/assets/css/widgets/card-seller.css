@@ -1,0 +1,179 @@
+/* Стили для карточки продавца */
+.card-seller {
+  --seller-card-spacer-y: 1.25rem;
+  --seller-card-spacer-x: 1.25rem;
+  --seller-card-border-width: 0;
+  --seller-card-border-color: #e5e6e8;
+  --seller-card-border-radius: 0.625rem;
+  --seller-card-box-shadow: 0 0.25rem 0.875rem 0 rgba(38, 43, 67, 0.16);
+  --seller-card-inner-border-radius: 0.625rem;
+  --seller-card-bg: #fff;
+  --seller-card-color: #3b4056;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--seller-card-color);
+  word-wrap: break-word;
+  background-color: var(--seller-card-bg);
+  background-clip: border-box;
+  border: var(--seller-card-border-width) solid var(--seller-card-border-color);
+  border-radius: var(--seller-card-border-radius);
+  box-shadow: var(--seller-card-box-shadow);
+}
+
+.card-seller-body {
+  flex: 1 1 auto;
+  padding: var(--seller-card-spacer-y) var(--seller-card-spacer-x);
+}
+
+/* Стили для секции цены */
+.sidebar-price-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.price-main {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #2c3e50;
+  line-height: 1.2;
+}
+
+.price-target {
+  font-size: 0.875rem;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.price-target::before {
+  content: "🎯";
+  font-size: 0.875rem;
+}
+
+/* Стили для рейтинга продавца */
+.seller-rating-sidebar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid #f1f2f4;
+}
+
+.seller-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid #f8f9fa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.seller-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.seller-info-sidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.seller-rating {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.seller-rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.seller-rating-stars i {
+  font-size: 0.875rem;
+  color: #ffc107;
+}
+
+.seller-rating .fw-semibold {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #3b4056;
+}
+
+.seller-name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: #2c3e50;
+}
+
+.seller-reviews {
+  font-size: 0.8125rem;
+  color: #6c757d;
+}
+
+/* Варианты цветовых схем для карточки */
+.card-seller.primary {
+  --seller-card-bg: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
+  border-left: 4px solid #4361ee;
+}
+
+.card-seller.success {
+  --seller-card-bg: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+  border-left: 4px solid #2ecc71;
+}
+
+.card-seller.warning {
+  --seller-card-bg: linear-gradient(135deg, #fffaf0 0%, #ffffff 100%);
+  border-left: 4px solid #ff9f43;
+}
+
+/* Анимации */
+.card-seller {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-seller:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1.25rem rgba(38, 43, 67, 0.12);
+}
+
+/* Медиа-запросы для адаптивности */
+@media (max-width: 768px) {
+  .card-seller {
+    --seller-card-spacer-y: 1rem;
+    --seller-card-spacer-x: 1rem;
+  }
+
+  .price-main {
+    font-size: 1.5rem;
+  }
+
+  .seller-avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}
+
+/* Дополнительные модификаторы */
+.card-seller.compact .sidebar-price-card {
+  gap: 0.5rem;
+}
+
+.card-seller.compact .seller-rating-sidebar {
+  padding: 0.5rem 0;
+}
+
+.card-seller.highlight {
+  --seller-card-box-shadow: 0 0.25rem 1rem 0 rgba(67, 97, 238, 0.2);
+  border: 1px solid rgba(67, 97, 238, 0.15);
+}

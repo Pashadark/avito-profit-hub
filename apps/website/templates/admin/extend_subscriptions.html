@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>Продление подписок</h1>
+<p>Выбранные подписки: {{ subscriptions|length }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="days">Количество дней для продления:</label>
+        <input type="number" name="days" min="1" value="30" class="form-control" required>
+    </div>
+
+    <div class="form-actions">
+        <input type="submit" name="apply" value="Продлить" class="btn btn-primary">
+        <a href="{% url 'admin:website_usersubscription_changelist' %}" class="btn btn-secondary">Отмена</a>
+    </div>
+</form>
+
+<h2>Список подписок:</h2>
+<ul>
+    {% for sub in subscriptions %}
+    <li>{{ sub.user.username }} - {{ sub.plan.name }} (до {{ sub.end_date|date:"d.m.Y" }})</li>
+    {% endfor %}
+</ul>
+{% endblock %}

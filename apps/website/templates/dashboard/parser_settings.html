@@ -1,0 +1,1251 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load notifications_tags %}
+
+{% block content %}
+    <style>
+        .container-xxl.flex-grow-1.container-p-y {
+            max-width: 1800px !important;
+            margin: 0 auto !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+        }
+
+        @media (max-width: 1800px) {
+            .container-xxl.flex-grow-1.container-p-y {
+                max-width: 100% !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container-xxl.flex-grow-1.container-p-y {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+        }
+    </style>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="ri-dashboard-line me-2"></i>Статус системы</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="parserStatusInfo">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-3 p-3 rounded bg-light">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-cpu-line fs-3 text-primary"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1 text-muted">Статус парсера</h6>
+                                    <span class="h6 mb-0" id="statusText">Загрузка...</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-3 p-3 rounded bg-light">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-window-line fs-3 text-info"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1 text-muted">Окна браузера</h6>
+                                    <span class="h6 mb-0" id="windowsText">Загрузка...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-3 p-3 rounded bg-light">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-timer-line fs-3 text-warning"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1 text-muted">Таймер работы</h6>
+                                    <span class="h6 mb-0" id="timerText">Загрузка...</span>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-3 p-3 rounded bg-light">
+                                <div class="flex-shrink-0">
+                                    <i class="ri-global-line fs-3 text-success"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1 text-muted">Сайт</h6>
+                                    <span class="h6 mb-0" id="siteText">Загрузка...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Дополнительная информация -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-light border">
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <small class="text-muted d-block">Циклов выполнено</small>
+                                        <strong id="cycleCount">0</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted d-block">Обработано URL</small>
+                                        <strong id="processedUrls">0</strong>
+                                    </div>
+                                    <div class="col-4">
+                                        <small class="text-muted d-block">Активные запросы</small>
+                                        <strong id="activeQueries">0</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Настройки поиска -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="ri-settings-3-line me-2"></i>Настройки поиска</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="parserSettingsForm">
+                        {% csrf_token %}
+
+                        <!-- ВАЖНОЕ ИСПРАВЛЕНИЕ: Убираем скрытое поле settings_id или исправляем логику -->
+                        {% if form.instance.id %}
+                        <input type="hidden" name="settings_id" value="{{ form.instance.id }}">
+                        {% else %}
+                        <input type="hidden" name="settings_id" value="">
+                        {% endif %}
+
+                        <!-- Основные настройки -->
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold">Название настроек</label>
+                                {{ form.name }}
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch mt-4 pt-1">
+                                    <input type="checkbox" name="is_default" class="form-check-input" id="id_is_default"
+                                           {% if form.instance.is_default %}checked{% endif %}>
+                                    <label class="form-check-label fw-semibold" for="id_is_default">
+                                        Использовать по умолчанию
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ключевые слова -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Ключевые слова для поиска</label>
+                                {{ form.keywords }}
+                                <div class="form-text">Введите товары для поиска через запятую (например: iPhone, MacBook, видеокарта)</div>
+                            </div>
+                        </div>
+
+                        <!-- Исключения -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Исключить слова</label>
+                                {{ form.exclude_keywords }}
+                                <div class="form-text">Товары содержащие эти слова будут пропущены</div>
+                            </div>
+                        </div>
+
+                        <!-- Фильтры цены -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Цена от (₽)</label>
+                                {{ form.min_price }}
+                                <div class="form-text">Оставьте пустым для любого значения</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Цена до (₽)</label>
+                                {{ form.max_price }}
+                                <div class="form-text">Оставьте пустым для любого значения</div>
+                            </div>
+                        </div>
+
+                        <!-- Дополнительные фильтры -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Минимальный рейтинг продавца</label>
+                                {{ form.min_rating }}
+                                <div class="form-text">от 0 до 5 звезд, оставьте пустым для любого</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Тип продавца</label>
+                                {{ form.seller_type }}
+                                <div class="form-text">Выберите тип продавца</div>
+                            </div>
+                        </div>
+
+                        <!-- Настройки парсера -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Интервал проверки</label>
+                                {{ form.check_interval }}
+                                <div class="form-text">минут, оставьте пустым для значения по умолчанию</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Лимит объявлений в час</label>
+                                {{ form.max_items_per_hour }}
+                                <div class="form-text">оставьте пустым для значения по умолчанию</div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Окон браузера</label>
+                                {{ form.browser_windows }}
+                                <div class="form-text">оставьте пустым для значения по умолчанию</div>
+                            </div>
+                        </div>
+
+                        <!-- Параметры запуска -->
+                        <div class="card border-warning mb-4">
+                            <div class="card-header bg-warning bg-opacity-10">
+                                <h6 class="card-title mb-0 text-warning"><i class="ri-play-circle-line me-2"></i>Параметры запуска</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- ВЫБОР САЙТА -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-semibold">Сайт для поиска</label>
+                                        <select class="form-select" id="site_select" name="site">
+                                            <option value="avito" {% if current_site == 'avito' %}selected{% endif %}>Avito</option>
+                                            <option value="auto.ru" {% if current_site == 'auto.ru' %}selected{% endif %}>Auto.ru</option>
+                                        </select>
+                                        <div class="form-text">Выберите сайт для парсинга</div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-semibold">Таймер работы</label>
+                                        <select class="form-select" id="timer_hours" name="timer_hours">
+                                            <option value="">Бесконечно</option>
+                                            <option value="1">1 час</option>
+                                            <option value="2" selected>2 часа</option>
+                                            <option value="4">4 часа</option>
+                                            <option value="6">6 часов</option>
+                                            <option value="8">8 часов</option>
+                                            <option value="12">12 часов</option>
+                                        </select>
+                                        <div class="form-text">Парсер автоматически остановится</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-semibold">Количество окон</label>
+                                        <select class="form-select" id="launch_browser_windows" name="launch_browser_windows">
+                                            <option value="1">1 окно</option>
+                                            <option value="2">2 окна</option>
+                                            <option value="3" selected>3 окна</option>
+                                            <option value="4">4 окна</option>
+                                            <option value="5">5 окон</option>
+                                        </select>
+                                        <div class="form-text">Больше окон = быстрее поиск</div>
+                                    </div>
+
+                                    <!-- ПОДСКАЗКИ ДЛЯ AUTO.RU -->
+                                    <div class="col-12 mt-2">
+                                        <div class="alert alert-info py-2" id="auto_ru_tips" style="display: none;">
+                                            <small>
+                                                <i class="ri-information-line me-1"></i>
+                                                <strong>Для Auto.ru рекомендуются запросы:</strong>
+                                                "ford focus", "toyota camry", "bmw x5 2018", "volkswagen golf"
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Автопоиск -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label fw-semibold" for="{{ form.is_active.id_for_label }}">
+                                    Автоматический поиск активен
+                                </label>
+                            </div>
+                            <div class="form-text">При включении парсер будет автоматически искать товары по расписанию</div>
+                        </div>
+
+                        <!-- Кнопки управления -->
+                        <div class="d-flex gap-3 flex-wrap border-top pt-4">
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="submit" name="save_settings" class="btn btn-primary" onclick="saveSettings(event)">
+                                    <i class="ri-save-line me-1"></i> Сохранить настройки
+                                </button>
+
+                                <button type="button" class="btn btn-outline-secondary" onclick="createNewSettings()">
+                                    <i class="ri-add-line me-1"></i> Создать новые
+                                </button>
+
+                                <!-- ИСПРАВЛЕННАЯ КНОПКА УДАЛЕНИЯ -->
+                                {% if form.instance.id and not form.instance.is_default %}
+                                <button type="button" class="btn btn-outline-danger" onclick="deleteSettings({{ form.instance.id }})">
+                                    <i class="ri-delete-bin-line me-1"></i> Удалить
+                                </button>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-flex gap-2 flex-wrap ms-auto">
+                                <button type="button" id="toggleParserBtn"
+                                        class="btn {% if parser_status == 'работает' %}btn-danger{% else %}btn-success{% endif %}">
+                                    {% if parser_status == 'работает' %}
+                                        <i class="ri-stop-circle-line me-1"></i> Остановить парсер
+                                    {% else %}
+                                        <i class="ri-play-circle-line me-1"></i> Запустить парсер
+                                    {% endif %}
+                                </button>
+
+                                <button type="button" class="btn btn-warning" onclick="launchParserWithSettings()">
+                                    <i class="ri-rocket-2-line me-1"></i> Быстрый запуск
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - History and List -->
+        <div class="col-lg-4">
+            <!-- Saved Settings List -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="ri-list-check me-2"></i>Сохраненные настройки</h5>
+                    <small class="text-muted">Только ваши настройки</small>
+                </div>
+                <div class="card-body p-0">
+                    {% if all_settings %}
+                    <div class="list-group list-group-flush">
+                        {% for settings in all_settings %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <h6 class="mb-0 {% if settings.is_default %}text-success{% endif %}">
+                                            {{ settings.name }}
+                                        </h6>
+                                        {% if settings.is_default %}
+                                        <span class="badge bg-success ms-2">по умолчанию</span>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted d-block mb-1">
+                                        {{ settings.keywords|truncatewords:4 }}
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="ri-time-line me-1"></i>{{ settings.updated_at|date:"d.m.Y H:i" }}
+                                    </small>
+                                    {% if settings.exclude_keywords %}
+                                    <div class="mt-1">
+                                        <small class="text-danger">
+                                            <i class="ri-forbid-line me-1"></i>Исключить: {{ settings.exclude_keywords|truncatewords:2 }}
+                                        </small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="btn-group ms-2 flex-shrink-0">
+                                    <button type="button" onclick="loadSettings({{ settings.id }})"
+                                            class="btn btn-sm btn-outline-primary" title="Загрузить настройки">
+                                        <i class="ri-edit-line"></i>
+                                    </button>
+                                    <button type="button" onclick="runWithSettings({{ settings.id }})"
+                                            class="btn btn-sm btn-outline-success" title="Запустить с этими настройками">
+                                        <i class="ri-play-line"></i>
+                                    </button>
+                                    <!-- КНОПКА УДАЛЕНИЯ В СПИСКЕ -->
+                                    {% if not settings.is_default %}
+                                    <button type="button" onclick="deleteSettings({{ settings.id }})"
+                                            class="btn btn-sm btn-outline-danger" title="Удалить настройки">
+                                        <i class="ri-delete-bin-line"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="ri-list-check display-4 text-muted mb-3"></i>
+                        <p class="text-muted mb-0">Нет сохраненных настроек</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Current Settings -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="ri-information-line me-2"></i>Текущие настройки</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="fw-semibold mb-2">Ключевые слова:</h6>
+                        <div>
+                            {% for keyword in current_keywords %}
+                                <span class="badge bg-primary me-1 mb-1">{{ keyword }}</span>
+                            {% empty %}
+                                <span class="text-muted">Не указаны</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    {% if form.instance.exclude_keywords %}
+                    <div class="mb-3">
+                        <h6 class="fw-semibold mb-2">Исключить слова:</h6>
+                        <div>
+                            {% for keyword in form.instance.exclude_keywords_list %}
+                                <span class="badge bg-danger me-1 mb-1">{{ keyword }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <h6 class="fw-semibold mb-3">Параметры поиска:</h6>
+                    <div class="row g-2 small">
+                        <div class="col-6">
+                            <span class="text-muted">Цена:</span>
+                            <div class="fw-semibold">
+                                {% if form.instance.min_price or form.instance.max_price %}
+                                    {{ form.instance.min_price|default:"любая" }} - {{ form.instance.max_price|default:"любая" }} ₽
+                                {% else %}
+                                    любая
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Рейтинг:</span>
+                            <div class="fw-semibold">
+                                {% if form.instance.min_rating %}
+                                    от {{ form.instance.min_rating }}/5
+                                {% else %}
+                                    любой
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Продавец:</span>
+                            <div class="fw-semibold">
+                                {% if form.instance.seller_type %}
+                                    {{ form.instance.get_seller_type_display }}
+                                {% else %}
+                                    любой
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Интервал:</span>
+                            <div class="fw-semibold">
+                                {% if form.instance.check_interval %}
+                                    {{ form.instance.check_interval }} мин
+                                {% else %}
+                                    по умолчанию
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Лимит/час:</span>
+                            <div class="fw-semibold">
+                                {% if form.instance.max_items_per_hour %}
+                                    {{ form.instance.max_items_per_hour }}
+                                {% else %}
+                                    по умолчанию
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Окна:</span>
+                            <div class="fw-semibold">
+                                {% if form.instance.browser_windows %}
+                                    {{ form.instance.browser_windows }}
+                                {% else %}
+                                    по умолчанию
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activities -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="ri-history-line me-2"></i>Последние находки</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if recent_activities %}
+                        <div class="list-group list-group-flush">
+                            {% for activity in recent_activities|slice:":5" %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="fw-medium small mb-1">{{ activity.title|truncatewords:5 }}</div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-success fw-semibold">{{ activity.price }}₽</span>
+                                            <small class="text-muted">{{ activity.found_at|date:"H:i" }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="ri-shopping-bag-line display-4 text-muted mb-3"></i>
+                        <p class="text-muted mb-3">Нет недавних находки</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="p-3 border-top">
+                        <a href="{% url 'website:found_items' %}" class="btn btn-outline-primary w-100">
+                            <i class="ri-shopping-bag-line me-1"></i> Все найденные товары
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<style>
+.list-group-item {
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-group .btn-sm {
+    padding: 0.25rem 0.5rem;
+}
+
+.badge {
+    font-size: 0.7em;
+    padding: 0.35em 0.65em;
+}
+
+.form-check-input:checked {
+    background-color: #666cff;
+    border-color: #666cff;
+}
+
+.card {
+    transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+#toggleParserBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.status-running {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.status-stopped {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.status-warning {
+    color: #ffc107;
+    font-weight: 600;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.form-label.fw-semibold {
+    font-weight: 600;
+}
+
+/* Анимация для таймера */
+.blinking {
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+</style>
+
+<script>
+// Глобальная переменная для интервала обновления
+let statusUpdateInterval = null;
+
+// Основная функция для уведомлений - ИСПОЛЬЗУЕМ НОВУЮ СИСТЕМУ
+function showAlert(message, type = 'info') {
+    // Используем новую систему уведомлений
+    switch(type.toLowerCase()) {
+        case 'success':
+            if (typeof notificationSuccess === 'function') {
+                notificationSuccess(message, 'Успех');
+            } else if (typeof toastr !== 'undefined') {
+                toastr.success(message, 'Успех');
+            }
+            break;
+
+        case 'error':
+        case 'danger':
+            if (typeof notificationError === 'function') {
+                notificationError(message, 'Ошибка');
+            } else if (typeof toastr !== 'undefined') {
+                toastr.error(message, 'Ошибка');
+            }
+            break;
+
+        case 'warning':
+            if (typeof notificationWarning === 'function') {
+                notificationWarning(message, 'Внимание');
+            } else if (typeof toastr !== 'undefined') {
+                toastr.warning(message, 'Внимание');
+            }
+            break;
+
+        case 'info':
+        default:
+            if (typeof notificationInfo === 'function') {
+                notificationInfo(message, 'Информация');
+            } else if (typeof toastr !== 'undefined') {
+                toastr.info(message, 'Информация');
+            }
+            break;
+    }
+}
+
+// Функция обновления интерфейса статуса
+function updateStatusDisplay(status) {
+    console.log('🎨 Обновление интерфейса:', status);
+
+    // Статус парсера
+    const statusElement = document.getElementById('statusText');
+    if (statusElement) {
+        statusElement.innerHTML = status.is_running ?
+            '<span class="status-running">Работает</span>' :
+            '<span class="status-stopped">Остановлен</span>';
+    }
+
+    // Окна браузера
+    const windowsElement = document.getElementById('windowsText');
+    if (windowsElement) {
+        const driversText = status.drivers_count > 0 ? ` (запущено: ${status.drivers_count})` : '';
+        windowsElement.innerHTML =
+            `<span class="status-running">${status.browser_windows || 0} окон${driversText}</span>`;
+    }
+
+    // Таймер
+    const timerElement = document.getElementById('timerText');
+    if (timerElement) {
+        if (status.timer_active && status.timer_remaining && status.timer_remaining !== 'Не установлен') {
+            timerElement.innerHTML = `<span class="status-running">⏰ ${status.timer_remaining}</span>`;
+        } else {
+            timerElement.innerHTML = '<span class="status-warning">⏰ Не установлен</span>';
+        }
+    }
+
+    // Сайт
+    const siteElement = document.getElementById('siteText');
+    if (siteElement) {
+        const siteNames = {
+            'avito': 'Avito',
+            'auto.ru': 'Auto.ru'
+        };
+        const siteDisplay = siteNames[status.current_site] || status.current_site || 'Avito';
+        siteElement.innerHTML = `<span class="status-running">${siteDisplay}</span>`;
+    }
+
+    // Дополнительная информация
+    const cycleCountElement = document.getElementById('cycleCount');
+    if (cycleCountElement) {
+        cycleCountElement.textContent = '0';
+    }
+
+    const processedUrlsElement = document.getElementById('processedUrls');
+    if (processedUrlsElement) {
+        processedUrlsElement.textContent = '0';
+    }
+
+    const activeQueriesElement = document.getElementById('activeQueries');
+    if (activeQueriesElement) {
+        activeQueriesElement.textContent = status.search_queries_count || 0;
+    }
+
+    // Обновляем кнопку запуска/остановки
+    updateParserButton(status.is_running);
+}
+
+// Функция обновления кнопки парсера
+function updateParserButton(isRunning) {
+    const button = document.getElementById('toggleParserBtn');
+    if (!button) return;
+
+    if (isRunning) {
+        button.innerHTML = '<i class="ri-stop-circle-line me-1"></i> Остановить парсер';
+        button.classList.remove('btn-success');
+        button.classList.add('btn-danger');
+    } else {
+        button.innerHTML = '<i class="ri-play-circle-line me-1"></i> Запустить парсер';
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-success');
+    }
+}
+
+// Обновление статуса парсера
+function refreshParserStatus() {
+    console.log('🔄 Обновляю статус парсера...');
+
+    const parserStatusUrl = '/api/parser-status/';
+
+    fetch(parserStatusUrl)
+    .then(response => {
+        console.log('📡 Ответ сервера:', response.status, response.statusText);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('📊 Данные статуса получены:', data);
+
+        if (data.status === 'success') {
+            updateStatusDisplay(data.parser_status);
+        } else {
+            console.error('❌ Ошибка в данных статуса:', data);
+            showAlert('Ошибка загрузки статуса: ' + (data.message || 'неизвестная ошибка'), 'error');
+            showDiagnosticsButton();
+        }
+    })
+    .catch(error => {
+        console.error('❌ Ошибка загрузки статуса:', error);
+
+        // Детальная информация об ошибке
+        let errorMessage = 'Не удалось подключиться к серверу';
+        if (error.message.includes('404')) {
+            errorMessage = 'Страница статуса не найдена (404)';
+        } else if (error.message.includes('500')) {
+            errorMessage = 'Ошибка сервера (500)';
+        } else if (error.message.includes('NetworkError')) {
+            errorMessage = 'Проблемы с сетью';
+        }
+
+        const statusElement = document.getElementById('statusText');
+        if (statusElement) {
+            statusElement.innerHTML = `<span class="status-stopped">❌ ${errorMessage}</span>`;
+        }
+        showAlert(errorMessage, 'error');
+        showDiagnosticsButton();
+    });
+}
+
+// Функция показа кнопки диагностики
+function showDiagnosticsButton() {
+    const diagnosticsBtn = document.getElementById('diagnosticsBtn');
+    if (!diagnosticsBtn) {
+        const buttonContainer = document.querySelector('.d-flex.gap-2.flex-wrap');
+        if (buttonContainer) {
+            buttonContainer.innerHTML += `
+                <button type="button" class="btn btn-outline-warning" onclick="runDiagnostics()">
+                    <i class="ri-bug-line me-1"></i> Диагностика
+                </button>
+            `;
+        }
+    }
+}
+
+// Функция диагностики
+function runDiagnostics() {
+    showAlert('Запускаю диагностику...', 'info');
+
+    fetch('/parser-diagnostics/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            console.log('🔧 Диагностика:', data.diagnostics);
+            showAlert('Диагностика завершена. Проверьте консоль браузера.', 'success');
+
+            const diagnostics = data.diagnostics;
+            let message = 'Результаты диагностики:\n';
+            message += `• Парсер загружен: ${diagnostics.parser_instance_exists ? '✅' : '❌'}\n`;
+            message += `• Запущен: ${diagnostics.is_running ? '✅' : '❌'}\n`;
+            message += `• Окна браузера: ${diagnostics.browser_windows || 0}\n`;
+            message += `• Менеджер браузера: ${diagnostics.browser_manager_exists ? '✅' : '❌'}\n`;
+
+            alert(message);
+        } else {
+            showAlert('Ошибка диагностики: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('Ошибка диагностики: ' + error, 'error');
+    });
+}
+
+// Переключение парсера
+function toggleParser() {
+    const button = document.getElementById('toggleParserBtn');
+    const originalText = button.innerHTML;
+    const isRunning = button.classList.contains('btn-danger');
+
+    button.disabled = true;
+    button.innerHTML = '<i class="ri-loader-4-line me-1"></i> Обработка...';
+
+    showAlert(isRunning ? 'Останавливаю парсер...' : 'Запускаю парсер...', 'info');
+
+    fetch('/toggle-parser/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            showAlert(data.message, 'success');
+            refreshParserStatus();
+        } else {
+            showAlert('Ошибка: ' + data.message, 'error');
+            button.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        showAlert('Ошибка сети: ' + error.message, 'error');
+        button.innerHTML = originalText;
+    })
+    .finally(() => {
+        setTimeout(() => {
+            button.disabled = false;
+        }, 2000);
+    });
+}
+
+// 🔥 ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАПУСКА ПАРСЕРА С ПАРАМЕТРАМИ
+function launchParserWithSettings() {
+    const timerHours = document.getElementById('timer_hours').value;
+    const browserWindows = document.getElementById('launch_browser_windows').value;
+    const site = document.getElementById('site_select').value;
+
+    console.log('🚀 Запуск парсера с параметрами:', {
+        timerHours, browserWindows, site
+    });
+
+    if (!timerHours) {
+        showAlert('Выберите время работы таймера', 'warning');
+        return;
+    }
+
+    showAlert(`Запускаю парсер для сайта ${site === 'auto.ru' ? 'Auto.ru' : 'Avito'}...`, 'info');
+
+    fetch('/launch-parser-with-params/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            timer_hours: timerHours,
+            browser_windows: parseInt(browserWindows),
+            site: site
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('📨 Ответ сервера:', data);
+        if (data.status === 'success') {
+            showAlert(data.message, 'success');
+            setTimeout(refreshParserStatus, 2000);
+        } else if (data.status === 'warning') {
+            showAlert(data.message, 'warning');
+        } else {
+            showAlert('Ошибка: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('❌ Ошибка запуска:', error);
+        showAlert('Ошибка сети: ' + error.message, 'error');
+    });
+}
+
+// Запуск парсера с конкретными настройками
+function runWithSettings(settingsId) {
+    const site = document.getElementById('site_select').value;
+
+    showAlert(`Запускаю парсер для сайта ${site} с выбранными настройками...`, 'Success');
+
+    const formData = new FormData();
+    formData.append('settings_id', settingsId);
+    formData.append('site', site);
+    formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+    fetch('/start-parser-with-settings/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showAlert(data.message, 'success');
+            setTimeout(refreshParserStatus, 2000);
+        } else {
+            showAlert(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('Ошибка сети: ' + error.message, 'error');
+    });
+}
+
+// Загрузка настроек
+function loadSettings(settingsId) {
+    showAlert('Загружаю настройки...', 'info');
+
+    const formData = new FormData();
+    formData.append('load_settings', settingsId);
+    formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+    fetch('/parser-settings/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            showAlert('Ошибка загрузки настроек', 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('Ошибка сети: ' + error.message, 'error');
+    });
+}
+
+// Удаление настроек
+function deleteSettings(settingsId) {
+    if (!confirm('Вы уверены, что хотите удалить эти настройки?')) {
+        return;
+    }
+
+    showAlert('Удаляю настройки...', 'info');
+
+    const formData = new FormData();
+    formData.append('delete_settings', settingsId);
+    formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+    fetch('/parser-settings/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            showAlert('Настройки успешно удалены!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showAlert('Ошибка при удалении настроек', 'error');
+        }
+    })
+    .catch(error => {
+        showAlert('Ошибка сети: ' + error.message, 'error');
+    });
+}
+
+// Сохранение настроек с AJAX
+function saveSettings(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('parserSettingsForm');
+    const formData = new FormData(form);
+
+    // Валидация полей на клиенте (только если заполнены)
+    const minPrice = formData.get('min_price');
+    const maxPrice = formData.get('max_price');
+    const minRating = formData.get('min_rating');
+    const checkInterval = formData.get('check_interval');
+    const browserWindows = formData.get('browser_windows');
+
+    // Проверка минимальной цены (только если заполнена)
+    if (minPrice && parseFloat(minPrice) < 0) {
+        showAlert('Цена не может быть отрицательной', 'error');
+        return;
+    }
+
+    // Проверка максимальной цены (только если заполнена)
+    if (maxPrice && parseFloat(maxPrice) < 0) {
+        showAlert('Цена не может быть отрицательной', 'error');
+        return;
+    }
+
+    // Проверка рейтинга (только если заполнен)
+    if (minRating && (parseFloat(minRating) < 0 || parseFloat(minRating) > 5)) {
+        showAlert('Рейтинг должен быть от 0 до 5', 'error');
+        return;
+    }
+
+    // Проверка интервала проверки (только если заполнен)
+    if (checkInterval && (parseInt(checkInterval) < 5 || parseInt(checkInterval) > 1440)) {
+        showAlert('Интервал проверки должен быть от 5 до 1440 минут', 'error');
+        return;
+    }
+
+    // Проверка окон браузера (только если заполнено)
+    if (browserWindows && (parseInt(browserWindows) < 1 || parseInt(browserWindows) > 5)) {
+        showAlert('Количество окон должно быть от 1 до 5', 'error');
+        return;
+    }
+
+    // Проверка ценового диапазона (только если оба заполнены)
+    if (minPrice && maxPrice && parseFloat(minPrice) >= parseFloat(maxPrice)) {
+        showAlert('Минимальная цена должна быть меньше максимальной', 'error');
+        return;
+    }
+
+    // Проверка обязательных полей
+    const name = formData.get('name');
+    const keywords = formData.get('keywords');
+
+    if (!name || !name.trim()) {
+        showAlert('Введите название настроек', 'error');
+        return;
+    }
+
+    if (!keywords || !keywords.trim()) {
+        showAlert('Введите ключевые слова для поиска', 'error');
+        return;
+    }
+
+    showAlert('Сохраняю настройки...', 'info');
+
+    fetch('/ajax-save-settings/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCSRFToken(),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showAlert('Настройки успешно сохранены!', 'success');
+
+            // Обновляем ID настроек в форме
+            if (data.settings_id) {
+                const settingsIdInput = document.querySelector('input[name="settings_id"]');
+                if (settingsIdInput) {
+                    settingsIdInput.value = data.settings_id;
+                }
+            }
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+
+        } else {
+            // Детальная обработка ошибок валидации
+            if (data.error_messages && data.error_messages.length > 0) {
+                const errorText = data.error_messages.join('\n');
+                showAlert('Ошибки в форме:\n' + errorText, 'error');
+            } else if (data.errors) {
+                let errorMessages = [];
+                for (let field in data.errors) {
+                    const fieldErrors = data.errors[field];
+                    fieldErrors.forEach(error => {
+                        errorMessages.push(error.message);
+                    });
+                }
+                showAlert('Ошибки валидации: ' + errorMessages.join(', '), 'error');
+            } else {
+                showAlert('Ошибка сохранения: ' + (data.message || 'Неизвестная ошибка'), 'error');
+            }
+        }
+    })
+    .catch(error => {
+        showAlert('Ошибка сети: ' + error.message, 'error');
+    });
+}
+
+// Создание новых настроек
+function createNewSettings() {
+    if (confirm('Создать новые настройки? Текущие несохраненные изменения будут потеряны.')) {
+        // Сбрасываем ID настроек - используем пустую строку
+        const settingsIdInput = document.querySelector('input[name="settings_id"]');
+        if (settingsIdInput) {
+            settingsIdInput.value = '';
+        }
+
+        // Очищаем ВСЕ поля полностью
+        const nameInput = document.querySelector('input[name="name"]');
+        const keywordsInput = document.querySelector('textarea[name="keywords"]');
+        const excludeInput = document.querySelector('textarea[name="exclude_keywords"]');
+
+        if (nameInput) nameInput.value = 'Мои настройки ' + new Date().toLocaleDateString();
+        if (keywordsInput) keywordsInput.value = '';
+        if (excludeInput) excludeInput.value = '';
+
+        // Очищаем все числовые поля
+        const fieldsToClear = [
+            'min_price', 'max_price', 'min_rating',
+            'check_interval', 'max_items_per_hour', 'browser_windows'
+        ];
+
+        fieldsToClear.forEach(fieldName => {
+            const input = document.querySelector(`[name="${fieldName}"]`);
+            if (input) input.value = '';
+        });
+
+        // Сбрасываем выпадающие списки к пустым значениям
+        const sellerTypeSelect = document.querySelector('select[name="seller_type"]');
+        if (sellerTypeSelect) sellerTypeSelect.value = '';
+
+        // Снимаем ВСЕ галочки
+        const isDefaultCheckbox = document.querySelector('input[name="is_default"]');
+        if (isDefaultCheckbox) isDefaultCheckbox.checked = false;
+
+        const isActiveCheckbox = document.querySelector('input[name="is_active"]');
+        if (isActiveCheckbox) isActiveCheckbox.checked = false;
+
+        showAlert('Создайте свои настройки с нуля. Заполните все необходимые поля!', 'info');
+    }
+}
+
+// 🔥 ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ CSRF ТОКЕНА
+function getCSRFToken() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfToken ? csrfToken.value : '';
+}
+
+// 🔥 ДИАГНОСТИКА СИСТЕМЫ
+function runSystemDiagnostics() {
+    console.log('🔧 Запуск диагностики системы...');
+
+    showAlert('Запускаю диагностику системы...', 'info');
+
+    // Проверяем доступность API
+    fetch('/api/parser-status/')
+        .then(response => {
+            console.log('📡 API статус:', response.status);
+            if (response.ok) {
+                showAlert('API доступен ✅', 'success');
+            } else {
+                showAlert(`API недоступен: ${response.status} ❌`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Ошибка API:', error);
+            showAlert('API недоступен ❌', 'error');
+        });
+}
+
+// 🔥 ДОБАВЛЕНИЕ КНОПКИ ДИАГНОСТИКИ В ИНТЕРФЕЙС
+function addDiagnosticsButton() {
+    const buttonContainer = document.querySelector('.d-flex.gap-2.flex-wrap');
+    if (buttonContainer && !document.getElementById('diagnosticsBtn')) {
+        buttonContainer.innerHTML += `
+            <button type="button" id="diagnosticsBtn" class="btn btn-outline-info" onclick="runSystemDiagnostics()">
+                <i class="ri-bug-line me-1"></i> Диагностика
+            </button>
+        `;
+    }
+}
+
+// 🔥 ИСПРАВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Инициализация парсера...');
+
+    // Проверяем наличие функций уведомлений
+    console.log('🔍 Проверка функций уведомлений:', {
+        'notificationSuccess': typeof notificationSuccess,
+        'notificationError': typeof notificationError,
+        'notificationInfo': typeof notificationInfo,
+        'notificationWarning': typeof notificationWarning,
+        'toastr': typeof toastr
+    });
+
+    // 🔥 ПОДКЛЮЧАЕМ КНОПКУ ЗАПУСКА/ОСТАНОВКИ
+    const toggleBtn = document.getElementById('toggleParserBtn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleParser);
+        console.log('✅ Кнопка запуска/остановки подключена');
+    } else {
+        console.error('❌ Кнопка toggleParserBtn не найдена');
+    }
+
+    // 🔥 ПОДКЛЮЧАЕМ КНОПКУ БЫСТРОГО ЗАПУСКА
+    const quickLaunchBtn = document.querySelector('button[onclick="launchParserWithSettings()"]');
+    if (quickLaunchBtn) {
+        quickLaunchBtn.addEventListener('click', launchParserWithSettings);
+        console.log('✅ Кнопка быстрого запуска подключена');
+    }
+
+    // Обработчик выбора сайта
+    const siteSelect = document.getElementById('site_select');
+    const autoRuTips = document.getElementById('auto_ru_tips');
+
+    if (siteSelect && autoRuTips) {
+        siteSelect.addEventListener('change', function() {
+            if (this.value === 'auto.ru') {
+                autoRuTips.style.display = 'block';
+
+                // Автозаполнение примерами для авто
+                const keywordsInput = document.querySelector('textarea[name="keywords"]');
+                if (keywordsInput && !keywordsInput.value.trim()) {
+                    keywordsInput.value = 'ford focus, toyota camry, bmw x5';
+                    showAlert('Добавлены примеры запросов для Auto.ru', 'info');
+                }
+            } else {
+                autoRuTips.style.display = 'none';
+            }
+        });
+
+        // Инициализация при загрузке
+        if (siteSelect.value === 'auto.ru') {
+            autoRuTips.style.display = 'block';
+        }
+    }
+
+    // Тестовое уведомление при загрузке
+    setTimeout(() => {
+        if (typeof notificationSuccess === 'function') {
+            notificationSuccess('Система парсера готова к работе!', 'Парсер');
+        }
+    }, 1000);
+
+    // Загружаем статус при открытии страницы
+    setTimeout(() => {
+        console.log('🔄 Первоначальная загрузка статуса...');
+        refreshParserStatus();
+    }, 1500);
+
+    // Автообновление статуса каждые 30 секунд
+    setInterval(refreshParserStatus, 30000);
+
+    // Автоматически добавляем кнопку диагностики
+    setTimeout(addDiagnosticsButton, 2000);
+
+    console.log('✅ Инициализация завершена');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,70 @@
+﻿services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: avito_postgres
+    environment:
+      POSTGRES_DB: site_hub
+      POSTGRES_USER: pashadark
+      POSTGRES_PASSWORD: 12344321
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pashadark"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  django:
+    image: python:3.11-slim
+    container_name: avito_django
+    ports:
+      - "8000:8000"
+    environment:
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: site_hub
+      DB_USER: pashadark
+      DB_PASSWORD: 12344321
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DJANGO_SETTINGS_MODULE: apps.core.settings
+      DEBUG: "True"
+      PYTHONUNBUFFERED: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../../:/app
+    working_dir: /app
+    command: >
+      sh -c "
+        echo '📦 Устанавливаем зависимости...' &&
+        pip install --no-cache-dir -r requirements.txt &&
+        
+        echo '⏳ Ждём PostgreSQL...' &&
+        sleep 5 &&
+        
+        echo '🔄 Применяем миграции...' &&
+        python manage.py migrate &&
+        
+        echo '🎨 Собираем статику...' &&
+        python manage.py collectstatic --noinput &&
+        
+        echo '👑 Создаём суперпользователя...' &&
+        python manage.py shell -c \"
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        if not User.objects.filter(username='admin').exists():
+            User.objects.create_superuser('admin', 'admin@example.com', 'admin123')
+            print('✅ Суперпользователь создан')
+        else:
+            print('✅ Суперпользователь уже существует')
+        \" &&
+        
+        echo '🚀 Запускаем Django...' &&
+        python manage.py runserver 0.0.0.0:8000 --insecure
+      "
+
+volumes:
+  postgres_data:

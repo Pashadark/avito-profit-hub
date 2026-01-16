@@ -1,0 +1,1213 @@
+/* ============================================= */
+/* СОВРЕМЕННЫЙ ДИЗАЙН КАРТОЧКИ ТОВАРА            */
+/* ВАЖНО: Все стили с !important                 */
+/* ============================================= */
+
+/* -------------------------------------------------------------------- */
+/* 1. БАЗОВЫЕ СТИЛИ КАРТОЧКИ                                           */
+/* -------------------------------------------------------------------- */
+
+/* Основная карточка товара */
+.card.product-card-modern,
+.product-card-modern {
+    border: none !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background: white !important;
+    overflow: hidden !important;
+    cursor: pointer !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+}
+
+/* Тело карточки */
+.modern-card-body {
+    padding: 16px !important;
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    position: relative !important;
+    z-index: 1 !important;
+    cursor: pointer !important;
+}
+
+/* Эффект при наведении на карточку */
+.card.product-card-modern:hover,
+.product-card-modern:hover {
+    transform: translateY(-8px) !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 2. ЗАГОЛОВОК КАРТОЧКИ                                               */
+/* -------------------------------------------------------------------- */
+
+/* Заголовок товара */
+.modern-title {
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    line-height: 1.4 !important;
+    color: #393939 !important;
+    margin: 0 !important;
+    flex: 1 !important;
+
+    /* Ограничение на 2 строки */
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-height: calc(14px * 1.4 * 2) !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 3. ГАЛЕРЕЯ ИЗОБРАЖЕНИЙ                                              */
+/* -------------------------------------------------------------------- */
+
+/* Контейнер галереи */
+.modern-gallery-container {
+    position: relative !important;
+    width: 100% !important;
+    height: 220px !important; /* Увеличиваем высоту */
+    overflow: hidden !important;
+    border-radius: 12px 12px 0 0 !important;
+    background: #f8f9fa !important;
+    margin-bottom: 12px !important;
+    aspect-ratio: 4/3 !important; /* Соотношение сторон 4:3 */
+}
+
+/* Трек слайдов */
+.modern-gallery-track {
+    display: flex !important;
+    height: 100% !important;
+    transition: transform 0.3s ease !important;
+}
+
+/* Отдельный слайд */
+.modern-gallery-slide {
+    flex: 0 0 100% !important;
+    height: 100% !important;
+    flex-shrink: 0 !important;
+}
+
+/* Изображение в слайде */
+.modern-gallery-image {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important; /* Заполняем, обрезая края */
+    object-position: center center !important; /* Центрируем изображение */
+    transition: transform 0.3s ease !important; /* Для плавного зума */
+}
+
+/* Легкий зум при наведении на карточку */
+.product-card-modern:hover .modern-gallery-image {
+    transform: scale(1.05) !important;
+}
+
+/* Наложение на галерею */
+.gallery-overlay {
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 60px !important;
+    background: linear-gradient(transparent, rgba(0,0,0,0.1)) !important;
+    pointer-events: none !important;
+}
+/* Для мобильных - адаптируем */
+@media (max-width: 768px) {
+    .modern-gallery-container {
+        height: 200px !important;
+        aspect-ratio: 1/1 !important; /* На мобильных квадратное */
+    }
+}
+
+@media (max-width: 576px) {
+    .modern-gallery-container {
+        height: 180px !important;
+    }
+}
+/* -------------------------------------------------------------------- */
+/* 4. НАВИГАЦИЯ ГАЛЕРЕИ                                                */
+/* -------------------------------------------------------------------- */
+
+/* Кнопки навигации - как у индикаторов */
+.modern-nav-btn {
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    border: none !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 8px !important; /* Скругленные углы как у индикаторов */
+    background: rgba(0, 0, 0, 0.4) !important; /* Такой же фон */
+    backdrop-filter: blur(10px) !important; /* Такой же blur */
+    color: white !important; /* Белые иконки */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    transition: all 0.3s ease !important;
+    z-index: 20 !important;
+    opacity: 0 !important;
+}
+
+/* Предыдущий слайд */
+.modern-prev {
+    left: 10px !important;
+}
+
+/* Следующий слайд */
+.modern-next {
+    right: 10px !important;
+}
+
+/* Иконки в кнопках */
+.modern-nav-btn i {
+    font-size: 18px !important;
+    font-weight: bold !important;
+}
+
+/* Показывать кнопки при наведении */
+.modern-gallery-container:hover .modern-nav-btn {
+    opacity: 1 !important;
+}
+
+/* Эффект при наведении на кнопки */
+.modern-nav-btn:hover {
+    background: rgba(0, 0, 0, 0.6) !important; /* Темнее при наведении */
+    transform: translateY(-50%) scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+}
+
+/* Активное состояние при нажатии */
+.modern-nav-btn:active {
+    transform: translateY(-50%) scale(0.95) !important;
+    background: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 5. ИНДИКАТОРЫ ГАЛЕРЕИ                                               */
+/* -------------------------------------------------------------------- */
+
+/* Контейнер индикаторов */
+.modern-indicators {
+    position: absolute !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    z-index: 10 !important;
+}
+
+/* Трек индикаторов */
+.modern-indicator-track {
+    display: flex !important;
+    gap: 3px !important;
+    padding: 3px 5px !important;
+    border-radius: 8px !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+/* Отдельный индикатор */
+.modern-indicator {
+    width: 4px !important;
+    height: 4px !important;
+    background: rgba(255,255,255,0.5) !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Активный индикатор */
+.modern-indicator.active {
+    background: white !important;
+    width: 12px !important;
+    border-radius: 2px !important;
+}
+
+/* Счетчик фотографий */
+.modern-photo-counter {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    background: rgba(0, 0, 0, 0.4) !important;
+    backdrop-filter: blur(10px) !important;
+    z-index: 10 !important;
+    line-height: 1 !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 6. БЕЙДЖИ НА КАРТОЧКЕ                                               */
+/* -------------------------------------------------------------------- */
+
+/* Бейдж прибыли */
+.profit-badge {
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    backdrop-filter: blur(10px) !important;
+    z-index: 10 !important;
+    line-height: 1 !important;
+    background: linear-gradient(135deg, rgba(0, 184, 148, 0.9), rgba(0, 160, 133, 0.9)) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Бейдж убытка */
+.loss-badge {
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    backdrop-filter: blur(10px) !important;
+    z-index: 10 !important;
+    line-height: 1 !important;
+    background: linear-gradient(135deg, rgba(255, 71, 87, 0.9), rgba(220, 53, 69, 0.9)) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Тег-бейдж */
+.tag-badge {
+    font-size: 9px !important;
+    padding: 2px 6px !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    border-radius: 12px !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 7. ИЗБРАННОЕ                                                        */
+/* -------------------------------------------------------------------- */
+
+/* Бейдж избранного */
+.favorite-photo-badge {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    z-index: 10 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.favorite-photo-badge i {
+    font-size: 16px !important;
+}
+
+/* Эффект при наведении на избранное */
+.favorite-photo-badge:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Активное состояние избранного */
+.favorite-photo-badge.active,
+.favorite-btn.active {
+    background: rgba(255, 71, 87, 0.9) !important;
+    color: white !important;
+    border-color: rgba(255, 71, 87, 0.3) !important;
+}
+
+/* Кнопка избранного */
+.favorite-btn.active i {
+    color: #ff4757 !important;
+}
+
+.favorite-btn.active {
+    color: #ff4757 !important;
+    border-color: #ff4757 !important;
+    background-color: rgba(255, 71, 87, 0.1) !important;
+}
+
+.favorite-btn:hover {
+    color: #ff4757 !important;
+    border-color: #ff4757 !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 8. ЦЕНЫ                                                              */
+/* -------------------------------------------------------------------- */
+
+/* Секция с ценами */
+.price-section {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    margin: 0 !important;
+    width: calc(100% + 8px) !important;
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+    box-sizing: border-box !important;
+}
+
+/* Текущая цена */
+.current-price {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #474953 !important;
+    line-height: 1.2 !important;
+}
+
+/* Целевая цена */
+.target-price {
+    font-size: 12px !important;
+    color: #6c757d !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+}
+
+/* Индикатор прибыли */
+.profit-indicator {
+    padding: 6px 8px !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    margin-top: 8px !important;
+    text-align: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Положительная прибыль */
+.profit-indicator.positive {
+    background: rgba(0, 184, 148, 0.15) !important;
+    color: #00b894 !important;
+}
+
+/* Отрицательная прибыль */
+.profit-indicator.negative {
+    background: rgba(255, 71, 87, 0.15) !important;
+    color: #ff4757 !important;
+}
+
+/* Справедливая цена */
+.profit-indicator.fair {
+    background: rgba(13, 110, 253, 0.15) !important;
+    color: #0d6efd !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 9. ПРОДАВЕЦ                                                          */
+/* -------------------------------------------------------------------- */
+
+/* Секция продавца */
+.seller-rating-sidebar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    background: rgba(255, 193, 7, 0.1) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    width: calc(100% + 8px) !important;
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+    box-sizing: border-box !important;
+}
+
+/* Аватар продавца */
+.seller-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;
+    flex-shrink: 0 !important;
+}
+
+.seller-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+}
+
+/* Информация о продавце */
+.seller-info-sidebar {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+}
+
+/* Имя продавца */
+.seller-name {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #2d3748 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Ряд с рейтингом */
+.seller-rating-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-bottom: 4px !important;
+}
+
+/* Звезды рейтинга */
+.seller-rating-stars {
+    display: flex !important;
+    align-items: center !important;
+    gap: 2px !important;
+}
+
+/* Значение рейтинга */
+.seller-rating-value {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #2d3748 !important;
+}
+
+/* Отзывы о продавце */
+.seller-reviews {
+    font-size: 12px !important;
+    color: #6c757d !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 10. ХАРАКТЕРИСТИКИ ТОВАРА                                           */
+/* -------------------------------------------------------------------- */
+
+/* Сетка характеристик (двухколоночная) */
+.modern-details-grid.two-columns-layout {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px 16px !important;
+    background: rgba(248, 249, 250, 0.8) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    width: calc(100% + 8px) !important;
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+    box-sizing: border-box !important;
+}
+
+/* Колонка характеристик */
+.details-column {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+}
+
+/* Отдельная характеристика */
+.detail-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 12px !important;
+    padding: 4px 0 !important;
+}
+
+/* Иконка характеристики */
+.detail-item i {
+    color: #6c757d !important;
+    width: 16px !important;
+    font-size: 14px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Текст характеристики */
+.detail-text {
+    color: #4a5568 !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* ============================================= */
+/* МЕТРО В ОДНУ СТРОКУ С ЦВЕТАМИ (без фона)     */
+/* ============================================= */
+
+/* Основной контейнер для метро */
+div.card.h-100.product-card-modern .metro-line-container {
+    background: rgba(248, 249, 250, 0.8) !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    margin-bottom: 12px !important;
+    width: calc(100% + 8px) !important;
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+    box-sizing: border-box !important;
+}
+
+/* Деталь метро в одну строку */
+div.card.h-100.product-card-modern .metro-line-container .metro-inline {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+}
+
+/* Иконка метро */
+div.card.h-100.product-card-modern .metro-line-container .metro-inline i {
+    color: #6c757d !important;
+    font-size: 14px !important;
+    margin-top: 1px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Контейнер станций в одну строку */
+div.card.h-100.product-card-modern .metro-line-container .metro-stations-line {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    flex: 1 !important;
+}
+
+/* Бейдж станции метро - БЕЗ ФОНА, только цвет текста */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    line-height: 1.2 !important;
+    flex-shrink: 0 !important;
+    background: none !important; /* Убираем фон */
+    border: none !important; /* Убираем границу */
+}
+
+/* Круг линии метро */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge .metro-circle {
+    width: 12px !important;
+    height: 12px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 8px !important;
+    font-weight: 700 !important;
+    color: white !important; /* Белый текст в кружке */
+    flex-shrink: 0 !important;
+    line-height: 1 !important;
+}
+
+/* ============================================= */
+/* ЦВЕТА ЛИНИЙ МЕТРО (ТОЛЬКО ЦВЕТ ТЕКСТА И КРУЖКА) */
+/* ============================================= */
+
+/* 1 линия - красная */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-1 {
+    color: #FF3333 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-1 .metro-circle {
+    background: #FF3333 !important;
+}
+
+/* 2 линия - зеленая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-2 {
+    color: #33CC33 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-2 .metro-circle {
+    background: #33CC33 !important;
+}
+
+/* 3 линия - синяя */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-3 {
+    color: #0066FF !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-3 .metro-circle {
+    background: #0066FF !important;
+}
+
+/* 4 линия - голубая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-4 {
+    color: #33CCFF !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-4 .metro-circle {
+    background: #33CCFF !important;
+}
+
+/* 5 линия - коричневая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-5 {
+    color: #996633 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-5 .metro-circle {
+    background: #996633 !important;
+}
+
+/* 6 линия - оранжевая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-6 {
+    color: #FF9900 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-6 .metro-circle {
+    background: #FF9900 !important;
+}
+
+/* 7 линия - фиолетовая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-7 {
+    color: #9933CC !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-7 .metro-circle {
+    background: #9933CC !important;
+}
+
+/* 8 линия - желтая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-8 {
+    color: #FFCC00 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-8 .metro-circle {
+    background: #FFCC00 !important;
+}
+
+/* 9 линия - серая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-9 {
+    color: #999999 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-9 .metro-circle {
+    background: #999999 !important;
+}
+
+/* 10 линия - светло-зеленая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-10 {
+    color: #99CC99 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-10 .metro-circle {
+    background: #99CC99 !important;
+}
+
+/* 11 линия - бирюзовая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-11 {
+    color: #66CCCC !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-11 .metro-circle {
+    background: #66CCCC !important;
+}
+
+/* 12 линия - розовая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-12 {
+    color: #FF99CC !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-12 .metro-circle {
+    background: #FF99CC !important;
+}
+
+/* 14 линия - бежевая */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-14 {
+    color: #CC9966 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-14 .metro-circle {
+    background: #CC9966 !important;
+}
+
+/* Линия по умолчанию */
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-default {
+    color: #666666 !important;
+}
+div.card.h-100.product-card-modern .metro-line-container .metro-badge.metro-line-default .metro-circle {
+    background: #666666 !important;
+}
+
+/* Разделитель между станциями */
+div.card.h-100.product-card-modern .metro-line-container .metro-separator {
+    color: #ddd !important;
+    font-size: 10px !important;
+    padding: 0 2px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    div.card.h-100.product-card-modern .metro-line-container {
+        padding: 10px !important;
+        width: calc(100% + 4px) !important;
+        margin-left: -2px !important;
+        margin-right: -2px !important;
+    }
+
+    div.card.h-100.product-card-modern .metro-line-container .metro-inline {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+
+    div.card.h-100.product-card-modern .metro-line-container .metro-stations-line {
+        width: 100% !important;
+        gap: 4px !important;
+    }
+
+    div.card.h-100.product-card-modern .metro-line-container .metro-badge {
+        font-size: 9px !important;
+        padding: 2px 4px !important;
+    }
+
+    div.card.h-100.product-card-modern .metro-line-container .metro-badge .metro-circle {
+        width: 10px !important;
+        height: 10px !important;
+        font-size: 7px !important;
+    }
+}
+/* -------------------------------------------------------------------- */
+/* 12. ФУТЕР КАРТОЧКИ                                                  */
+/* -------------------------------------------------------------------- */
+
+.card-footer {
+    background: rgba(248, 249, 250, 0.8) !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
+    padding: 8px 12px !important;
+}
+
+/* Информация о времени */
+.time-info {
+    display: flex !important;
+    align-items: center !important;
+    font-size: 10px !important;
+}
+
+.time-info small {
+    color: #8c8c8c !important;
+    font-size: 10px !important;
+    white-space: nowrap !important;
+}
+
+/* Метка "Найдено" */
+.found-time-label {
+    font-weight: 500 !important;
+    color: #6c757d !important;
+    margin-right: 4px !important;
+}
+
+/* Значение времени */
+.found-time-value {
+    color: #8c8c8c !important;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 13. КНОПКИ ДЕЙСТВИЙ                                                 */
+/* -------------------------------------------------------------------- */
+
+/* Контейнер кнопок действий */
+.action-buttons {
+    display: flex !important;
+    gap: 4px !important;
+}
+
+/* Базовая кнопка действия */
+.action-buttons .btn {
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+}
+
+.action-buttons .btn i {
+    font-size: 14px !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 14. СОВРЕМЕННЫЕ КНОПКИ                                              */
+/* -------------------------------------------------------------------- */
+
+/* Базовый стиль кнопки */
+.modern-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 3px 6px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    border: none !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    min-width: 28px !important;
+    height: 26px !important;
+}
+
+.modern-btn i {
+    font-size: 12px !important;
+}
+
+/* Основная кнопка */
+.modern-btn-primary {
+    background: rgba(13, 110, 253, 0.1) !important;
+    color: #0d6efd !important;
+}
+
+.modern-btn-primary:hover {
+    background: rgba(13, 110, 253, 0.2) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Информационная кнопка */
+.modern-btn-info {
+    background: rgba(13, 202, 240, 0.1) !important;
+    color: #0dcaf0 !important;
+}
+
+.modern-btn-info:hover {
+    background: rgba(13, 202, 240, 0.2) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Опасная кнопка */
+.modern-btn-danger {
+    background: rgba(255, 71, 87, 0.1) !important;
+    color: #ff4757 !important;
+}
+
+.modern-btn-danger:hover {
+    background: rgba(255, 71, 87, 0.2) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Предупреждающая кнопка */
+.modern-btn-warning {
+    background: rgba(255, 193, 7, 0.1) !important;
+    color: #ffc107 !important;
+}
+
+.modern-btn-warning:hover {
+    background: rgba(255, 193, 7, 0.2) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 15. КНОПКА "ЧИТАТЬ ДАЛЬШЕ"                                          */
+/* -------------------------------------------------------------------- */
+
+.btn-show-more {
+    background: none !important;
+    border: none !important;
+    color: #667eea !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    display: inline !important;
+    margin-left: 4px !important;
+    text-decoration: none !important;
+    transition: color 0.2s ease !important;
+}
+
+.btn-show-more:hover {
+    color: #5a6fd8 !important;
+    text-decoration: underline !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 16. БЕЙДЖИ ИСТОЧНИКОВ                                               */
+/* -------------------------------------------------------------------- */
+
+/* Бейдж источника */
+.site-badge {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 5px 8px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    transition: all 0.2s ease !important;
+    height: 22px !important;
+    white-space: nowrap !important;
+}
+
+/* Auto.ru */
+.site-badge.source-auto-ru {
+    background: rgba(230, 0, 0, 0.1) !important;
+    color: #E60000 !important;
+}
+
+/* Авито */
+.site-badge.source-avito {
+    background: rgba(76, 175, 80, 0.1) !important;
+    color: #4CAF50 !important;
+}
+
+/* Неизвестный источник */
+.site-badge.source-unknown {
+    background: rgba(158, 158, 158, 0.1) !important;
+    color: #666666 !important;
+    border: 1px solid rgba(158, 158, 158, 0.2) !important;
+}
+
+/* Рейтинг */
+.site-badge.site-badge-rating {
+    background: rgba(255, 193, 7, 0.1) !important;
+    color: #e67e22 !important;
+}
+
+/* Статус новое */
+.site-badge.site-badge-status.status-new {
+    background: rgba(255, 107, 107, 0.1) !important;
+    color: #ff6b6b !important;
+}
+
+/* Статус свежее */
+.site-badge.site-badge-status.status-fresh {
+    background: rgba(255, 193, 7, 0.1) !important;
+    color: #ffc107 !important;
+}
+
+/* Статус старое */
+.site-badge.site-badge-status.status-old {
+    background: rgba(108, 117, 125, 0.1) !important;
+    color: #6c757d !important;
+}
+
+/* Продавец реселлер */
+.site-badge.site-badge-seller.seller-reseller {
+    background: rgba(255, 193, 7, 0.1) !important;
+    color: #e67e22 !important;
+}
+
+/* Продавец частник */
+.site-badge.site-badge-seller.seller-private {
+    background: rgba(52, 152, 219, 0.1) !important;
+    color: #3498db !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* 17. ДОПОЛНИТЕЛЬНЫЕ ИКОНКИ                                           */
+/* -------------------------------------------------------------------- */
+
+/* Иконки для характеристик */
+.ri-roadster-line:before { content: "\f1b9"; }
+.ri-settings-5-line:before { content: "\f1c3"; }
+.ri-settings-3-line:before { content: "\f1c1"; }
+.ri-steering-2-line:before { content: "\f1d8"; }
+.ri-car-line:before { content: "\f1a1"; }
+.ri-user-shared-line:before { content: "\f1f3"; }
+.ri-file-text-line:before { content: "\f1a7"; }
+.ri-gift-line:before { content: "\f1aa"; }
+.ri-money-dollar-circle-line:before { content: "\f1b3"; }
+.ri-passport-line:before { content: "\f1c7"; }
+.ri-steering-line:before { content: "\f1d7"; }
+
+/* -------------------------------------------------------------------- */
+/* 18. АНИМАЦИИ И ИКОНКИ                                               */
+/* -------------------------------------------------------------------- */
+
+/* Анимация загрузки */
+.rotate {
+    animation: rotate 1s linear infinite !important;
+}
+@keyframes rotate {
+    from { transform: rotate(0deg) !important; }
+    to { transform: rotate(360deg) !important; }
+}
+
+/* Анимация появления карточки */
+.product-card-modern {
+    animation: fadeIn 0.5s ease-out !important;
+}
+@keyframes fadeIn {
+    from { opacity: 0 !important; transform: translateY(10px) !important; }
+    to { opacity: 1 !important; transform: translateY(0) !important; }
+}
+
+/* -------------------------------------------------------------------- */
+/* 19. АДАПТИВНОСТЬ                                                    */
+/* -------------------------------------------------------------------- */
+
+/* Для планшетов и маленьких экранов (768px и меньше) */
+@media (max-width: 768px) {
+    /* Карточка и контейнеры */
+    .modern-card-body {
+        padding: 12px !important;
+        gap: 10px !important;
+    }
+
+    /* Ширина блоков */
+    .price-section,
+    .seller-rating-sidebar,
+    .modern-details-grid.two-columns-layout {
+        width: calc(100% + 4px) !important;
+        margin-left: -2px !important;
+        margin-right: -2px !important;
+        padding: 10px !important;
+    }
+
+    /* Заголовок */
+    .modern-title {
+        font-size: 13px !important;
+        min-height: calc(13px * 1.4 * 2) !important;
+    }
+
+    /* Галерея */
+    .modern-gallery-container {
+        height: 180px !important;
+    }
+
+    .modern-nav-btn {
+        width: 28px !important;
+        height: 28px !important;
+    }
+
+    .modern-photo-counter {
+        right: 8px !important;
+    }
+
+    /* Кнопки */
+    .modern-btn {
+        min-width: 30px !important;
+        height: 28px !important;
+        padding: 4px 7px !important;
+    }
+
+    .modern-btn i {
+        font-size: 13px !important;
+    }
+
+    /* Избранное */
+    .favorite-photo-badge {
+        width: 28px !important;
+        height: 28px !important;
+    }
+
+    .favorite-photo-badge i {
+        font-size: 14px !important;
+    }
+
+    /* Метро */
+    .metro-badge {
+        padding: 2px 6px !important;
+        font-size: 9px !important;
+    }
+
+    .metro-circle {
+        width: 12px !important;
+        height: 12px !important;
+        font-size: 7px !important;
+    }
+
+    /* Цены */
+    .current-price {
+        font-size: 14px !important;
+    }
+
+    .target-price {
+        font-size: 11px !important;
+    }
+
+    /* Характеристики */
+    .modern-details-grid.two-columns-layout {
+        grid-template-columns: 1fr !important;
+        gap: 6px !important;
+    }
+
+    /* Бейджи */
+    .site-badge {
+        padding: 4px 6px !important;
+        font-size: 10px !important;
+        height: 20px !important;
+    }
+
+    .site-badge i {
+        font-size: 9px !important;
+    }
+
+    /* Время */
+    .time-info small {
+        font-size: 11px !important;
+    }
+}
+
+/* Для мобильных телефонов (576px и меньше) */
+@media (max-width: 576px) {
+    /* Карточка и контейнеры */
+    .modern-card-body {
+        padding: 10px !important;
+        gap: 8px !important;
+    }
+
+    /* Ширина блоков */
+    .price-section,
+    .seller-rating-sidebar,
+    .modern-details-grid.two-columns-layout {
+        width: calc(100% + 2px) !important;
+        margin-left: -1px !important;
+        margin-right: -1px !important;
+        padding: 8px !important;
+    }
+
+    /* Заголовок */
+    .modern-title {
+        font-size: 12px !important;
+        min-height: calc(12px * 1.4 * 2) !important;
+    }
+
+    /* Галерея */
+    .modern-gallery-container {
+        height: 160px !important;
+    }
+
+    /* Продавец */
+    .seller-avatar {
+        width: 36px !important;
+        height: 36px !important;
+    }
+
+    /* Характеристики */
+    .detail-item {
+        font-size: 11px !important;
+    }
+
+    .modern-details-grid.two-columns-layout {
+        gap: 4px !important;
+    }
+
+    /* Цены */
+    .current-price {
+        font-size: 13px !important;
+    }
+
+    .target-price {
+        font-size: 10px !important;
+    }
+
+    /* Метро */
+    .metro-station-container {
+        gap: 3px !important;
+    }
+
+    .metro-badge {
+        padding: 2px 5px !important;
+        font-size: 8px !important;
+    }
+}
+
+/* ============================================= */
+/* КОНЕЦ СОВРЕМЕННОГО ДИЗАЙНА КАРТОЧКИ ТОВАРА    */
+/* ============================================= */

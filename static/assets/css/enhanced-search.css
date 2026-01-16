@@ -1,0 +1,205 @@
+/* static/assets/css/enhanced-search.css */
+
+/* Улучшенные стили для поиска */
+
+/* Контейнер поиска */
+.search-input-wrapper {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Меню с подсказками */
+.tt-menu.navbar-search-suggestion {
+    background: #fff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(0, 0, 0, 0.02) !important;
+    max-height: 500px !important;
+    overflow-y: auto !important;
+    margin-top: 8px !important;
+    width: 100% !important;
+    min-width: 450px !important;
+    padding: 4px 0 !important;
+    z-index: 1100 !important;
+    backdrop-filter: blur(10px) !important;
+}
+
+/* Темная тема */
+[data-style="dark"] .tt-menu.navbar-search-suggestion {
+    background: rgba(30, 41, 59, 0.98) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Заголовки разделов */
+.suggestions-header {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    color: #4f46e5 !important;
+    padding: 12px 16px 8px !important;
+    margin-bottom: 4px !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+[data-style="dark"] .suggestions-header {
+    color: #818cf8 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Карточка результата */
+.search-result-item {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    margin: 2px 8px !important;
+    border-radius: 8px !important;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+}
+
+.search-result-item:hover {
+    background: rgba(79, 70, 229, 0.05) !important;
+    border-color: rgba(79, 70, 229, 0.1) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.1) !important;
+}
+
+[data-style="dark"] .search-result-item:hover {
+    background: rgba(79, 70, 229, 0.1) !important;
+    border-color: rgba(79, 70, 229, 0.2) !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2) !important;
+}
+
+/* Активный элемент (при навигации стрелками) */
+.tt-suggestion.active .search-result-item {
+    background: linear-gradient(
+        135deg,
+        rgba(79, 70, 229, 0.1),
+        rgba(139, 92, 246, 0.1)
+    ) !important;
+    border-color: rgba(79, 70, 229, 0.2) !important;
+    border-left: 3px solid #4f46e5 !important;
+}
+
+/* Изображения объявлений */
+.ad-photo {
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+}
+
+.search-result-item:hover .ad-photo {
+    border-color: #4f46e5 !important;
+    transform: scale(1.05) !important;
+}
+
+[data-style="dark"] .ad-photo {
+    border-color: #4b5563 !important;
+}
+
+/* Бейджи с ценами */
+.price-badge {
+    font-size: 0.75rem !important;
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+}
+
+/* Текст в результатах */
+.search-result-item h6 {
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    line-height: 1.3 !important;
+}
+
+.search-result-item .text-muted {
+    font-size: 0.8125rem !important;
+    line-height: 1.4 !important;
+}
+
+/* Пустой результат */
+.not-found {
+    text-align: center !important;
+    padding: 40px 20px !important;
+}
+
+.not-found i {
+    font-size: 3rem !important;
+    opacity: 0.3 !important;
+    margin-bottom: 16px !important;
+    color: #4f46e5 !important;
+}
+
+.not-found h6 {
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    margin-bottom: 8px !important;
+}
+
+.not-found p {
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+}
+
+/* PerfectScrollbar кастомизация */
+.ps__rail-y {
+    background: transparent !important;
+}
+
+.ps__thumb-y {
+    background: rgba(0, 0, 0, 0.2) !important;
+    width: 4px !important;
+}
+
+[data-style="dark"] .ps__thumb-y {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .tt-menu.navbar-search-suggestion {
+        position: fixed !important;
+        left: 16px !important;
+        right: 16px !important;
+        max-width: none !important;
+        margin-top: 8px !important;
+        min-width: auto !important;
+        border-radius: 16px !important;
+    }
+
+    .search-result-item {
+        margin: 2px 12px !important;
+        padding: 12px !important;
+    }
+
+    .suggestions-header {
+        padding: 16px 20px 12px !important;
+    }
+}
+
+/* Анимация появления */
+@keyframes enhancedSearchFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.tt-menu.navbar-search-suggestion {
+    animation: enhancedSearchFadeIn 0.2s ease-out !important;
+}
+
+/* Подсветка при поиске */
+.highlight {
+    background: rgba(255, 235, 59, 0.3) !important;
+    padding: 0 2px !important;
+    border-radius: 2px !important;
+    font-weight: 600 !important;
+}

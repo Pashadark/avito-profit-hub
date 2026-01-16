@@ -1,0 +1,414 @@
+/* assets/css/pages/favorites.css */
+.favorites-toolbar {
+    background: linear-gradient(135deg, #1a1f36 0%, #2d3748 100%);
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.favorites-toolbar .card-body {
+    color: white;
+}
+
+.favorites-toolbar .btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.favorites-toolbar .btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.favorites-toolbar .form-select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 8px;
+}
+
+.favorites-toolbar .form-select option {
+    background: #2d3748;
+    color: white;
+}
+
+/* Категории избранного */
+.favorites-categories {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+}
+
+.category-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    background: white;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    font-weight: 600;
+    flex: 1;
+    min-width: 160px;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.category-filter:hover {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.1);
+}
+
+.category-filter.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+/* Статистические карточки */
+.stats-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    background: white;
+    overflow: hidden;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.stats-card .card-body {
+    padding: 1.5rem;
+    text-align: center;
+}
+
+/* Баннеры уведомлений */
+.alert-favorites {
+    border: none;
+    border-radius: 12px;
+    border-left: 4px solid;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Мета-информация в карточках */
+.favorite-meta-info {
+    display: flex;
+    gap: 16px;
+    font-size: 11px;
+    color: #6c757d;
+    margin-top: 12px;
+    padding: 10px 0;
+    border-top: 1px solid #f1f3f4;
+    flex-wrap: wrap;
+}
+
+.favorite-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background: rgba(248, 249, 250, 0.8);
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.trend-up {
+    color: #00b894;
+    font-weight: 600;
+    background: rgba(0, 184, 148, 0.1) !important;
+}
+.trend-down {
+    color: #ff4757;
+    font-weight: 600;
+    background: rgba(255, 71, 87, 0.1) !important;
+}
+.expiring-soon {
+    color: #ff9f43;
+    font-weight: 700;
+    background: rgba(255, 159, 67, 0.1) !important;
+}
+
+/* Быстрые действия */
+.quick-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.quick-actions .btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 85px;
+    border: 1px solid;
+    font-weight: 500;
+}
+
+/* Бар массовых действий */
+.bulk-actions-bar {
+    border-left: 4px solid #dc3545;
+    animation: slideDown 0.3s ease;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Переключатель вида */
+.view-mode-toggle {
+    display: flex;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 4px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+.view-mode-toggle .btn {
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.view-mode-toggle .btn.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Чекбоксы для массового выбора */
+.item-checkbox {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 20;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid #fff;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.item-checkbox:hover {
+    transform: scale(1.1);
+}
+
+.item-checkbox:checked {
+    background: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.item-checkbox:checked::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Специфичные стили для избранного */
+.favorite-card-highlight {
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.favorite-card-highlight:hover {
+    border-color: #ffd700;
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.15);
+}
+
+.favorite-card-highlight::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 8px 8px 0 0;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.favorite-card-highlight:hover::before {
+    opacity: 1;
+}
+
+.empty-favorites {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 16px;
+    margin: 2rem 0;
+}
+
+.empty-favorites-icon {
+    font-size: 4rem;
+    color: #dee2e6;
+    margin-bottom: 1.5rem;
+    opacity: 0.7;
+}
+
+.favorite-actions-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.favorite-actions-header .badge {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+}
+
+/* Анимации */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.pulse-warning {
+    animation: pulse 2s infinite;
+}
+
+.price-drop-indicator {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 8px;
+    height: 8px;
+    background: #00b894;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .favorites-categories {
+        gap: 8px;
+    }
+
+    .category-filter {
+        min-width: calc(50% - 8px);
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+
+    .stats-card .card-body {
+        padding: 1.25rem;
+    }
+
+    .favorite-meta-info {
+        gap: 8px;
+        font-size: 10px;
+    }
+
+    .quick-actions .btn {
+        min-width: 75px;
+        font-size: 10px;
+        padding: 5px 8px;
+    }
+
+    .favorites-toolbar .btn span {
+        display: none;
+    }
+
+    .favorites-toolbar .btn i {
+        margin-right: 0 !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .category-filter {
+        min-width: 100%;
+    }
+
+    .favorites-toolbar .d-flex {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .favorites-toolbar .d-flex > div {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .view-mode-toggle {
+        justify-content: center;
+    }
+
+    .bulk-actions-bar .d-flex {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+}
+
+/* Стили для списка в режиме list view */
+.list-view .col-xl-3 {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+.list-view .product-card-modern {
+    display: flex;
+    flex-direction: row;
+    height: 200px;
+}
+
+.list-view .modern-gallery-container {
+    width: 200px;
+    height: 100%;
+    border-radius: 12px 0 0 12px;
+    flex-shrink: 0;
+}
+
+.list-view .modern-card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Индикатор нового в избранном */
+.new-favorite-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: linear-gradient(135deg, #00b894, #00a085);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 184, 148, 0.3);
+}

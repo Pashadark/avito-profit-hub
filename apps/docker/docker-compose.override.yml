@@ -1,0 +1,47 @@
+# Переопределения для разработки
+
+services:
+  django:
+    volumes:
+      - ../../:/app
+      - static_volume:/app/static
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    environment:
+      DJANGO_DEBUG: "True"
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    command: python manage.py runserver 0.0.0.0:8000
+
+  bot:
+    environment:
+      BOT_DEBUG: "True"
+    restart: "no"
+
+  celery:
+    environment:
+      CELERY_DEBUG: "True"
+    restart: "no"
+
+  celery-beat:
+    restart: "no"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: avito_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@avito.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - avito-network
+
+volumes:
+  pgadmin_data:

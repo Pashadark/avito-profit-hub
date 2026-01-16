@@ -1,0 +1,1882 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load custom_filters %}
+{% load rating_filters %}
+
+{% block content %}
+
+<!-- Actions Toolbar -->
+<div class="card mb-4 actions-toolbar-card">
+    <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <!-- Фильтр -->
+                <button class="btn btn-primary btn-sm toolbar-btn d-flex align-items-center gap-2"
+                        data-bs-toggle="modal" data-bs-target="#filterModal">
+                    <i class="ri-filter-line"></i>
+                    <span class="d-none d-md-inline">Фильтр</span>
+                    {% if current_filters.category or current_filters.price_min or current_filters.price_max or current_filters.seller_type or current_filters.profitable_only or current_filters.condition or current_filters.city or current_filters.metro or current_filters.newness %}
+                    <span class="badge bg-warning ms-1">!</span>
+                    {% endif %}
+                </button>
+
+                <!-- Сортировка -->
+                <button class="btn btn-outline-primary btn-sm toolbar-btn d-flex align-items-center gap-2"
+                        data-bs-toggle="modal" data-bs-target="#sortModal">
+                    <i class="ri-sort-desc"></i>
+                    <span class="d-none d-md-inline">Сортировка</span>
+                </button>
+            </div>
+
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <!-- КНОПКА-ПЕРЕКЛЮЧАТЕЛЬ: Избранное ↔ Все объявления -->
+
+                {% if is_favorites_view %}
+                    <!-- Кнопка "Все объявления" в режиме избранного -->
+                    <a href="?{% for key, value in request.GET.items %}{% if key != 'favorites' and key != 'page' %}{{ key }}={{ value }}{% if not forloop.last %}&{% endif %}{% endif %}{% endfor %}"
+                       class="btn btn-primary btn-sm toolbar-btn d-flex align-items-center gap-2 position-relative">
+                        <i class="ri-list-check"></i>
+                        <span class="d-none d-md-inline">Все объявления ({% get_total_items request.user %})</span>
+                    </a>
+                {% else %}
+                    <!-- Кнопка "Избранное" в режиме всех объявлений -->
+                    <a href="?favorites=1{% for key, value in request.GET.items %}{% if key != 'favorites' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                       class="btn btn-danger btn-sm toolbar-btn d-flex align-items-center gap-2 position-relative">
+                        <i class="ri-heart-fill"></i>
+                        <span class="d-none d-md-inline">Избранное ({{ favorites_count|default:0 }})</span>
+                    </a>
+                {% endif %}
+
+                <!-- Кнопка выпадающего меню для экспорта -->
+                <div class="dropdown">
+                    <button class="btn btn-success btn-sm toolbar-btn d-flex align-items-center gap-2 dropdown-toggle"
+                            type="button"
+                            id="exportDropdown"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                        <i class="ri-download-line" id="exportIcon"></i>
+                        <span class="d-none d-md-inline" id="exportText">Экспорт</span>
+                        <span class="spinner-border spinner-border-sm d-none" id="exportSpinner" role="status"></span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                        <li>
+                            <a class="dropdown-item export-link" href="{% url 'website:export_excel' %}?{{ request.GET.urlencode }}">
+                                <i class="ri-file-excel-line me-2"></i> Excel
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item export-link" href="{% url 'website:export_pdf' %}?{{ request.GET.urlencode }}">
+                                <i class="ri-file-pdf-line me-2"></i> PDF
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item export-link" href="{% url 'website:export_csv' %}?{{ request.GET.urlencode }}">
+                                <i class="ri-file-text-line me-2"></i> CSV
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item export-link" href="{% url 'website:export_all_zip' %}?{{ request.GET.urlencode }}">
+                                <i class="ri-archive-line me-2"></i> Скачать (.zip)
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <!-- Обновить -->
+                <button class="btn btn-outline-secondary btn-sm toolbar-btn d-flex align-items-center gap-2"
+                        onclick="location.reload()" title="Обновить данные">
+                    <i class="ri-refresh-line"></i>
+                    <span class="d-none d-md-inline">Обновить</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Основная карточка -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <h5 class="card-title mb-0">
+            {% if is_favorites_view %}
+                <!-- На странице избранного -->
+                Избранные объявления ({{ found_items.paginator.count }})
+            {% else %}
+                <!-- На странице всех объявлений -->
+                Найденные объявления ({{ stats.total_items|default:found_items.paginator.count|default:0 }})
+            {% endif %}
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+            <small class="text-muted">Размер страницы:</small>
+            <select class="form-select form-select-sm" id="pageSizeSelect" onchange="changePageSize(this)">
+                <option value="20" {% if request.GET.page_size == '20' or not request.GET.page_size %}selected{% endif %}>20</option>
+                <option value="50" {% if request.GET.page_size == '50' %}selected{% endif %}>50</option>
+                <option value="100" {% if request.GET.page_size == '100' %}selected{% endif %}>100</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <!-- Active Filters -->
+        {% if current_filters.category or current_filters.price_min or current_filters.price_max or current_filters.seller_type or current_filters.profitable_only or current_filters.condition or current_filters.city or current_filters.metro or current_filters.newness %}
+        <div class="mb-4">
+            <small class="text-muted">Активные фильтры:</small>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                {% if current_filters.seller_type == 'private' %}
+                <span class="badge bg-primary">#Частные продавцы</span>
+                {% elif current_filters.seller_type == 'reseller' %}
+                <span class="badge bg-primary">#Перекупы</span>
+                {% endif %}
+
+                {% if current_filters.category and current_filters.category != 'all' %}
+                <span class="badge bg-primary">Категория: {{ current_filters.category }}</span>
+                {% endif %}
+
+                {% if current_filters.price_min %}
+                <span class="badge bg-primary">Цена от: {{ current_filters.price_min }}₽</span>
+                {% endif %}
+
+                {% if current_filters.price_max %}
+                <span class="badge bg-primary">Цена до: {{ current_filters.price_max }}₽</span>
+                {% endif %}
+
+                {% if current_filters.profitable_only %}
+                <span class="badge bg-primary">Только выгодные</span>
+                {% endif %}
+
+                {% if current_filters.condition %}
+                <span class="badge bg-info">Состояние: {{ current_filters.condition }}</span>
+                {% endif %}
+
+                {% if current_filters.city %}
+                <span class="badge bg-info">Город: {{ current_filters.city }}</span>
+                {% endif %}
+
+                {% if current_filters.metro %}
+                <span class="badge bg-info">Метро: {{ current_filters.metro }}</span>
+                {% endif %}
+
+                {% if current_filters.newness %}
+                <span class="badge bg-info">Новизна: {{ current_filters.newness }}</span>
+                {% endif %}
+
+                <!-- Кнопка "Очистить все" -->
+                <a href="{% if request.GET.favorites == '1' %}?favorites=1{% else %}?{% endif %}" class="badge bg-danger">Очистить все</a>
+    </div>
+</div>
+{% endif %}
+
+{% if found_items %}
+<!-- АДАПТИРОВАННАЯ СЕТКА -->
+<div class="row g-4" id="productsContainer">
+    {% for item in found_items %}
+    <div class="col-xl-3 col-lg-4 col-md-6 col-sm-6">
+    <div class="card h-100 product-card-modern" data-item-id="{{ item.id }}">
+        <!-- ГАЛЕРЕЯ -->
+        <div class="position-relative modern-gallery-wrapper">
+            {% with images=item.get_images %}
+            {% if images %}
+                <div class="modern-gallery-container"
+                     role="region"
+                     aria-label="Галерея изображений товара {{ item.title }}"
+                     data-item-id="{{ item.id }}">
+                    <div class="modern-gallery-track">
+                        {% for image_url in images %}
+                        <div class="modern-gallery-slide">
+                            <img src="{{ image_url }}"
+                                 class="modern-gallery-image"
+                                 alt="{{ item.title }} - изображение {{ forloop.counter }}"
+                                 onerror="handleImageError(this)"
+                                 loading="lazy"
+                                 decoding="async">
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="gallery-overlay"></div>
+
+                    {% if images|length > 1 %}
+                    <div class="modern-indicators">
+                        <div class="modern-indicator-track">
+                            {% for image_url in images %}
+                            <div class="modern-indicator {% if forloop.first %}active{% endif %}"
+                                 data-slide="{{ forloop.counter0 }}"
+                                 aria-label="Перейти к изображению {{ forloop.counter }}"></div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <button class="modern-nav-btn modern-prev"
+                            aria-label="Предыдущее изображение">
+                        <i class="ri-arrow-left-s-line"></i>
+                    </button>
+                    <button class="modern-nav-btn modern-next"
+                            aria-label="Следующее изображение">
+                        <i class="ri-arrow-right-s-line"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center modern-gallery-container">
+                    <div class="text-center text-muted">
+                        <i class="ri-image-line ri-3x mb-2 opacity-50"></i>
+                        <p class="mb-0 small opacity-75">Нет фото</p>
+                    </div>
+                </div>
+            {% endif %}
+            {% endwith %}
+
+            {% if item.get_tags %}
+            <div class="tags-container">
+                {% for tag in item.get_tags|slice:":2" %}
+                <span class="badge bg-light text-dark me-1 mb-1 tag-badge">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- КОНТЕНТ КАРТОЧКИ -->
+        <div class="card-body modern-card-body" onclick="window.location.href='{% url 'website:found_item_detail' item.id %}'">
+
+            <!-- ЗАГОЛОВОК -->
+            <div class="mb-3">
+                <h6 class="card-title modern-title mb-2">
+                    {{ item.title }}
+                </h6>
+            </div>
+
+            <!-- БЛОК БЕЙДЖЕЙ -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- БЕЙДЖ ИСТОЧНИКА -->
+                {% if item.source == 'auto_ru' %}
+                <div class="site-badge site-badge-source source-auto-ru" title="Auto.ru">
+                    <i class="ri-car-fill"></i>
+                    <span>Auto.ru</span>
+                </div>
+                {% elif item.source == 'avito' %}
+                <div class="site-badge site-badge-source source-avito" title="Авито">
+                    <i class="ri-home-4-fill"></i>
+                    <span>Авито</span>
+                </div>
+                {% else %}
+                <div class="site-badge site-badge-source source-unknown" title="{{ item.source|default:'Источник' }}">
+                    <i class="ri-question-line"></i>
+                    <span>{{ item.source|default:"Источник" }}</span>
+                </div>
+                {% endif %}
+
+                <!-- РЕЙТИНГ -->
+                {% if item.seller_rating %}
+                <div class="site-badge site-badge-rating" title="Рейтинг продавца">
+                    <i class="ri-star-fill"></i>
+                    <span>{{ item.seller_rating }}</span>
+                </div>
+                {% endif %}
+
+                <!-- СТАТУС ПРОСМОТРОВ -->
+                {% if item.views_count %}
+                    {% if item.views_count < 20 %}
+                    <div class="site-badge site-badge-status status-new" title="Меньше 20 просмотров">
+                        <i class="ri-fire-fill"></i>
+                        <span>Новое</span>
+                    </div>
+                    {% elif item.views_count >= 21 and item.views_count <= 40 %}
+                    <div class="site-badge site-badge-status status-fresh" title="21-40 просмотров">
+                        <i class="ri-leaf-fill"></i>
+                        <span>Свежее</span>
+                    </div>
+                    {% elif item.views_count > 40 %}
+                    <div class="site-badge site-badge-status status-old" title="Больше 40 просмотров">
+                        <i class="ri-time-line"></i>
+                        <span>Старое</span>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                <!-- ПРОДАВЕЦ -->
+                {% if item.seller_type == 'Компания' or item.seller_type == 'Магазин' or item.seller_type == 'reseller' %}
+                <div class="site-badge site-badge-seller seller-reseller" title="Продавец">
+                    <i class="ri-store-2-line"></i>
+                    <span>{{ item.seller_type }}</span>
+                </div>
+                {% else %}
+                <div class="site-badge site-badge-seller seller-private" title="Продавец">
+                    <i class="ri-user-line"></i>
+                    <span>{{ item.seller_type|default:"Частное лицо" }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- БЛОК ЦЕН -->
+            <div class="price-section mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="current-price">
+                        {{ item.price|intcomma }} ₽
+                    </div>
+                    <div class="target-price">
+                        цель {{ item.target_price|intcomma }} ₽
+                    </div>
+                </div>
+
+                {% if item.source == 'avito' %}
+                    {% if item.profit > 0 %}
+                    <div class="profit-indicator positive">
+                        <i class="ri-arrow-up-line me-1"></i>
+                        Прибыль: +{{ item.profit|intcomma }} ₽
+                    </div>
+                    {% elif item.profit < 0 %}
+                    <div class="profit-indicator negative">
+                        <i class="ri-arrow-down-line me-1"></i>
+                        Убыток: {{ item.profit|intcomma }} ₽
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                {% if item.source == 'auto_ru' and item.price_status %}
+                    {% if 'Выше' in item.price_status %}
+                    <div class="profit-indicator negative">
+                        <i class="ri-arrow-up-line me-1"></i>
+                        {{ item.price_status }}
+                    </div>
+                    {% elif 'Ниже' in item.price_status %}
+                    <div class="profit-indicator positive">
+                        <i class="ri-arrow-down-line me-1"></i>
+                        {{ item.price_status }}
+                    </div>
+                    {% elif 'Справедливая' in item.price_status %}
+                    <div class="profit-indicator fair">
+                        <i class="ri-check-line me-1"></i>
+                        {{ item.price_status }}
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- ПРОДАВЕЦ -->
+            <div class="seller-rating-sidebar">
+                <div class="seller-avatar">
+                    {% if item.seller_avatar %}
+                        <img src="{{ item.seller_avatar }}" alt="Аватар продавца" onerror="this.src='/static/assets/img/avatars/1.png'">
+                    {% else %}
+                        <img src="/static/assets/img/avatars/1.png" alt="Аватар продавца">
+                    {% endif %}
+                </div>
+                <div class="seller-info-sidebar">
+                    {% if item.seller_rating %}
+                    <div class="seller-rating-row">
+                        <div class="seller-rating-stars">
+                            {{ item.seller_rating|rating_stars|safe }}
+                        </div>
+                        <div class="seller-rating-value">
+                            {{ item.seller_rating }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if item.seller_name %}
+                    <div class="seller-name-row">
+                        <div class="seller-name">{{ item.seller_name }}</div>
+                        {% if item.reviews_count %}
+                        <div class="seller-reviews">({{ item.reviews_count }} отзыва)</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- ХАРАКТЕРИСТИКИ -->
+            <div class="modern-details-grid two-columns-layout">
+                <div class="details-column">
+                    {% if item.posted_date and item.posted_date != 'Дата не указана' and item.posted_date != 'Не указана' %}
+                    <div class="detail-item">
+                        <i class="ri-calendar-event-line"></i>
+                        <span class="detail-text">{{ item.posted_date }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if item.views_count is not None %}
+                    <div class="detail-item">
+                        <i class="ri-eye-line"></i>
+                        <span class="detail-text">{{ item.views_count|intcomma }} просмотров</span>
+                    </div>
+                    {% endif %}
+
+                    {% if item.condition %}
+                    <div class="detail-item">
+                        <i class="ri-checkbox-circle-line"></i>
+                        <span class="detail-text">{{ item.condition }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if item.category %}
+                    <div class="detail-item">
+                        <i class="ri-price-tag-3-line"></i>
+                        <span class="detail-text">{{ item.category }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="details-column">
+                    {% if item.city and item.city != 'Не указан' and item.city != 'None' %}
+                    <div class="detail-item">
+                        <i class="ri-map-pin-line"></i>
+                        <span class="detail-text">{{ item.city }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if item.mileage %}
+                    <div class="detail-item">
+                        <i class="ri-roadster-line"></i>
+                        <span class="detail-text">{{ item.mileage }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if item.year %}
+                    <div class="detail-item">
+                        <i class="ri-calendar-line"></i>
+                        <span class="detail-text">{{ item.year }} год</span>
+                    </div>
+                    {% endif %}
+
+                    {% if item.color %}
+                    <div class="detail-item">
+                        <i class="ri-palette-line"></i>
+                        <span class="detail-text">{{ item.color }}</span>
+                    </div>
+                    {% endif %}
+
+                    {% if item.product_id %}
+                    <div class="detail-item">
+                        <i class="ri-hashtag"></i>
+                        <span class="detail-text">{{ item.product_id }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if item.metro_stations %}
+            <div class="metro-line-container">
+                <div class="detail-item metro-inline">
+                    <i class="ri-subway-line"></i>
+                    <div class="metro-stations-line">
+                        {% for station in item.metro_stations %}
+                            {% if station.name %}
+                            <span class="metro-badge metro-line-{{ station.line_number|default:'default' }}">
+                                <span class="metro-circle">{{ station.line_number|default:'?' }}</span>
+                                {{ station.name }}
+                            </span>
+                            {% if not forloop.last %}<span class="metro-separator">•</span>{% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if item.description and item.description != 'Описание отсутствует' %}
+            <div class="description-section">
+                <div class="description-content" id="description-{{ item.id }}">
+                    {{ item.description|truncatewords:20 }}
+                    {% if item.description|wordcount > 20 %}
+                    <button class="btn-show-more" onclick="event.stopPropagation(); window.location.href='{% url 'website:found_item_detail' item.id %}'">
+                        Читать дальше...
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer py-2 px-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="time-info">
+                    <small>
+                        <span class="found-time-label">Найдено:</span>
+                        <span class="found-time-value">{{ item.found_at|date:"d.m.Y H:i" }}</span>
+                    </small>
+                </div>
+                <div class="action-buttons">
+                    <a href="{{ item.url }}" target="_blank" class="modern-btn modern-btn-primary" title="Открыть на {{ item.source|default:'сайте' }}" onclick="event.stopPropagation()">
+                        <i class="ri-external-link-line"></i>
+                    </a>
+                    <button class="modern-btn modern-btn-warning share-btn"
+                            data-item-id="{{ item.id }}"
+                            title="Поделиться"
+                            onclick="shareItem('{{ item.id }}')">
+                        <i class="ri-share-line"></i>
+                    </button>
+                    <!-- ДОБАВЛЕНА КНОПКА ИЗБРАННОГО -->
+                    <button class="modern-btn modern-btn-danger favorite-btn {% if item.is_favorite %}active{% endif %}"
+                            data-item-id="{{ item.id }}"
+                            data-is-favorite="{{ item.is_favorite|yesno:'true,false' }}"
+                            title="{% if item.is_favorite %}Удалить из избранного{% else %}Добавить в избранное{% endif %}"
+                            onclick="event.stopPropagation()">
+                        <i class="{% if item.is_favorite %}ri-heart-fill{% else %}ri-heart-line{% endif %}"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    {% endfor %}
+</div> <!-- ЗАКРЫТИЕ row -->
+
+<!-- Пагинация -->
+<nav aria-label="Page navigation" class="mt-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div class="pagination-info">
+            <small class="text-muted">
+                Показано {{ found_items.start_index }}-{{ found_items.end_index }} из {{ found_items.paginator.count }}
+            </small>
+        </div>
+
+        <div class="d-flex justify-content-center flex-grow-1 mx-3">
+            <ul class="pagination mb-0">
+                {% if found_items.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ found_items.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="ri-arrow-left-s-line"></i>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">
+                        <i class="ri-arrow-left-s-line"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                <!-- Всегда показываем 10 кнопок страниц -->
+                {% with total_pages=found_items.paginator.num_pages current_page=found_items.number %}
+                    {% if total_pages <= 10 %}
+                        <!-- Если страниц меньше или равно 10, показываем все -->
+                        {% for num in found_items.paginator.page_range %}
+                            {% if num == current_page %}
+                            <li class="page-item active">
+                                <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <!-- Если страниц больше 10, показываем 10 кнопок вокруг текущей -->
+                        {% with start_page=current_page|add:"-5"|default:1 end_page=current_page|add:"4" %}
+                            {% if start_page < 1 %}
+                                {% with start_page=1 end_page=10 %}
+                                {% for num in found_items.paginator.page_range %}
+                                    {% if num >= start_page and num <= end_page %}
+                                        {% if num == current_page %}
+                                        <li class="page-item active">
+                                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        </li>
+                                        {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        </li>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% endwith %}
+                            {% elif end_page > total_pages %}
+                                {% with start_page=total_pages|add:"-9" end_page=total_pages %}
+                                {% for num in found_items.paginator.page_range %}
+                                    {% if num >= start_page and num <= end_page %}
+                                        {% if num == current_page %}
+                                        <li class="page-item active">
+                                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        </li>
+                                        {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        </li>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% endwith %}
+                            {% else %}
+                                <!-- Нормальный случай - показываем 5 страниц до и 4 после текущей -->
+                                {% for num in found_items.paginator.page_range %}
+                                    {% if num >= start_page and num <= end_page %}
+                                        {% if num == current_page %}
+                                        <li class="page-item active">
+                                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        </li>
+                                        {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                        </li>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                {% endwith %}
+
+                {% if found_items.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ found_items.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="ri-arrow-right-s-line"></i>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <a class="page-link" href="#">
+                        <i class="ri-arrow-right-s-line"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <div class="text-muted">
+            <small>Страница {{ found_items.number }} из {{ found_items.paginator.num_pages }}</small>
+        </div>
+    </div>
+</nav>
+
+{% else %}
+<!-- БЛОК КОГДА ТОВАРОВ НЕТ -->
+<div class="text-center py-5">
+    <i class="ri-inbox-line ri-3x text-muted mb-3"></i>
+    <h5 class="text-muted mb-3">
+        Товары не найдены
+    </h5>
+    <p class="text-muted mb-4">
+        Попробуйте изменить параметры фильтрации
+    </p>
+    <a href="?" class="btn btn-primary">
+        <i class="ri-close-line me-2"></i>
+        Сбросить фильтры
+    </a>
+</div>
+{% endif %}
+
+<!-- Аналитика -->
+{% if stats.analytics %}
+<div class="card mt-4 analytics-card">
+    <div class="card-header">
+        <h6 class="mb-0"><i class="ri-line-chart-line me-2"></i>Аналитика поиска</h6>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-6 col-md-3 mb-3">
+                <div class="metric-value text-primary">{{ stats.avg_profit|default:"0"|intcomma }}₽</div>
+                <div class="metric-label">Средняя прибыль</div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+                <div class="metric-value text-success">{{ stats.success_rate|default:"0" }}%</div>
+                <div class="metric-label">Успешность</div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+                <div class="metric-value text-info">{{ stats.avg_time|default:"0" }}ч</div>
+                <div class="metric-label">Время поиска</div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+                <div class="metric-value text-warning">{{ stats.top_category|default:"-" }}</div>
+                <div class="metric-label">Топ категория</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Модальные окна -->
+<!-- Фильтр -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title"><i class="ri-filter-line me-2"></i>Расширенный фильтр товаров</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+        <form method="get" id="filterForm">
+            <div class="row g-4">
+                <!-- Основные фильтры -->
+                <div class="col-md-6">
+                    <div class="mb-4">
+                        <label class="form-label">Категория</label>
+                        <select class="form-select" name="category" id="categorySelect">
+                            <option value="all">Все категории</option>
+                            <option value="Товары для компьютера">Товары для компьютера</option>
+                            <option value="Автомобили">Автомобили</option>
+                            <option value="Мобильные телефоны">Мобильные телефоны</option>
+                            <option value="Аксессуары">Аксессуары</option>
+                            <option value="Брюки">Брюки</option>
+                            <option value="Сапоги">Сапоги</option>
+                            <option value="Кроссовки и кеды">Кроссовки и кеды</option>
+                            <option value="Кроссовки">Кроссовки</option>
+                            <option value="Зимние куртки и пуховики">Зимние куртки и пуховики</option>
+                            <option value="Другое">Другое</option>
+                            <option value="Для мальчиков">Для мальчиков</option>
+                            <option value="Ноутбуки">Ноутбуки</option>
+                            <option value="Комплектующие">Комплектующие</option>
+                            <option value="Кузов">Кузов</option>
+                            <option value="Двигатель">Двигатель</option>
+                            <option value="Sportage">Sportage</option>
+                            <option value="Rio">Rio</option>
+                            <option value="Sorento">Sorento</option>
+                            <option value="Ceed">Ceed</option>
+                            <option value="Для автомобилей">Для автомобилей</option>
+                            <option value="18">18</option>
+                            <option value="Аудио- и видеотехника">Аудио- и видеотехника</option>
+                            <option value="Для салона">Для салона</option>
+                            <option value="Часы">Часы</option>
+                            <option value="Ботинки и полуботинки">Ботинки и полуботинки</option>
+                            <option value="Игровые приставки и аксессуары">Игровые приставки и аксессуары</option>
+                            <option value="Парфюмерия">Парфюмерия</option>
+                            <option value="Настольные компьютеры">Настольные компьютеры</option>
+                            <option value="Кофты и футболки">Кофты и футболки</option>
+                            <option value="Толстовки и свитшоты">Толстовки и свитшоты</option>
+                            <option value="Демисезонные куртки">Демисезонные куртки</option>
+                            <option value="Лёгкие куртки и ветровки">Лёгкие куртки и ветровки</option>
+                            <option value="Пиджаки и костюмы">Пиджаки и костюмы</option>
+                            <option value="Красота и здоровье">Красота и здоровье</option>
+                            <option value="Книги">Книги</option>
+                            <option value="Автосервисы для автомобилей">Автосервисы для автомобилей</option>
+                            <option value="Аудио и видео">Аудио и видео</option>
+                            <option value="Кондиционеры и запчасти">Кондиционеры и запчасти</option>
+                            <option value="Кеды">Кеды</option>
+                            <option value="Вторичка">Вторичка</option>
+                            <option value="Охота">Охота</option>
+                            <option value="Iphone 14 ночь">Iphone 14 ночь</option>
+                            <option value="Сумки, рюкзаки и чемоданы">Сумки, рюкзаки и чемоданы</option>
+                            <option value="steelseries arctis pro только что">steelseries arctis pro только что</option>
+                            <option value="Iphone 12 только что">Iphone 12 только что</option>
+                            <option value="Iphone 13 только что">Iphone 13 только что</option>
+                            <option value="Ремонт и обслуживание техники">Ремонт и обслуживание техники</option>
+                            <option value="Мониторы и запчасти">Мониторы и запчасти</option>
+                            <option value="Бытовая техника">Бытовая техника</option>
+                            <option value="Телевизоры и проекторы">Телевизоры и проекторы</option>
+                            <option value="Электроинструменты">Электроинструменты</option>
+                            <option value="Фототехника">Фототехника</option>
+                            <option value="mazda утро">mazda утро</option>
+                            <option value="Женские кроссовки новые оригинал только что">Женские кроссовки новые оригинал только что</option>
+                            <option value="Джемперы, свитеры, кардиганы">Джемперы, свитеры, кардиганы</option>
+                            <option value="Клеи">Клеи</option>
+                            <option value="Пена">Пена</option>
+                            <option value="Снаряды для единоборств">Снаряды для единоборств</option>
+                            <option value="Колпаки">Колпаки</option>
+                            <option value="Рюкзаки и экипировка">Рюкзаки и экипировка</option>
+                            <option value="steelseries сегодня днем">steelseries сегодня днем</option>
+                            <option value="Кроссовки и кеды">Кроссовки и кеды</option>
+                            <option value="Ботильоны">Ботильоны</option>
+                            <option value="Мокасины и лоферы">Мокасины и лоферы</option>
+                            <option value="Угги, валенки, дутики">Угги, валенки, дутики</option>
+                            <option value="Джинсы">Джинсы</option>
+                            <option value="Ботинки и туфли">Ботинки и туфли</option>
+                            <option value="msi сегодня">msi сегодня</option>
+                            <option value="Теннис и бадминтон">Теннис и бадминтон</option>
+                            <option value="Плащи и тренчи">Плащи и тренчи</option>
+                            <option value="Женский пуховик только что">Женский пуховик только что</option>
+                            <option value="Видеокарта">Видеокарта</option>
+                            <option value="На длительный срок">На длительный срок</option>
+                            <option value="Посуточно">Посуточно</option>
+                            <option value="квартира">квартира</option>
+                            <option value="квартира снять">квартира снять</option>
+                            <option value="Платья">Платья</option>
+                            <option value="Масла и автохимия">Масла и автохимия</option>
+                            <option value="Рубашки и блузки">Рубашки и блузки</option>
+                            <option value="Пуховик мужской сегодня">Пуховик мужской сегодня</option>
+                            <option value="Куртки и пуховики">Куртки и пуховики</option>
+                            <option value="iphone">iphone</option>
+                            <option value="Пульт haier">Пульт haier</option>
+                            <option value="Нижнее бельё">Нижнее бельё</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Цена, ₽</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="number" class="form-control" name="price_min" placeholder="От" value="{{ current_filters.price_min|default_if_none:'' }}">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" class="form-control" name="price_max" placeholder="До" value="{{ current_filters.price_max|default_if_none:'' }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Тип продавца</label>
+                        <select class="form-select" name="seller_type">
+                            <option value="">Все продавцы</option>
+                            <option value="private" {% if current_filters.seller_type == 'private' %}selected{% endif %}>Частные лица</option>
+                            <option value="reseller" {% if current_filters.seller_type == 'reseller' %}selected{% endif %}>Компании/Магазины</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Состояние товара</label>
+                        <select class="form-select" name="condition">
+                            <option value="">Любое состояние</option>
+                            <option value="new" {% if current_filters.condition == 'new' %}selected{% endif %}>Новый</option>
+                            <option value="used" {% if current_filters.condition == 'used' %}selected{% endif %}>Б/у</option>
+                            <option value="like_new" {% if current_filters.condition == 'like_new' %}selected{% endif %}>Как новый</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Дополнительные фильтры -->
+                <div class="col-md-6">
+                    <div class="mb-4">
+                        <label class="form-label">Город</label>
+                        <input type="text" class="form-control" name="city" placeholder="Введите город" value="{{ current_filters.city|default_if_none:'' }}">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Станция метро</label>
+                        <input type="text" class="form-control" name="metro" placeholder="Введите станцию метро" value="{{ current_filters.metro|default_if_none:'' }}">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Новизна объявления</label>
+                        <select class="form-select" name="newness">
+                            <option value="">Любая дата</option>
+                            <option value="today" {% if current_filters.newness == 'today' %}selected{% endif %}>Сегодня</option>
+                            <option value="week" {% if current_filters.newness == 'week' %}selected{% endif %}>За неделю</option>
+                            <option value="month" {% if current_filters.newness == 'month' %}selected{% endif %}>За месяц</option>
+                        </select>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" name="profitable_only" id="profitableOnly" {% if current_filters.profitable_only %}checked{% endif %}>
+                        <label class="form-check-label" for="profitableOnly">
+                            Только выгодные
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" name="sort_by" value="{{ current_filters.sort_by|default:'-found_at' }}">
+            <input type="hidden" name="page" value="1">
+            <input type="hidden" name="page_size" value="{{ page_size }}">
+
+            <!-- Preserve other parameters -->
+            {% for key, value in request.GET.items %}
+                {% if key != 'category' and key != 'price_min' and key != 'price_max' and key != 'seller_type' and key != 'profitable_only' and key != 'condition' and key != 'city' and key != 'metro' and key != 'newness' and key != 'page' and key != 'page_size' and key != 'sort_by' %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+        </form>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Отмена</button>
+        <a href="?{% if request.GET.page_size %}&page_size={{ request.GET.page_size }}{% endif %}" class="btn btn-warning">Сбросить</a>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('filterForm').submit()">
+            <i class="ri-filter-line me-1"></i> Применить фильтры
+        </button>
+    </div>
+</div>
+    </div>
+</div>
+
+<!-- Сортировка -->
+<div class="modal fade" id="sortModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="ri-sort-desc me-2"></i>Сортировка</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="get" id="sortForm">
+                    <div class="list-group">
+                        <label class="list-group-item">
+                            <input class="form-check-input me-2" type="radio" name="sort_by" value="-found_at" {% if current_filters.sort_by == '-found_at' or not current_filters.sort_by %}checked{% endif %}>
+                            <span>Сначала новые</span>
+                        </label>
+                        <label class="list-group-item">
+                            <input class="form-check-input me-2" type="radio" name="sort_by" value="price" {% if current_filters.sort_by == 'price' %}checked{% endif %}>
+                            <span>Цена по возрастанию</span>
+                        </label>
+                        <label class="list-group-item">
+                            <input class="form-check-input me-2" type="radio" name="sort_by" value="-price" {% if current_filters.sort_by == '-price' %}checked{% endif %}>
+                            <span>Цена по убыванию</span>
+                        </label>
+                        <label class="list-group-item">
+                            <input class="form-check-input me-2" type="radio" name="sort_by" value="category" {% if current_filters.sort_by == 'category' %}checked{% endif %}>
+                            <span>Категория А-Я</span>
+                        </label>
+                        <label class="list-group-item">
+                            <input class="form-check-input me-2" type="radio" name="sort_by" value="-category" {% if current_filters.sort_by == '-category' %}selected{% endif %}>
+                            <span>Категория Я-А</span>
+                        </label>
+                        <label class="list-group-item">
+                            <input class="form-check-input me-2" type="radio" name="sort_by" value="-posted_date" {% if current_filters.sort_by == '-posted_date' %}checked{% endif %}>
+                            <span>Сначала свежие объявления</span>
+                        </label>
+                        <label class="list-group-item">
+                            <input class="form-check-input me-2" type="radio" name="sort_by" value="-profit" {% if current_filters.sort_by == '-profit' %}checked{% endif %}>
+                            <span>Прибыль по убыванию</span>
+                        </label>
+                    </div>
+
+                    <!-- Preserve current filters -->
+                    {% for key, value in request.GET.items %}
+                        {% if key != 'sort_by' and key != 'page' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="hidden" name="page" value="1">
+                    <input type="hidden" name="page_size" value="{{ page_size }}">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('sortForm').submit()">
+                    Применить сортировку
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно быстрого просмотра -->
+<div class="modal fade" id="quickViewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Быстрый просмотр</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="quickViewContent">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Загрузка данных...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    // Отключаем сохранение скролла
+    disableScrollSave();
+
+    // Восстанавливаем состояние фильтров
+    restoreFilterState();
+
+    // Инициализация системы избранного
+    initFavoriteSystem();
+
+    // Инициализация современной галереи с ленивой загрузкой
+    initLazyGalleries();
+
+    // Инициализация дополнительных функций
+    initSmoothScrolling();
+    initLazyLoading();
+    initQuickActions();
+    initQuickView();
+    initTouchGestures();
+    initShareButtons();
+
+    // Инициализация страницы
+    initPage();
+
+    // Добавляем поиск к выпадающему списку категорий
+    initCategorySearch();
+});
+
+// Инициализация системы избранного
+function initFavoriteSystem() {
+    // Обработчик для всех кнопок избранного
+    document.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const itemId = this.getAttribute('data-item-id');
+            const isFavorite = this.getAttribute('data-is-favorite') === 'true';
+
+            toggleFavorite(itemId, isFavorite, this);
+        });
+    });
+}
+
+// Функция переключения избранного
+function toggleFavorite(itemId, currentState, button) {
+    // Показываем индикатор загрузки
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="ri-loader-4-line rotate"></i>';
+    button.disabled = true;
+
+    // Собираем данные о товаре для отправки в Telegram
+    const card = document.querySelector(`[data-item-id="${itemId}"]`);
+    if (!card) {
+        console.error('❌ Карточка не найдена');
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+        return;
+    }
+
+    const productData = collectProductData(card, itemId);
+
+    // Добавляем дополнительные данные, которые нужны для форматирования
+    const additionalData = {
+        // Получаем все изображения из галереи
+        image_urls: getImageUrls(card),
+        // Получаем рейтинг
+        seller_rating: getSellerRating(card),
+        // Получаем количество отзывов
+        reviews_count: getReviewsCount(card),
+        // Получаем состояние товара
+        condition: getCondition(card),
+        // Получаем цвет
+        color: getColor(card),
+        // Получаем город
+        city: getCity(card),
+        // Получаем дату размещения
+        posted_date: getPostedDate(card),
+        // Получаем просмотры
+        views_count: getViewsCount(card)
+    };
+
+    // Объединяем данные
+    const fullProductData = { ...productData, ...additionalData };
+
+    // Отправляем запрос на сервер
+    fetch(`/favorites/toggle/${itemId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_data: fullProductData
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'added' || data.status === 'removed') {
+            // Обновляем состояние кнопки
+            updateFavoriteButton(button, data.status === 'added');
+
+            // Показываем уведомление
+            showFavoriteNotification(data.message, data.status);
+
+            // Обновляем счетчик избранного
+            updateFavoritesCount();
+
+            // Если мы на странице избранного и удаляем товар - удаляем карточку
+            if (data.status === 'removed' && window.location.search.includes('favorites=1')) {
+                removeFavoriteCard(itemId);
+            }
+        } else {
+            throw new Error(data.message || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        console.error('Error toggling favorite:', error);
+        showFavoriteNotification('Ошибка при обновлении избранного', 'error');
+        // Восстанавливаем исходное состояние кнопки
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+    });
+}
+
+// Функция для сбора всех URL изображений из галереи
+function getImageUrls(card) {
+    const urls = [];
+
+    // 1. Ищем все изображения в галерее
+    const galleryContainer = card.querySelector('.modern-gallery-container');
+    if (galleryContainer) {
+        const images = galleryContainer.querySelectorAll('.modern-gallery-image');
+        images.forEach(img => {
+            if (img.src && img.src.trim() !== '' && !img.src.startsWith('data:')) {
+                // Убираем параметры из URL (если есть)
+                const cleanUrl = img.src.split('?')[0];
+                // Проверяем, что это не миниатюра
+                if (!cleanUrl.includes('128x96') &&
+                    !cleanUrl.includes('64x48') &&
+                    !cleanUrl.includes('32x24')) {
+                    urls.push(cleanUrl);
+                }
+            }
+        });
+    }
+
+    // 2. Если нет в галерее, ищем любые изображения
+    if (urls.length === 0) {
+        const allImages = card.querySelectorAll('img[src]');
+        allImages.forEach(img => {
+            if (img.src && img.src.trim() !== '' &&
+                !img.src.startsWith('data:') &&
+                !img.src.includes('avatar') &&
+                !img.src.includes('128x96') &&
+                !img.src.includes('64x48')) {
+                urls.push(img.src.split('?')[0]);
+            }
+        });
+    }
+
+    // 3. Удаляем дубликаты
+    const uniqueUrls = [...new Set(urls)];
+    console.log('📸 Найдено фото:', uniqueUrls);
+    return uniqueUrls;
+}
+
+// Обновленная collectProductData
+function collectProductData(card, itemId) {
+    const title = card.querySelector('.modern-title')?.textContent || 'Неизвестный товар';
+    const priceText = card.querySelector('.current-price')?.textContent || '0';
+    const price = parseInt(priceText.replace(/[^\d]/g, '')) || 0;
+
+    const targetPriceText = card.querySelector('.target-price')?.textContent || '0';
+    const targetPriceMatch = targetPriceText.match(/\d[\d\s]*\d/g);
+    const targetPrice = targetPriceMatch ? parseInt(targetPriceMatch[0].replace(/\s/g, '')) : price;
+
+    const profitText = card.querySelector('.profit-indicator')?.textContent || '';
+    const category = card.querySelector('.detail-item:has(.ri-price-tag-3-line) .detail-text')?.textContent || '';
+    const city = card.querySelector('.detail-item:has(.ri-map-pin-line) .detail-text')?.textContent || '';
+    const seller = card.querySelector('.seller-name')?.textContent || '';
+    const sellerBadge = card.querySelector('.site-badge-seller span');
+    const sellerType = sellerBadge ? sellerBadge.textContent : '';
+
+    const description = card.querySelector('.description-content')?.textContent || '';
+
+    const urlElement = card.querySelector('.modern-btn-primary');
+    const url = urlElement ? urlElement.href : '';
+
+    // Получаем ВСЕ изображения
+    const images = getImageUrls(card);
+
+    // Дополнительные данные
+    const condition = card.querySelector('.detail-item:has(.ri-checkbox-circle-line) .detail-text')?.textContent || 'Не указано';
+    const color = card.querySelector('.detail-item:has(.ri-palette-line) .detail-text')?.textContent || 'Разноцветный';
+    const postedDate = card.querySelector('.detail-item:has(.ri-calendar-event-line) .detail-text')?.textContent || 'Дата не указана';
+
+    const viewsText = card.querySelector('.detail-item:has(.ri-eye-line) .detail-text')?.textContent || '0';
+    const viewsMatch = viewsText.match(/(\d[\d\s]*)/);
+    const viewsCount = viewsMatch ? parseInt(viewsMatch[0].replace(/\s/g, '')) : 0;
+
+    const ratingBadge = card.querySelector('.site-badge-rating span');
+    const sellerRating = ratingBadge ? parseFloat(ratingBadge.textContent) : null;
+
+    const reviewsText = card.querySelector('.seller-reviews')?.textContent || '';
+    const reviewsMatch = reviewsText.match(/\((\d+)/);
+    const reviewsCount = reviewsMatch ? parseInt(reviewsMatch[1]) : 0;
+
+    return {
+        id: itemId,
+        name: title.trim(),
+        price: price,
+        target_price: targetPrice,
+        profit: profitText,
+        category: category,
+        city: city,
+        seller_name: seller,
+        seller_type: sellerType,
+        description: description.substring(0, 500),
+        url: url,
+        image_urls: images,  // ВСЕ фото!
+        image_url: images[0] || '',
+        added_at: new Date().toISOString(),
+        condition: condition,
+        color: color,
+        posted_date: postedDate,
+        views_count: viewsCount,
+        seller_rating: sellerRating,
+        reviews_count: reviewsCount
+    };
+}
+
+function getSellerRating(card) {
+    const ratingBadge = card.querySelector('.site-badge-rating span');
+    return ratingBadge ? parseFloat(ratingBadge.textContent) : null;
+}
+
+function getReviewsCount(card) {
+    const reviewsElement = card.querySelector('.seller-reviews');
+    if (reviewsElement) {
+        const text = reviewsElement.textContent;
+        const match = text.match(/\((\d+)/);
+        return match ? parseInt(match[1]) : 0;
+    }
+    return 0;
+}
+
+function getCondition(card) {
+    const conditionElement = card.querySelector('.detail-item:has(.ri-checkbox-circle-line) .detail-text');
+    return conditionElement ? conditionElement.textContent : 'Не указано';
+}
+
+function getColor(card) {
+    const colorElement = card.querySelector('.detail-item:has(.ri-palette-line) .detail-text');
+    return colorElement ? colorElement.textContent : 'Разноцветный';
+}
+
+function getCity(card) {
+    const cityElement = card.querySelector('.detail-item:has(.ri-map-pin-line) .detail-text');
+    return cityElement ? cityElement.textContent : 'Не указан';
+}
+
+function getPostedDate(card) {
+    const dateElement = card.querySelector('.detail-item:has(.ri-calendar-event-line) .detail-text');
+    return dateElement ? dateElement.textContent : 'Дата не указана';
+}
+
+function getViewsCount(card) {
+    const viewsElement = card.querySelector('.detail-item:has(.ri-eye-line) .detail-text');
+    if (viewsElement) {
+        const text = viewsElement.textContent;
+        const match = text.match(/(\d[\d\s]*)\s+просмотров/);
+        if (match) {
+            return parseInt(match[1].replace(/\s/g, ''));
+        }
+    }
+    return 0;
+}
+
+// Обновление состояния кнопки избранного
+function updateFavoriteButton(button, isFavorite) {
+    const icon = button.querySelector('i');
+
+    if (isFavorite) {
+        button.classList.add('active');
+        button.setAttribute('data-is-favorite', 'true');
+        button.setAttribute('title', 'Удалить из избранного');
+        if (icon) {
+            icon.className = 'ri-heart-fill';
+        }
+    } else {
+        button.classList.remove('active');
+        button.setAttribute('data-is-favorite', 'false');
+        button.setAttribute('title', 'Добавить в избранное');
+        if (icon) {
+            icon.className = 'ri-heart-line';
+        }
+    }
+
+    button.disabled = false;
+}
+
+// Функция для сбора данных о товаре (аналогично первой версии)
+function collectProductData(card, itemId) {
+    const title = card.querySelector('.modern-title')?.textContent || 'Неизвестный товар';
+    const price = card.querySelector('.current-price')?.textContent?.replace(/[^\d]/g, '') || '0';
+    const targetPrice = card.querySelector('.target-price')?.textContent?.match(/\d[\d\s]*\d/g)?.[0]?.replace(/\s/g, '') || '0';
+    const profit = card.querySelector('.profit-indicator')?.textContent || '';
+    const category = card.querySelector('.detail-item:has(.ri-price-tag-3-line) .detail-text')?.textContent || '';
+    const city = card.querySelector('.detail-item:has(.ri-map-pin-line) .detail-text')?.textContent || '';
+    const seller = card.querySelector('.seller-name')?.textContent || '';
+    const sellerType = card.querySelector('.site-badge-seller span')?.textContent || '';
+    const description = card.querySelector('.description-content')?.textContent || '';
+    const url = card.querySelector('.modern-btn-primary')?.href || '';
+
+    // Получаем изображения
+    const images = [];
+    const imageElements = card.querySelectorAll('.modern-gallery-image');
+    imageElements.forEach(img => {
+        if (img.src && !img.src.includes('data:')) {
+            images.push(img.src);
+        }
+    });
+
+    return {
+        id: itemId,
+        name: title.trim(),
+        price: parseInt(price) || 0,
+        target_price: parseInt(targetPrice) || 0,
+        profit: profit,
+        category: category,
+        city: city,
+        seller_name: seller,
+        seller_type: sellerType,
+        description: description.substring(0, 500),
+        url: url,
+        image_urls: images,
+        image_url: images[0] || '',
+        added_at: new Date().toISOString()
+    };
+}
+
+// Показ уведомления об избранном
+function showFavoriteNotification(message, type) {
+    const titles = {
+        'added': 'Добавлено в избранное',
+        'removed': 'Удалено из избранного',
+        'error': 'Ошибка'
+    };
+
+    if (typeof toastr !== 'undefined') {
+        switch(type) {
+            case 'added':
+                toastr.success(message, titles[type]);
+                break;
+            case 'removed':
+                toastr.info(message, titles[type]);
+                break;
+            case 'error':
+                toastr.error(message, titles[type]);
+                break;
+        }
+    } else {
+        console.log(message);
+    }
+}
+
+// Обновление счетчика избранного
+function updateFavoritesCount() {
+    // Обновляем счетчик в тулбаре
+    const favoritesBtn = document.querySelector('.toolbar-btn.btn-danger');
+    if (favoritesBtn) {
+        const countSpan = favoritesBtn.querySelector('span');
+        if (countSpan) {
+            // Можно сделать запрос на сервер для получения актуального количества
+            fetch('/favorites/count/')
+                .then(response => response.json())
+                .then(data => {
+                    const currentText = countSpan.textContent;
+                    const newText = currentText.replace(/\(\d+\)/, `(${data.count})`);
+                    countSpan.textContent = newText;
+                })
+                .catch(error => console.error('Error updating favorites count:', error));
+        }
+    }
+}
+
+// Получение CSRF токена
+function getCSRFToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Добавление поиска к выпадающему списку категорий
+function initCategorySearch() {
+    const categorySelect = document.getElementById('categorySelect');
+    if (!categorySelect) return;
+
+    const allOptions = Array.from(categorySelect.options);
+
+    const searchContainer = document.createElement('div');
+    searchContainer.className = 'mb-2';
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'form-control form-control-sm';
+    searchInput.placeholder = '🔍 Поиск категории...';
+    searchInput.style.marginBottom = '8px';
+
+    searchContainer.appendChild(searchInput);
+    categorySelect.parentNode.insertBefore(searchContainer, categorySelect);
+
+    function filterCategories(searchTerm) {
+        const term = searchTerm.toLowerCase().trim();
+        categorySelect.innerHTML = '';
+        categorySelect.appendChild(allOptions[0]);
+
+        if (!term) {
+            allOptions.forEach(option => {
+                if (option.value !== 'all') {
+                    categorySelect.appendChild(option);
+                }
+            });
+            return;
+        }
+
+        allOptions.forEach(option => {
+            if (option.value === 'all') return;
+
+            const text = option.text.toLowerCase();
+            if (text.includes(term)) {
+                categorySelect.appendChild(option);
+            }
+        });
+
+        if (categorySelect.options.length === 1) {
+            const noResults = document.createElement('option');
+            noResults.value = '';
+            noResults.text = '🚫 Категории не найдены';
+            noResults.disabled = true;
+            categorySelect.appendChild(noResults);
+        }
+    }
+
+    searchInput.addEventListener('input', function(e) {
+        filterCategories(this.value);
+    });
+
+    searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            this.value = '';
+            filterCategories('');
+        }
+    });
+}
+
+// Инициализация страницы
+function initPage() {
+    const pageSizeSelect = document.getElementById('pageSizeSelect');
+    if (pageSizeSelect) {
+        const currentPageSize = new URLSearchParams(window.location.search).get('page_size') || '20';
+        pageSizeSelect.value = currentPageSize;
+    }
+
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    if (tooltipTriggerList.length > 0) {
+        const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    }
+}
+
+// Отключаем сохранение позиции скролла
+function disableScrollSave() {
+    sessionStorage.removeItem('filterState');
+    window.addEventListener('beforeunload', function() {
+        sessionStorage.removeItem('filterState');
+    });
+}
+
+// Восстановление состояния фильтров
+function restoreFilterState() {
+    window.scrollTo(0, 0);
+    sessionStorage.removeItem('filterState');
+}
+
+// Изменение размера страницы
+function changePageSize(select) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('page_size', select.value);
+    url.searchParams.set('page', '1');
+    window.location.href = url.toString();
+}
+
+// Функция для поделиться
+function shareItem(itemId) {
+    const shareUrl = `/found-items/${itemId}/`;
+    const fullUrl = window.location.origin + shareUrl;
+
+    if (navigator.share) {
+        navigator.share({
+            title: document.title,
+            url: fullUrl
+        })
+        .then(() => {
+            showShareNotification('Ссылка отправлена');
+        })
+        .catch((error) => {
+            console.log('Ошибка шаринга:', error);
+            copyToClipboard(fullUrl);
+        });
+    } else {
+        copyToClipboard(fullUrl);
+    }
+}
+
+// Функция копирования в буфер обмена
+function copyToClipboard(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+
+    try {
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        if (successful) {
+            showShareNotification('Ссылка скопирована в буфер обмена!');
+        } else {
+            showShareNotification('Не удалось скопировать ссылку', 'error');
+        }
+    } catch (err) {
+        if (textarea.parentNode) {
+            document.body.removeChild(textarea);
+        }
+        console.error('Ошибка копирования:', err);
+        showShareNotification('Ошибка при копировании', 'error');
+    }
+}
+
+// Показ уведомления о шаринге
+function showShareNotification(message, type = 'success') {
+    if (typeof toastr !== 'undefined') {
+        if (type === 'success') {
+            toastr.success(message, 'Ссылка скопирована');
+        } else {
+            toastr.error(message, 'Ошибка');
+        }
+    } else {
+        console.log(message);
+    }
+}
+
+// Инициализация кнопок поделиться
+function initShareButtons() {
+    document.querySelectorAll('.share-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const itemId = this.getAttribute('data-item-id');
+            shareItem(itemId);
+
+            return false;
+        });
+    });
+}
+
+// Инициализация галерей
+function initLazyGalleries() {
+    const galleryObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                initModernGallery(entry.target);
+                galleryObserver.unobserve(entry.target);
+            }
+        });
+    }, { rootMargin: '50px' });
+
+    document.querySelectorAll('.modern-gallery-container').forEach(container => {
+        galleryObserver.observe(container);
+    });
+}
+
+// Инициализация современной галереи
+function initModernGallery(container) {
+    const track = container.querySelector('.modern-gallery-track');
+    const slides = container.querySelectorAll('.modern-gallery-slide');
+    const prevBtn = container.querySelector('.modern-prev');
+    const nextBtn = container.querySelector('.modern-next');
+    const indicators = container.querySelectorAll('.modern-indicator');
+    const totalSlides = slides.length;
+
+    if (totalSlides <= 1) {
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (indicators.length > 0) {
+            container.querySelector('.modern-indicators').style.display = 'none';
+        }
+        return;
+    }
+
+    let currentSlide = 0;
+
+    function updateGallery() {
+        if (track) {
+            track.style.transform = `translateX(-${currentSlide * 100}%)`;
+        }
+
+        indicators.forEach((indicator, index) => {
+            indicator.classList.toggle('active', index === currentSlide);
+        });
+    }
+
+    function nextSlide() {
+        currentSlide = (currentSlide + 1) % totalSlides;
+        updateGallery();
+    }
+
+    function prevSlide() {
+        currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+        updateGallery();
+    }
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            prevSlide();
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            nextSlide();
+        });
+    }
+
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            currentSlide = index;
+            updateGallery();
+        });
+    });
+
+    updateGallery();
+}
+
+// Инициализация свайпов
+function initTouchGestures() {
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    document.querySelectorAll('.modern-gallery-container').forEach(container => {
+        container.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        container.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe(container);
+        });
+    });
+
+    function handleSwipe(container) {
+        const minSwipeDistance = 50;
+        const difference = touchStartX - touchEndX;
+
+        if (Math.abs(difference) < minSwipeDistance) return;
+
+        if (difference > 0) {
+            const nextBtn = container.querySelector('.modern-next');
+            if (nextBtn) nextBtn.click();
+        } else {
+            const prevBtn = container.querySelector('.modern-prev');
+            if (prevBtn) prevBtn.click();
+        }
+    }
+}
+
+// Инициализация двойного клика для добавления в избранное
+function initQuickActions() {
+    document.querySelectorAll('.product-card-modern').forEach(card => {
+        let clickTimer;
+        let clickCount = 0;
+
+        card.addEventListener('click', function(e) {
+            if (e.target.closest('button') ||
+                e.target.closest('a') ||
+                e.target.closest('.modern-gallery-container') ||
+                e.target.closest('.modern-indicators') ||
+                e.target.closest('.modern-nav-btn')) {
+                return;
+            }
+
+            clickCount++;
+
+            if (clickCount === 1) {
+                clickTimer = setTimeout(() => {
+                    clickCount = 0;
+                }, 300);
+            } else if (clickCount === 2) {
+                clearTimeout(clickTimer);
+                clickCount = 0;
+
+                // Двойной клик по карточке - добавляем в избранное
+                const favoriteBtn = this.querySelector('.favorite-btn');
+                if (favoriteBtn) {
+                    favoriteBtn.click();
+                }
+            }
+        });
+    });
+}
+
+// Инициализация плавной прокрутки
+function initSmoothScrolling() {
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+}
+
+// Ленивая загрузка изображений
+function initLazyLoading() {
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    if (img.dataset.src) {
+                        img.src = img.dataset.src;
+                    }
+                    img.classList.remove('lazy');
+                    imageObserver.unobserve(img);
+                }
+            });
+        });
+
+        document.querySelectorAll('img[data-src]').forEach(img => {
+            imageObserver.observe(img);
+        });
+    }
+}
+
+// Обработка ошибок изображений
+function handleImageError(img) {
+    img.style.display = 'none';
+    const placeholder = img.closest('.modern-gallery-slide');
+    if (placeholder) {
+        placeholder.innerHTML = `
+            <div class="image-placeholder">
+                <div class="text-center text-muted">
+                    <i class="ri-image-line ri-2x mb-2 opacity-50"></i>
+                    <p class="mb-0 small opacity-75">Нет фото</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Быстрый просмотр (заглушка)
+function initQuickView() {
+    // Реализация быстрого просмотра
+}
+
+// Добавляем CSS для анимации
+const style = document.createElement('style');
+style.textContent = `
+    .rotate {
+        animation: rotate 1s linear infinite;
+    }
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .product-card-modern {
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .toolbar-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .form-select-sm {
+        padding: 0.25rem 2rem 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .modal-body .form-check {
+        margin-bottom: 1rem;
+    }
+
+    .modal-body .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .modal-body input[type="number"] {
+        padding: 0.5rem;
+    }
+
+    /* Стили для кнопки избранного */
+    .favorite-btn.active {
+        background-color: var(--bs-danger);
+        border-color: var(--bs-danger);
+        color: white;
+    }
+
+    .favorite-btn:not(.active) {
+        background-color: transparent;
+        border-color: var(--bs-border-color);
+        color: var(--bs-secondary);
+    }
+
+    .favorite-btn:hover:not(.active) {
+        background-color: rgba(var(--bs-danger-rgb), 0.1);
+        border-color: var(--bs-danger);
+        color: var(--bs-danger);
+    }
+`;
+document.head.appendChild(style);
+
+// Обработчики для экспорта (оставлены без изменений)
+document.addEventListener('DOMContentLoaded', function() {
+    const exportLinks = document.querySelectorAll('.export-link');
+    const exportIcon = document.getElementById('exportIcon');
+    const exportText = document.getElementById('exportText');
+    const exportSpinner = document.getElementById('exportSpinner');
+    const exportButton = document.getElementById('exportDropdown');
+
+    exportLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            const dropdown = bootstrap.Dropdown.getInstance(exportButton);
+            if (dropdown) {
+                dropdown.hide();
+            }
+
+            exportIcon.classList.add('d-none');
+            exportSpinner.classList.remove('d-none');
+            exportText.textContent = 'Загрузка...';
+            exportButton.disabled = true;
+            exportButton.classList.remove('btn-success');
+            exportButton.classList.add('btn-secondary');
+
+            const exportType = this.textContent.trim();
+            sessionStorage.setItem('exportType', exportType);
+
+            setTimeout(() => {
+                setTimeout(() => {
+                    resetExportButton();
+                }, 30000);
+            }, 300);
+        });
+    });
+
+    function resetExportButton() {
+        exportIcon.classList.remove('d-none');
+        exportSpinner.classList.add('d-none');
+        exportText.textContent = 'Экспорт';
+        exportButton.disabled = false;
+        exportButton.classList.remove('btn-secondary');
+        exportButton.classList.add('btn-success');
+        sessionStorage.removeItem('exportType');
+    }
+
+    if (sessionStorage.getItem('exportType')) {
+        resetExportButton();
+    }
+
+    window.addEventListener('beforeunload', function() {
+        if (sessionStorage.getItem('exportType')) {
+            return;
+        }
+    });
+
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted || performance.getEntriesByType("navigation")[0].type === 'back_forward') {
+            resetExportButton();
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem; color: var(--accent-light);">Мои сделки</h1>
+
+<div class="card">
+    <h2>История сделок</h2>
+
+    {% if deals %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Статус</th>
+                <th>Прибыль</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for deal in deals %}
+            <tr>
+                <td>{{ deal.product }}</td>
+                <td>
+                    {% if deal.status == 'Продано' %}
+                    <span class="badge badge-sold">Продано</span>
+                    {% elif deal.status == 'Покупка' %}
+                    <span class="badge badge-purchased">Покупка</span>
+                    {% else %}
+                    <span class="badge badge-monitoring">Мониторинг</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if deal.profit %}
+                    <span style="color: var(--success);">+{{ deal.profit }} руб.</span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Подробнее</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--text-secondary); text-align: center; padding: 2rem;">
+        Нет активных сделок.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

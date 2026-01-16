@@ -1,0 +1,23 @@
+# Конфигурация для тестирования
+
+services:
+  django:
+    environment:
+      DJANGO_DEBUG: "True"
+      DJANGO_TESTING: "True"
+      DB_NAME: test_avito_profit_hub
+    command: >
+      sh -c "pytest --cov=apps --cov-report=html --cov-report=term-missing"
+
+  postgres:
+    environment:
+      POSTGRES_DB: test_avito_profit_hub
+
+  bot:
+    profiles: ["skip"]
+
+  celery:
+    profiles: ["skip"]
+
+  celery-beat:
+    profiles: ["skip"]

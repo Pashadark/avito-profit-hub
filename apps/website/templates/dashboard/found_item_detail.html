@@ -1,0 +1,1003 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+{% load custom_filters %}
+
+{% block page_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'assets/css/pages/found_item_detail.css' %}">
+<!-- Подключаем наши уведомления -->
+<link rel="stylesheet" href="{% static 'notifications/css/notifications.css' %}">
+{% endblock page_css %}
+
+{% block content %}
+
+<!-- Модальное окно для полноразмерных фото -->
+<div id="modalGallery" class="modal-gallery">
+    <span class="modal-close">&times;</span>
+    <div class="modal-gallery-content">
+        <button class="modern-nav-btn modal-prev"
+        aria-label="Предыдущее изображение">
+        <i class="ri-arrow-left-s-line"></i>
+        </button>
+        <button class="modern-nav-btn modal-next"
+                aria-label="Следующее изображение">
+            <i class="ri-arrow-right-s-line"></i>
+        </button>
+
+        <div class="modal-gallery-slides">
+            {% for image_url in image_urls %}
+            <div class="modal-gallery-slide {% if forloop.first %}active{% endif %}" data-slide="{{ forloop.counter0 }}">
+                <img src="{{ image_url }}" class="modal-gallery-image" alt="{{ item.title }} - изображение {{ forloop.counter }}">
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="modal-indicators">
+            <div class="modern-indicator-track">
+                {% for image_url in image_urls %}
+                <div class="modern-indicator {% if forloop.first %}active{% endif %}" data-slide="{{ forloop.counter0 }}" aria-label="Перейти к изображению {{ forloop.counter }}"></div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="modal-gallery-thumbnails">
+            {% for image_url in image_urls %}
+            <div class="modal-gallery-thumbnail {% if forloop.first %}active{% endif %}" data-slide="{{ forloop.counter0 }}">
+                <img src="{{ image_url }}" alt="Миниатюра {{ forloop.counter }}">
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Хлебные крошки -->
+<nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'website:found_items' %}">Найденные товары</a></li>
+        <li class="breadcrumb-item active">{{ item.title|truncatewords:5 }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <!-- Основной контент -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-2">
+                    <div>
+                        <h4 class="card-title mb-0" style="font-size: 1.25rem;">{{ item.title }}</h4>
+                        <!-- Дата размещения и просмотры под заголовком -->
+                        <div class="posted-info">
+                            {% if item.posted_date and item.posted_date != 'Дата не указана' and item.posted_date != 'Не указана' %}
+                            <div class="posted-date">
+                                <i class="ri-calendar-event-line"></i>
+                                <span>{{ item.posted_date }}</span>
+                            </div>
+                            {% endif %}
+
+                            {% if item.product_id %}
+                            <div class="product-id">
+                                <i class="ri-hashtag"></i>
+                                <span>{{ item.product_id }}</span>
+                            </div>
+                            {% endif %}
+
+                            {% if item.views_count is not None %}
+                            <div class="views-count">
+                                <i class="ri-eye-line"></i>
+                                <span>
+                                    {{ item.views_count }}
+                                    {% if item.views_today is not None %}(+{{ item.views_today }} сегодня){% endif %}
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="header-badges">
+                        <!-- Бейдж источника -->
+                        {% if item.source == 'auto_ru' %}
+                        <div class="source-badge source-auto-ru" title="Auto.ru">
+                            <i class="ri-car-fill"></i>
+                            <span>Auto.ru</span>
+                        </div>
+                        {% elif item.source == 'avito' %}
+                        <div class="source-badge source-avito" title="Авито">
+                            <i class="ri-home-4-fill"></i>
+                            <span>Авито</span>
+                        </div>
+                        {% else %}
+                        <div class="source-badge source-unknown" title="Другой источник">
+                            <i class="ri-question-line"></i>
+                            <span>{{ item.source|default:"Источник" }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Рейтинг -->
+                        {% if item.seller_rating %}
+                        <div class="modern-rating">
+                            <i class="ri-star-fill text-warning"></i>
+                            <span class="fw-semibold">{{ item.seller_rating }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Статус просмотров -->
+                        {% if item.views_count %}
+                            {% if item.views_count < 20 %}
+                            <div class="view-status-badge view-status-new" title="Меньше 20 просмотров">
+                                <i class="ri-fire-fill"></i>
+                                <span>Новое</span>
+                            </div>
+                            {% elif item.views_count >= 21 and item.views_count <= 40 %}
+                            <div class="view-status-badge view-status-fresh" title="21-40 просмотров">
+                                <i class="ri-leaf-fill"></i>
+                                <span>Свежее</span>
+                            </div>
+                            {% elif item.views_count > 40 %}
+                            <div class="view-status-badge view-status-old" title="Больше 40 просмотров">
+                                <i class="ri-time-line"></i>
+                                <span>Старое</span>
+                            </div>
+                            {% endif %}
+                        {% endif %}
+
+                        <!-- Продавец -->
+                        <div class="seller-badge-container">
+                            {% if item.seller_type == 'Компания' or item.seller_type == 'Магазин' %}
+                                <span class="seller-badge reseller">
+                                    <i class="ri-store-2-line"></i>
+                                    {{ item.seller_type }}
+                                </span>
+                            {% else %}
+                                <span class="seller-badge private">
+                                    <i class="ri-user-line"></i>
+                                    {{ item.seller_type|default:"Частное лицо" }}
+                                </span>
+                            {% endif %}
+
+
+                            <!-- Сердечко избранного в заголовке -->
+                            <button class="header-favorite-btn {% if item.is_favorite %}active{% endif %}"
+                                    data-item-id="{{ item.id }}"
+                                    data-is-favorite="{{ item.is_favorite|yesno:'true,false' }}"
+                                    title="{% if item.is_favorite %}Удалить из избранного{% else %}Добавить в избранное{% endif %}">
+                                <i class="{% if item.is_favorite %}ri-heart-fill{% else %}ri-heart-line{% endif %}"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <!-- Галерея изображений -->
+                {% if image_urls %}
+                <div class="detail-gallery-container mb-3">
+                    <div class="detail-gallery-track">
+                        {% for image_url in image_urls %}
+                        <div class="detail-gallery-slide">
+                            <img src="{{ image_url }}"
+                                 class="detail-gallery-image"
+                                 alt="{{ item.title }} - изображение {{ forloop.counter }}"
+                                 onerror="handleImageError(this)"
+                                 loading="lazy"
+                                 decoding="async"
+                                 data-slide="{{ forloop.counter0 }}">
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="detail-gallery-overlay"></div>
+
+                    {% if image_urls|length > 1 %}
+                    <div class="detail-indicators">
+                        <div class="detail-indicator-track">
+                            {% for image_url in image_urls %}
+                            <div class="detail-indicator {% if forloop.first %}active{% endif %}"
+                                 data-slide="{{ forloop.counter0 }}"></div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="detail-photo-counter">
+                        <i class="ri-camera-line me-1"></i>
+                        <span>1/{{ image_urls|length }}</span>
+                    </div>
+
+                    <button class="modern-nav-btn modern-prev"
+                            aria-label="Предыдущее изображение">
+                        <i class="ri-arrow-left-s-line"></i>
+                    </button>
+                    <button class="modern-nav-btn modern-next"
+                            aria-label="Следующее изображение">
+                        <i class="ri-arrow-right-s-line"></i>
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- Миниатюры галереи -->
+                {% if image_urls|length > 1 %}
+                <div class="gallery-thumbnails">
+                    {% for image_url in image_urls %}
+                    <div class="gallery-thumbnail {% if forloop.first %}active{% endif %}"
+                         data-slide="{{ forloop.counter0 }}">
+                        <img src="{{ image_url }}"
+                             alt="Миниатюра {{ forloop.counter }}"
+                             onerror="this.style.display='none'">
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center rounded mb-4" style="height: 300px;">
+                    <div class="text-center text-muted">
+                        <i class="ri-image-line ri-3x mb-2 opacity-50"></i>
+                        <p class="mb-0 opacity-75">Нет изображений</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Детальная информация в три столбца -->
+                <div class="characteristics-section">
+                    <h5 class="mb-3">Характеристики</h5>
+                    <div class="modern-details-grid three-columns-layout">
+                        <div class="details-column">
+                            <!-- Состояние -->
+                            {% if item.condition %}
+                            <div class="detail-item">
+                                <i class="ri-checkbox-circle-line"></i>
+                                <span class="detail-text">{{ item.condition }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Категория -->
+                            {% if item.category %}
+                            <div class="detail-item">
+                                <i class="ri-price-tag-3-line"></i>
+                                <span class="detail-text">{{ item.category }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Год -->
+                            {% if item.year %}
+                            <div class="detail-item">
+                                <i class="ri-calendar-line"></i>
+                                <span class="detail-text">{{ item.year }} год</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Цвет -->
+                            {% if item.color %}
+                            <div class="detail-item">
+                                <i class="ri-palette-line"></i>
+                                <span class="detail-text">{{ item.color }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- 🔥 КОМПЛЕКТАЦИЯ - НОВОЕ ПОЛЕ -->
+                            {% if item.package %}
+                            <div class="detail-item">
+                                <i class="ri-gift-line"></i>
+                                <span class="detail-text">{{ item.package }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="details-column">
+                            <!-- Пробег -->
+                            {% if item.mileage %}
+                            <div class="detail-item">
+                                <i class="ri-roadster-line"></i>
+                                <span class="detail-text">{{ item.mileage }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Двигатель -->
+                            {% if item.engine %}
+                            <div class="detail-item">
+                                <i class="ri-settings-5-line"></i>
+                                <span class="detail-text">{{ item.engine }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Коробка передач -->
+                            {% if item.transmission %}
+                            <div class="detail-item">
+                                <i class="ri-settings-3-line"></i>
+                                <span class="detail-text">{{ item.transmission }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Привод -->
+                            {% if item.drive %}
+                            <div class="detail-item">
+                                <i class="ri-steering-2-line"></i>
+                                <span class="detail-text">{{ item.drive }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- 🔥 ТИП КУЗОВА - НОВОЕ ПОЛЕ -->
+                            {% if item.body %}
+                            <div class="detail-item">
+                                <i class="ri-car-line"></i>
+                                <span class="detail-text">{{ item.body }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="details-column">
+                            <!-- Владельцы -->
+                            {% if item.owners %}
+                            <div class="detail-item">
+                                <i class="ri-user-shared-line"></i>
+                                <span class="detail-text">{{ item.owners }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- ПТС -->
+                            {% if item.pts %}
+                            <div class="detail-item">
+                                <i class="ri-file-text-line"></i>
+                                <span class="detail-text">ПТС: {{ item.pts }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Налог -->
+                            {% if item.tax %}
+                            <div class="detail-item">
+                                <i class="ri-money-dollar-circle-line"></i>
+                                <span class="detail-text">Налог: {{ item.tax }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Таможня -->
+                            {% if item.customs %}
+                            <div class="detail-item">
+                                <i class="ri-passport-line"></i>
+                                <span class="detail-text">Таможня: {{ item.customs }}</span>
+                            </div>
+                            {% endif %}
+
+                            <!-- Руль -->
+                            {% if item.steering %}
+                            <div class="detail-item">
+                                <i class="ri-steering-line"></i>
+                                <span class="detail-text">Руль: {{ item.steering }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Секция адреса -->
+                <div class="address-section">
+                    <h5 class="mb-3">Адрес</h5>
+                    <div class="address-column">
+                        <!-- Адрес с увеличенным шрифтом -->
+                        {% if item.address %}
+                        <div class="detail-item">
+                            <i class="ri-map-pin-line"></i>
+                            <span class="detail-text">{{ item.address }}</span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Метро -->
+                        {% if metro_stations %}
+                        <div class="detail-item">
+                            <i class="ri-subway-line"></i>
+                            <div class="metro-station-container">
+                                <span class="detail-text">Метро:</span>
+                                {% for station in metro_stations %}
+                                {% if station.name %}
+                                <div class="metro-badge metro-line-{{ station.line_number|default:'default' }}">
+                                    <span class="metro-circle" style="background-color: {{ station.color|default:'#666' }};">
+                                        {{ station.line_number|default:forloop.counter }}
+                                    </span>
+                                    {{ station.name }}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Описание -->
+                {% if item.description and item.description != 'Описание отсутствует' %}
+                <div class="mt-4">
+                    <h5 class="mb-3">Описание</h5>
+                    <div style="white-space: pre-line; line-height: 1.6; padding: 16px; background: #f8f9fa; border-radius: 8px; font-family: inherit; text-indent: 0; margin: 0;">
+                        {{ item.description }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Футер карточки -->
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div class="time-info">
+        <small class="text-muted">Найдено: {{ item.found_at|date:"d.m.Y H:i" }}</small>
+    </div>
+    <div class="action-buttons">
+        <a href="{{ item.url }}" target="_blank" class="item-action-btn item-action-primary" title="Открыть на {{ item.source|default:'сайте' }}">
+            <i class="ri-external-link-line"></i>
+            <span class="action-text">Перейти</span>
+        </a>
+        <button class="item-action-btn item-action-warning share-btn" data-item-id="{{ item.id }}" title="Поделиться">
+            <i class="ri-share-line"></i>
+            <span class="action-text">Поделиться</span>
+        </button>
+        <button class="item-action-btn item-action-danger favorite-btn {% if item.is_favorite %}active{% endif %}"
+                data-item-id="{{ item.id }}"
+                data-is-favorite="{{ item.is_favorite|yesno:'true,false' }}"
+                title="{% if item.is_favorite %}Удалить из избранного{% else %}Добавить в избранное{% endif %}">
+            <i class="{% if item.is_favorite %}ri-heart-fill{% else %}ri-heart-line{% endif %}"></i>
+            <span class="action-text">{% if item.is_favorite %}В избранном{% else %}В избранное{% endif %}</span>
+        </button>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+
+<!-- Боковая панель -->
+<div class="col-lg-4">
+    <!-- Карточка 1: Цена и продавец -->
+    <div class="card card-seller featured mb-4">
+        <div class="card-seller-body">
+            <div class="sidebar-price-card">
+                <div class="price-main">
+                    {{ item.price|intcomma }} ₽
+                </div>
+                <div class="price-target">
+                    цель {{ item.target_price|intcomma }} ₽
+                    {% if item.price_status %}
+                    <div class="price-status {% if 'Справедливая' in item.price_status %}price-fair{% elif 'Выше' in item.price_status %}price-high{% elif 'Ниже' in item.price_status %}price-low{% endif %}">
+                        {{ item.price_status }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% load rating_filters %}
+                <!-- Рейтинг продавца -->
+                {% if item.seller_rating %}
+                <div class="seller-rating-sidebar">
+                    <div class="seller-avatar">
+                        {% if item.seller_avatar %}
+                            <img src="{{ item.seller_avatar }}" alt="Аватар продавца" onerror="this.src='/static/assets/img/avatars/1.png'">
+                        {% else %}
+                            <img src="/static/assets/img/avatars/1.png" alt="Аватар продавца">
+                        {% endif %}
+                    </div>
+                    <div class="seller-info-sidebar">
+                        <div class="seller-rating">
+                            <!-- ЗВЕЗДЫ РЕЙТИНГА -->
+                            <div class="seller-rating-stars">
+                                {{ item.seller_rating|rating_stars|safe }}
+                            </div>
+                            <span class="fw-semibold">({{ item.seller_rating }})</span>
+                        </div>
+                        {% if item.seller_name %}
+                            {% if item.seller_profile_url %}
+                            <a href="{{ item.seller_profile_url }}" target="_blank" class="seller-name">
+                                {{ item.seller_name }}
+                            </a>
+                            {% else %}
+                            <div class="seller-name">{{ item.seller_name }}</div>
+                            {% endif %}
+                        {% endif %}
+                        {% if item.reviews_count %}
+                        <div class="seller-reviews">{{ item.reviews_count }} отзывов</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Карточка 2: Похожие товары -->
+    {% if similar_items %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Похожие объявление</h5>
+        </div>
+        <div class="card-body">
+            <div class="similar-products-grid">
+                {% for similar_item in similar_items %}
+                <a href="{% url 'website:found_item_detail' similar_item.id %}" class="text-decoration-none">
+                    <div class="similar-product-card">
+                        <div class="similar-product-content">
+                            {% with images=similar_item.get_images %}
+                            <div class="similar-product-image">
+                                {% if images %}
+                                <img src="{{ images.0 }}"
+                                     alt="{{ similar_item.title }}"
+                                     onerror="this.style.display='none'">
+                                {% else %}
+                                <div class="image-placeholder h-100 d-flex align-items-center justify-content-center">
+                                    <i class="ri-image-line opacity-50"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endwith %}
+
+                            <div class="similar-product-info">
+                                <h6 class="similar-product-title">{{ similar_item.title }}</h6>
+
+                                <div class="similar-product-price">
+                                    {{ similar_item.price|intcomma }} ₽
+                                </div>
+
+                                <div class="similar-product-details">
+                                    {% if similar_item.city %}
+                                    <div class="similar-product-detail">
+                                        <i class="ri-map-pin-line"></i>
+                                        <span>{{ similar_item.city }}</span>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if similar_item.posted_date %}
+                                    <div class="similar-product-detail">
+                                        <i class="ri-calendar-event-line"></i>
+                                        <span>{{ similar_item.posted_date }}</span>
+                                    </div>
+                                    {% endif %}
+
+                                    {% if similar_item.source %}
+                                    <div class="similar-product-detail">
+                                        <i class="ri-external-link-line"></i>
+                                        <span>{{ similar_item.source }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Инициализация галереи для детальной страницы
+function initDetailGallery() {
+    const container = document.querySelector('.detail-gallery-container');
+    if (!container) return;
+
+    const track = container.querySelector('.detail-gallery-track');
+    const slides = container.querySelectorAll('.detail-gallery-slide');
+    const prevBtn = container.querySelector('.modern-prev');
+    const nextBtn = container.querySelector('.modern-next');
+    const indicators = container.querySelectorAll('.detail-indicator');
+    const thumbnails = document.querySelectorAll('.gallery-thumbnail');
+    const photoCounter = container.querySelector('.detail-photo-counter span');
+    const totalSlides = slides.length;
+
+    if (totalSlides <= 1) {
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (indicators.length > 0) {
+            container.querySelector('.detail-indicators').style.display = 'none';
+        }
+        if (thumbnails.length > 0) {
+            document.querySelector('.gallery-thumbnails').style.display = 'none';
+        }
+        return;
+    }
+
+    let currentSlide = 0;
+
+    function updateGallery() {
+        if (track) {
+            track.style.transform = `translateX(-${currentSlide * 100}%)`;
+        }
+
+        // Обновляем индикаторы
+        indicators.forEach((indicator, index) => {
+            indicator.classList.toggle('active', index === currentSlide);
+        });
+
+        // Обновляем миниатюры
+        thumbnails.forEach((thumbnail, index) => {
+            thumbnail.classList.toggle('active', index === currentSlide);
+        });
+
+        // Обновляем счетчик фото
+        if (photoCounter) {
+            photoCounter.textContent = `${currentSlide + 1}/${totalSlides}`;
+        }
+    }
+
+    function goToSlide(slideIndex) {
+        currentSlide = slideIndex;
+        updateGallery();
+    }
+
+    function nextSlide() {
+        currentSlide = (currentSlide + 1) % totalSlides;
+        updateGallery();
+    }
+
+    function prevSlide() {
+        currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+        updateGallery();
+    }
+
+    // Обработчики событий для кнопок
+    if (prevBtn) {
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            prevSlide();
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            nextSlide();
+        });
+    }
+
+    // Обработчики для индикаторов
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', (e) => {
+            e.stopPropagation();
+            goToSlide(index);
+        });
+    });
+
+    // Обработчики для миниатюр
+    thumbnails.forEach((thumbnail, index) => {
+        thumbnail.addEventListener('click', (e) => {
+            e.stopPropagation();
+            goToSlide(index);
+        });
+    });
+
+    // Обработчики для клика по изображениям (открытие модального окна)
+    slides.forEach((slide, index) => {
+        const image = slide.querySelector('.detail-gallery-image');
+        if (image) {
+            image.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openModalGallery(index);
+            });
+        }
+    });
+
+    // Инициализация
+    updateGallery();
+}
+
+// Модальное окно галереи
+function initModalGallery() {
+    const modal = document.getElementById('modalGallery');
+    const closeBtn = modal.querySelector('.modal-close');
+    const prevBtn = modal.querySelector('.modal-prev');
+    const nextBtn = modal.querySelector('.modal-next');
+    const slides = modal.querySelectorAll('.modal-gallery-slide');
+    const indicators = modal.querySelectorAll('.modern-indicator');
+    const thumbnails = modal.querySelectorAll('.modal-gallery-thumbnail');
+    const totalSlides = slides.length;
+
+    let currentModalSlide = 0;
+
+    function openModalGallery(startIndex = 0) {
+        currentModalSlide = startIndex;
+        updateModalGallery();
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModalGallery() {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    function updateModalGallery() {
+        // Обновляем слайды
+        slides.forEach((slide, index) => {
+            slide.classList.toggle('active', index === currentModalSlide);
+        });
+
+        // Обновляем индикаторы
+        indicators.forEach((indicator, index) => {
+            indicator.classList.toggle('active', index === currentModalSlide);
+        });
+
+        // Обновляем миниатюры
+        thumbnails.forEach((thumbnail, index) => {
+            thumbnail.classList.toggle('active', index === currentModalSlide);
+        });
+    }
+
+    function nextModalSlide() {
+        currentModalSlide = (currentModalSlide + 1) % totalSlides;
+        updateModalGallery();
+    }
+
+    function prevModalSlide() {
+        currentModalSlide = (currentModalSlide - 1 + totalSlides) % totalSlides;
+        updateModalGallery();
+    }
+
+    // Обработчики событий
+    closeBtn.addEventListener('click', closeModalGallery);
+
+    prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        prevModalSlide();
+    });
+
+    nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        nextModalSlide();
+    });
+
+    // Обработчики для индикаторов
+    indicators.forEach((indicator, index) => {
+        indicator.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentModalSlide = index;
+            updateModalGallery();
+        });
+    });
+
+    // Обработчики для миниатюр
+    thumbnails.forEach((thumbnail, index) => {
+        thumbnail.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentModalSlide = index;
+            updateModalGallery();
+        });
+    });
+
+    // Закрытие по клику вне контента
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModalGallery();
+        }
+    });
+
+    // Закрытие по ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'block') {
+            closeModalGallery();
+        }
+        if (e.key === 'ArrowLeft' && modal.style.display === 'block') {
+            prevModalSlide();
+        }
+        if (e.key === 'ArrowRight' && modal.style.display === 'block') {
+            nextModalSlide();
+        }
+    });
+
+    // Экспортируем функцию открытия
+    window.openModalGallery = openModalGallery;
+}
+
+// Обработка ошибок изображений
+function handleImageError(img) {
+    img.style.display = 'none';
+    const placeholder = img.closest('.detail-gallery-slide');
+    if (placeholder) {
+        placeholder.innerHTML = `
+            <div class="image-placeholder h-100 d-flex align-items-center justify-content-center">
+                <div class="text-center text-muted">
+                    <i class="ri-image-line ri-2x mb-2 opacity-50"></i>
+                    <p class="mb-0 small opacity-75">Нет фото</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Инициализация системы избранного
+function initFavoriteSystem() {
+    // Обработчик для сердечка в заголовке
+    document.querySelectorAll('.header-favorite-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const itemId = this.getAttribute('data-item-id');
+            const isFavorite = this.getAttribute('data-is-favorite') === 'true';
+
+            toggleFavorite(itemId, isFavorite, this, true);
+        });
+    });
+
+    // Обработчик для кнопки избранного в футере
+    document.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const itemId = this.getAttribute('data-item-id');
+            const isFavorite = this.getAttribute('data-is-favorite') === 'true';
+
+            toggleFavorite(itemId, isFavorite, this, false);
+        });
+    });
+}
+
+// Функция переключения избранного
+function toggleFavorite(itemId, currentState, button, isHeaderButton) {
+    const originalHTML = button.innerHTML;
+    button.innerHTML = '<i class="ri-loader-4-line rotate"></i>';
+    button.disabled = true;
+
+    // Если это кнопка в заголовке, обновляем также кнопку в футере и наоборот
+    const otherButton = isHeaderButton
+        ? document.querySelector(`.favorite-btn[data-item-id="${itemId}"]`)
+        : document.querySelector(`.header-favorite-btn[data-item-id="${itemId}"]`);
+
+    if (otherButton) {
+        otherButton.innerHTML = '<i class="ri-loader-4-line rotate"></i>';
+        otherButton.disabled = true;
+    }
+
+    fetch(`/favorites/toggle/${itemId}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken(),
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'added' || data.status === 'removed') {
+            updateFavoriteButton(button, data.status === 'added', isHeaderButton);
+            if (otherButton) {
+                updateFavoriteButton(otherButton, data.status === 'added', !isHeaderButton);
+            }
+            showFavoriteNotification(data.message, data.status);
+        } else {
+            throw new Error(data.message || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        console.error('Error toggling favorite:', error);
+        showFavoriteNotification('Ошибка при обновлении избранного', 'error');
+        button.innerHTML = originalHTML;
+        button.disabled = false;
+        if (otherButton) {
+            otherButton.innerHTML = originalHTML;
+            otherButton.disabled = false;
+        }
+    });
+}
+
+function updateFavoriteButton(button, isFavorite, isHeaderButton) {
+    const icon = button.querySelector('i');
+
+    if (isFavorite) {
+        button.classList.add('active');
+        button.setAttribute('data-is-favorite', 'true');
+        button.setAttribute('title', 'Удалить из избранного');
+        if (icon) {
+            icon.className = isHeaderButton ? 'ri-heart-fill' : 'ri-heart-fill me-1';
+        }
+        if (!isHeaderButton) {
+            const text = button.querySelector('.btn-text');
+            if (text) {
+                text.textContent = 'В избранном';
+            }
+        }
+    } else {
+        button.classList.remove('active');
+        button.setAttribute('data-is-favorite', 'false');
+        button.setAttribute('title', 'Добавить в избранное');
+        if (icon) {
+            icon.className = isHeaderButton ? 'ri-heart-line' : 'ri-heart-line me-1';
+        }
+        if (!isHeaderButton) {
+            const text = button.querySelector('.btn-text');
+            if (text) {
+                text.textContent = 'В избранное';
+            }
+        }
+    }
+
+    button.disabled = false;
+}
+
+function showFavoriteNotification(message, type) {
+    // Используем нашу новую систему уведомлений
+    const titles = {
+        'added': 'Добавлено в избранное',
+        'removed': 'Удалено из избранного',
+        'error': 'Ошибка'
+    };
+
+    const icons = {
+        'added': 'ri-heart-fill',
+        'removed': 'ri-heart-line',
+        'error': 'ri-error-warning-line'
+    };
+
+    switch(type) {
+        case 'added':
+            // Успех - добавлено в избранное
+            if (typeof notificationSuccess !== 'undefined') {
+                notificationSuccess(message, titles[type]);
+            } else {
+                // Fallback на toastr если новая система не загружена
+                toastr.success(message, titles[type]);
+            }
+            break;
+
+        case 'removed':
+            // Информация - удалено из избранного
+            if (typeof notificationInfo !== 'undefined') {
+                notificationInfo(message, titles[type]);
+            } else {
+                toastr.info(message, titles[type]);
+            }
+            break;
+
+        case 'error':
+            // Ошибка
+            if (typeof notificationError !== 'undefined') {
+                notificationError(message, titles[type]);
+            } else {
+                toastr.error(message, titles[type]);
+            }
+            break;
+
+        default:
+            if (typeof notificationInfo !== 'undefined') {
+                notificationInfo(message, titles[type] || 'Уведомление');
+            } else {
+                toastr.info(message, titles[type] || 'Уведомление');
+            }
+    }
+}
+
+function getCSRFToken() {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    initDetailGallery();
+    initModalGallery();
+    initFavoriteSystem();
+
+    // Добавляем CSS для анимации загрузки
+    const style = document.createElement('style');
+    style.textContent = `
+        .rotate {
+            animation: rotate 1s linear infinite;
+        }
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+{% endblock %}

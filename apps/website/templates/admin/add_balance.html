@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+<h1>Пополнение баланса</h1>
+<p>Выбранные пользователи: {{ users|length }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="amount">Сумма пополнения (₽):</label>
+        <input type="number" name="amount" step="0.01" min="0" value="0" class="form-control" required>
+    </div>
+
+    <div class="form-actions">
+        <input type="submit" name="apply" value="Пополнить" class="btn btn-primary">
+        <a href="{% url 'admin:website_userprofile_changelist' %}" class="btn btn-secondary">Отмена</a>
+    </div>
+</form>
+
+<h2>Список пользователей:</h2>
+<ul>
+    {% for user in users %}
+    <li>{{ user.user.username }} - Текущий баланс: {{ user.balance }} ₽</li>
+    {% endfor %}
+</ul>
+{% endblock %}

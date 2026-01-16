@@ -1,0 +1,1540 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Поиск - Селибри{% endblock %}
+
+{% block page_css %}
+<style>
+/* ШИРИНА КОНТЕЙНЕРА КАК В ПРОФИЛЕ */
+.container-xxl.flex-grow-1.container-p-y {
+    max-width: 1800px !important;
+    margin: 0 auto !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+@media (max-width: 1800px) {
+    .container-xxl.flex-grow-1.container-p-y {
+        max-width: 100% !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .container-xxl.flex-grow-1.container-p-y {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+}
+
+/* 🔥 АДАПТИВНЫЕ КАРТОЧКИ ДЛЯ ПОИСКА (4 в ряд) */
+.search-container {
+    padding: 0;
+}
+
+.search-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 0;
+}
+
+@media (min-width: 1400px) {
+    .search-results-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 1400px) {
+    .search-results-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 1200px) {
+    .search-results-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .search-results-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+}
+
+@media (max-width: 576px) {
+    .search-results-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
+/* СТАТИСТИКА ПОИСКА - ПРОСТАЯ */
+.search-meta-info {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 12px;
+    margin: 20px 0;
+    text-align: center;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.search-meta-info .fw-semibold {
+    color: #495057;
+}
+
+/* СТИЛИ КАРТОЧЕК */
+.product-card-modern {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+    overflow: hidden;
+    cursor: pointer;
+    height: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-card-modern:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* ГАЛЕРЕЯ */
+.modern-gallery-container {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    border-radius: 12px 12px 0 0;
+    background: #f8f9fa;
+    flex-shrink: 0;
+}
+
+.modern-gallery-track {
+    display: flex;
+    height: 100%;
+    transition: transform 0.3s ease;
+}
+
+.modern-gallery-slide {
+    flex: 0 0 100%;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.modern-gallery-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profit-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    background: linear-gradient(135deg, rgba(0, 184, 148, 0.9), rgba(0, 160, 133, 0.9));
+    backdrop-filter: blur(10px);
+    z-index: 10;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* ТЕЛО КАРТОЧКИ */
+.modern-card-body {
+    padding: 12px;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.modern-title {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #2d3748;
+    flex: 1;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* ИКОНКИ ИСТОЧНИКА, РЕЙТИНГА, ПРОДАВЦА */
+.source-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    height: 22px;
+}
+
+.source-auto-ru {
+    background: rgba(230, 0, 0, 0.1);
+    color: #E60000;
+}
+
+.source-avito {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4CAF50;
+}
+
+.modern-rating {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 193, 7, 0.1);
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    height: 22px;
+}
+
+.seller-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    height: 22px;
+}
+
+.seller-badge.reseller {
+    background: rgba(255, 193, 7, 0.1);
+    color: #e67e22;
+}
+
+.seller-badge.private {
+    background: rgba(52, 152, 219, 0.1);
+    color: #3498db;
+}
+
+/* ЦЕНЫ */
+.price-section {
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    padding: 8px;
+    border-radius: 10px;
+    margin: 8px -4px;
+}
+
+.current-price {
+    font-size: 15px;
+    font-weight: 800;
+    color: #2d3748;
+}
+
+.target-price {
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* СТАТУСЫ ЦЕНЫ */
+.price-status {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 4px;
+    width: 100%;
+}
+
+.price-status.price-fair {
+    background: rgba(0, 184, 148, 0.1);
+    color: #00b894;
+    border: 1px solid rgba(0, 184, 148, 0.2);
+}
+
+.price-status.price-high {
+    background: rgba(255, 71, 87, 0.1);
+    color: #ff4757;
+    border: 1px solid rgba(255, 71, 87, 0.2);
+}
+
+.price-status.price-low {
+    background: rgba(0, 123, 255, 0.1);
+    color: #007bff;
+    border: 1px solid rgba(0, 123, 255, 0.2);
+}
+
+.price-status i {
+    font-size: 12px;
+}
+
+/* БЛОК ПРОДАВЦА */
+.seller-rating-sidebar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255, 193, 7, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.seller-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.seller-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.seller-info-sidebar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.seller-rating-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.seller-rating-stars {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.seller-rating-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.seller-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.seller-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    line-height: 1.2;
+}
+
+.seller-reviews {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+/* ХАРАКТЕРИСТИКИ */
+.modern-details-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.detail-item i {
+    color: #6c757d;
+    width: 14px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.detail-text {
+    color: #4a5568;
+    flex: 1;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ФУТЕР */
+.card-footer {
+    background: rgba(248, 249, 250, 0.8);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 8px 12px !important;
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+.time-info small {
+    font-size: 11px;
+    color: #8c8c8c;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.modern-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 3px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 28px;
+    height: 26px;
+}
+
+.modern-btn i {
+    font-size: 12px;
+}
+
+.modern-btn-primary {
+    background: rgba(13, 110, 253, 0.1);
+    color: #0d6efd;
+}
+
+.modern-btn-danger {
+    background: rgba(255, 71, 87, 0.1);
+    color: #ff4757;
+}
+
+/* ДИНАМИЧЕСКИЕ ПОДСКАЗКИ (ОБНОВЛЕННЫЕ) */
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e9ecef;
+    border-top: none;
+    z-index: 1000;
+    max-height: 300px;
+    overflow-y: auto;
+    display: none;
+}
+
+.suggestion-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.suggestion-item:hover {
+    background: #f8f9fa;
+}
+
+.suggestion-item i {
+    color: #6c757d;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.suggestion-content {
+    flex: 1;
+}
+
+.suggestion-title {
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 4px;
+}
+
+.suggestion-details {
+    font-size: 12px;
+    color: #6c757d;
+    display: flex;
+    gap: 12px;
+}
+
+.suggestion-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
+/* АНИМАЦИЯ ЗАГРУЗКИ */
+.loading-spinner {
+    text-align: center;
+    padding: 40px;
+}
+
+.spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #0d6efd;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* КАРТОЧКИ-ЗАГЛУШКИ ПРИ ПУСТОМ ПОИСКЕ */
+.placeholder-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    background: #f8f9fa;
+    overflow: hidden;
+    cursor: default;
+    height: 100%;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.6; }
+}
+
+.placeholder-gallery {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 12px 12px 0 0;
+    animation: shimmer 2s infinite;
+    flex-shrink: 0;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.placeholder-body {
+    padding: 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.placeholder-title {
+    height: 16px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-title:nth-child(2) {
+    width: 80%;
+}
+
+.placeholder-badges {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.placeholder-badge {
+    height: 22px;
+    width: 60px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-badge:nth-child(2) {
+    width: 50px;
+}
+
+.placeholder-price {
+    height: 24px;
+    width: 120px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-status {
+    height: 30px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-seller {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.placeholder-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-seller-info {
+    flex: 1;
+}
+
+.placeholder-seller-name {
+    height: 12px;
+    width: 80px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-seller-rating {
+    height: 12px;
+    width: 60px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 4px;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.placeholder-detail {
+    height: 12px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 4px;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-detail:nth-child(2) {
+    width: 90%;
+}
+
+.placeholder-footer {
+    background: rgba(248, 249, 250, 0.8);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 8px 12px;
+    margin-top: auto;
+    flex-shrink: 0;
+}
+
+.placeholder-footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.placeholder-date {
+    height: 11px;
+    width: 80px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 4px;
+    animation: shimmer 2s infinite;
+}
+
+.placeholder-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.placeholder-action {
+    width: 28px;
+    height: 26px;
+    background: linear-gradient(90deg, #e9ecef 25%, #dee2e6 50%, #e9ecef 75%);
+    background-size: 200% 100%;
+    border-radius: 8px;
+    animation: shimmer 2s infinite;
+}
+
+/* БЫСТРЫЕ ФИЛЬТРЫ */
+.quick-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.quick-filter-btn {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    border: 1px solid #dee2e6;
+    background: white;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quick-filter-btn:hover {
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+
+.quick-filter-btn.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- КАРТОЧКА ПОИСКА БЕЗ АНИМАЦИИ -->
+    <div class="card mb-4">
+        <div class="card-body p-4">
+            <div class="position-relative">
+                <form id="search-form">
+                    <div class="input-group input-group-merge">
+                        <span class="input-group-text">
+                            <i class="ri-search-line"></i>
+                        </span>
+                        <input
+                            type="text"
+                            class="form-control form-control-lg"
+                            id="main-search-input"
+                            placeholder="Поиск по товарам, ID, категориям, продавцам, городам..."
+                            value="{{ query|default:'' }}"
+                            autocomplete="off"
+                        >
+                        <button class="btn btn-primary" type="submit" id="search-button">
+                            <i class="ri-search-line me-1"></i>Найти
+                        </button>
+                    </div>
+                </form>
+
+                <!-- ДИНАМИЧЕСКИЕ ПОДСКАЗКИ (ВЫПАДАЮЩИЙ СПИСОК) -->
+                <div class="suggestions-dropdown" id="search-suggestions"></div>
+            </div>
+
+            <!-- БЫСТРЫЕ ФИЛЬТРЫ -->
+            <div class="quick-filters" id="quick-filters">
+                <button class="quick-filter-btn" data-filter="profitable">
+                    <i class="ri-trending-up-line me-1"></i>Выгодные
+                </button>
+                <button class="quick-filter-btn" data-filter="favorites">
+                    <i class="ri-heart-line me-1"></i>Избранное
+                </button>
+                <button class="quick-filter-btn" data-filter="avito">
+                    <i class="ri-home-4-line me-1"></i>Авито
+                </button>
+                <button class="quick-filter-btn" data-filter="auto_ru">
+                    <i class="ri-car-line me-1"></i>Auto.ru
+                </button>
+                <button class="quick-filter-btn" data-filter="new">
+                    <i class="ri-flashlight-line me-1"></i>Новые
+                </button>
+                <button class="quick-filter-btn" data-filter="with_photo">
+                    <i class="ri-camera-line me-1"></i>С фото
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- СТАТИСТИКА ПОИСКА - ПРОСТОЙ И ЧЕТКИЙ -->
+    <div class="search-meta-info" id="search-stats" style="display: none;">
+        <div class="text-center text-muted small">
+            Найдено <span class="fw-semibold" id="total-count">0</span> товаров
+            | Время поиска: <span class="fw-semibold" id="search-time">0.0с</span>
+        </div>
+    </div>
+
+    <!-- РЕЗУЛЬТАТЫ -->
+    <div id="search-results">
+        <!-- Результаты загружаются через JavaScript -->
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+$(document).ready(function() {
+    console.log('🔍 Поисковая страница загружена');
+
+    let currentQuery = '';
+    let currentFilters = {};
+    let searchTimeout = null;
+    let searchStartTime = null;
+
+    // ========== БАЗОВЫЕ ФУНКЦИИ ==========
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    function formatPrice(price) {
+        if (!price) return '0';
+        const num = parseFloat(price);
+        if (isNaN(num)) return '0';
+        return num.toLocaleString('ru-RU', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+    }
+
+    function hideSuggestions() {
+        $('#search-suggestions').hide().empty();
+    }
+
+    function updateUrl(query, filters) {
+        const params = new URLSearchParams();
+        if (query) params.set('q', query);
+        if (Object.keys(filters).length > 0) {
+            params.set('filters', JSON.stringify(filters));
+        }
+
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.pushState({}, '', newUrl);
+    }
+
+    function showError(message) {
+        $('#search-results').html(`
+            <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                <i class="ri-error-warning-line" style="font-size: 64px; color: #dc3545; margin-bottom: 20px;"></i>
+                <h4 style="color: #dc3545; margin-bottom: 10px;">Ошибка поиска</h4>
+                <p style="color: #6c757d; margin-bottom: 20px; font-size: 16px;">${escapeHtml(message)}</p>
+                <div class="mt-4">
+                    <button class="btn btn-primary" onclick="location.reload()" style="margin-right: 10px;">
+                        <i class="ri-refresh-line me-1"></i>Обновить страницу
+                    </button>
+                    ${currentQuery ? `
+                    <button class="btn btn-outline-primary" id="retry-search-btn">
+                        <i class="ri-search-line me-1"></i>Попробовать снова
+                    </button>
+                    ` : ''}
+                </div>
+                <div class="mt-4 text-muted small">
+                    © ${new Date().getFullYear()} Селибри
+                </div>
+            </div>
+        `);
+
+        if (currentQuery) {
+            $('#retry-search-btn').on('click', function() {
+                performSearch(currentQuery, currentFilters);
+            });
+        }
+    }
+
+    function clearSearch() {
+        console.log('🧹 Очищаем поиск');
+        $('#main-search-input').val('');
+        $('#search-stats').hide();
+        $('#search-results').html('');
+        window.history.pushState({}, '', window.location.pathname);
+    }
+
+    function renderStars(rating) {
+        if (!rating) return '';
+        const fullStars = Math.floor(rating);
+        const hasHalfStar = rating % 1 >= 0.3;
+        let starsHtml = '';
+
+        for (let i = 1; i <= 5; i++) {
+            if (i <= fullStars) {
+                starsHtml += '<i class="ri-star-fill text-warning" style="font-size: 13px;"></i>';
+            } else if (i === fullStars + 1 && hasHalfStar) {
+                starsHtml += '<i class="ri-star-half-line text-warning" style="font-size: 13px;"></i>';
+            } else {
+                starsHtml += '<i class="ri-star-line text-warning" style="font-size: 13px;"></i>';
+            }
+        }
+        return starsHtml;
+    }
+
+    // ========== ВЫПАДАЮЩИЕ ПОДСКАЗКИ ==========
+
+    function showSuggestions(query) {
+        if (query.length < 2) {
+            hideSuggestions();
+            return;
+        }
+
+        // Показываем загрузку
+        $('#search-suggestions').html(`
+            <div class="suggestion-item">
+                <i class="ri-loader-4-line rotate"></i>
+                <div class="suggestion-content">
+                    <div class="suggestion-title">Загружаем подсказки...</div>
+                </div>
+            </div>
+        `).show();
+
+        // Запрашиваем подсказки с сервера
+        $.ajax({
+            url: '/api/search/universal/',
+            method: 'GET',
+            data: {
+                q: query,
+                per_page: 8  // Только подсказки
+            },
+            success: function(response) {
+                if (response.pages && response.pages.length > 0) {
+                    let suggestionsHtml = '';
+
+                    // Добавляем найденные товары
+                    response.pages.forEach(function(item) {
+                        const title = item.title || item.name || 'Без названия';
+                        const price = item.price ? formatPrice(item.price) + ' ₽' : '';
+                        const category = item.category || '';
+
+                        suggestionsHtml += `
+                            <div class="suggestion-item" data-query="${escapeHtml(title)}">
+                                <i class="${item.source === 'auto_ru' ? 'ri-car-fill' : 'ri-home-4-fill'}"></i>
+                                <div class="suggestion-content">
+                                    <div class="suggestion-title">${escapeHtml(title)}</div>
+                                    <div class="suggestion-details">
+                                        ${price ? `<span>${price}</span>` : ''}
+                                        ${category ? `<span class="suggestion-badge">${escapeHtml(category)}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    // Добавляем вариант поиска по полному запросу
+                    suggestionsHtml += `
+                        <div class="suggestion-item" data-query="${escapeHtml(query)}">
+                            <i class="ri-search-line"></i>
+                            <div class="suggestion-content">
+                                <div class="suggestion-title">Искать "${escapeHtml(query)}"</div>
+                                <div class="suggestion-details">По всему каталогу</div>
+                            </div>
+                        </div>
+                    `;
+
+                    $('#search-suggestions').html(suggestionsHtml).show();
+
+                    // Обработка клика по подсказке
+                    $('.suggestion-item').off('click').on('click', function() {
+                        const query = $(this).data('query');
+                        $('#main-search-input').val(query);
+                        performSearch(query);
+                    });
+                } else {
+                    // Если нет подсказок, показываем вариант поиска
+                    $('#search-suggestions').html(`
+                        <div class="suggestion-item" data-query="${escapeHtml(query)}">
+                            <i class="ri-search-line"></i>
+                            <div class="suggestion-content">
+                                <div class="suggestion-title">Искать "${escapeHtml(query)}"</div>
+                                <div class="suggestion-details">По всему каталогу</div>
+                            </div>
+                        </div>
+                    `).show();
+
+                    $('.suggestion-item').off('click').on('click', function() {
+                        const query = $(this).data('query');
+                        performSearch(query);
+                    });
+                }
+            },
+            error: function() {
+                // В случае ошибки просто скрываем
+                hideSuggestions();
+            }
+        });
+    }
+
+    // ========== ПОИСК ==========
+
+    function performSearch(query, filters = {}) {
+        console.log('🔍 Начинаем поиск:', query);
+
+        searchStartTime = Date.now();
+        currentQuery = query;
+
+        // Показываем загрузку
+        $('#search-results').html(`
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p class="mt-3 text-muted">Ищем "${query}"...</p>
+            </div>
+        `);
+
+        // Скрываем подсказки
+        hideSuggestions();
+
+        // Сохраняем в историю
+        updateUrl(query, filters);
+
+        // Подготовка параметров
+        const url = '/api/search/universal/';
+        const params = {
+            q: query,
+            per_page: 50
+        };
+
+        if (Object.keys(filters).length > 0) {
+            params.advanced = JSON.stringify(filters);
+        }
+
+        $.ajax({
+            url: url,
+            method: 'GET',
+            data: params,
+            dataType: 'json',
+            timeout: 10000,
+            success: function(response) {
+                const searchTime = (Date.now() - searchStartTime) / 1000;
+                console.log(`✅ Поиск выполнен за ${searchTime.toFixed(1)}с`);
+
+                if (response.status === 'error') {
+                    console.error('❌ Ошибка в ответе:', response.error);
+                    showError(response.error);
+                    return;
+                }
+
+                // Рендерим результаты
+                $('#search-results').html(`
+                    <div class="search-results-grid">
+                        ${renderSimpleResults(response)}
+                    </div>
+                `);
+
+                updateStats(response, searchTime);
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ AJAX ошибка:', error);
+                showError('Ошибка соединения с сервером');
+            }
+        });
+    }
+
+    function renderSimpleResults(data) {
+        if (!data.pages || data.pages.length === 0) {
+            return `
+                <!-- ОСНОВНАЯ КАРТОЧКА С ИНФОРМАЦИЕЙ И СМАЙЛИКОМ 😞 -->
+                <div class="product-card-modern" style="grid-column: 1 / -1; background: #f8f9fa; border: 1px solid #e9ecef; animation: none;">
+                    <div class="modern-card-body" style="display: flex; align-items: center; justify-content: center; text-align: center; min-height: 300px;">
+                        <div>
+                            <div style="font-size: 24px; color: #adb5bd; margin-bottom: 16px;">
+                                😞
+                            </div>
+                            <h4 style="font-size: 14px; font-weight: 600; color: #495057; margin-bottom: 16px;">
+                                Товары не найдены
+                            </h4>
+                            <p style="color: #6c757d; max-width: 500px; margin: 0 auto 32px; line-height: 1.5; font-size: 14px;">
+                                По вашему запросу пока нет подходящих товаров.<br>
+                                Попробуйте изменить поисковый запрос или использовать другие фильтры.
+                            </p>
+                            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                                <button class="btn btn-primary" onclick="$('#main-search-input').focus()" style="padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+                                    <i class="ri-search-line"></i>
+                                    Новый поиск
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="clearSearch()" style="padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+                                    <i class="ri-close-line"></i>
+                                    Очистить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4 КАРТОЧКИ-ЗАГЛУШКИ (МИГАЮТ КАК ПРИ ЗАГРУЗКЕ) -->
+                ${Array(4).fill().map(() => `
+                    <div class="placeholder-card">
+                        <div class="placeholder-gallery"></div>
+                        <div class="placeholder-body">
+                            <div class="placeholder-title"></div>
+                            <div class="placeholder-title"></div>
+
+                            <div class="placeholder-badges">
+                                <div class="placeholder-badge"></div>
+                                <div class="placeholder-badge"></div>
+                            </div>
+
+                            <div class="placeholder-price"></div>
+                            <div class="placeholder-status"></div>
+
+                            <div class="placeholder-seller">
+                                <div class="placeholder-avatar"></div>
+                                <div class="placeholder-seller-info">
+                                    <div class="placeholder-seller-name"></div>
+                                    <div class="placeholder-seller-rating"></div>
+                                </div>
+                            </div>
+
+                            <div class="placeholder-details">
+                                <div class="placeholder-detail"></div>
+                                <div class="placeholder-detail"></div>
+                                <div class="placeholder-detail"></div>
+                            </div>
+                        </div>
+
+                        <div class="placeholder-footer">
+                            <div class="placeholder-footer-content">
+                                <div class="placeholder-date"></div>
+                                <div class="placeholder-actions">
+                                    <div class="placeholder-action"></div>
+                                    <div class="placeholder-action"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        let html = '';
+        data.pages.forEach(function(item) {
+            const title = item.title || item.name || 'Без названия';
+            const price = item.price ? formatPrice(item.price) : '0';
+            const profit = item.profit || 0;
+            const category = item.category || '';
+            const city = item.city || '';
+            const seller = item.seller_name || '';
+            const sellerRating = item.seller_rating || 0;
+            const reviewsCount = item.reviews_count || 0;
+            const year = item.year || '';
+            const mileage = item.mileage || '';
+            const source = item.source || '';
+            const sellerType = item.seller_type || '';
+            const photoUrl = item.photo || item.image_url || '';
+            const foundAt = item.found_at || '';
+            const targetPrice = item.target_price || 0;
+            const color = item.color || '';
+            const productId = item.product_id || '';
+            const priceStatus = item.price_status || '';
+            const profitPercent = item.profit_percent || 0;
+
+            // Форматируем рейтинг
+            const ratingFormatted = sellerRating ? sellerRating.toFixed(1).replace('.', ',') : '0,0';
+
+            html += `
+                <div class="product-card-modern" data-item-id="${item.id}">
+                    <!-- ГАЛЕРЕЯ -->
+                    <div class="modern-gallery-container">
+                        <div class="modern-gallery-track">
+                            <div class="modern-gallery-slide">
+                                ${photoUrl ?
+                                    `<img src="${photoUrl}" class="modern-gallery-image" alt="${escapeHtml(title)}" loading="lazy">` :
+                                    `<div class="image-placeholder text-center text-muted">
+                                        <i class="ri-car-line ri-2x mb-2 opacity-50"></i>
+                                        <p class="mb-0 small opacity-75">Нет фото</p>
+                                    </div>`
+                                }
+                            </div>
+                        </div>
+
+                        ${profit > 0 ?
+                            `<div class="profit-badge">
+                                <i class="ri-trending-up-fill me-1"></i>
+                                +${formatPrice(profit)} ₽
+                            </div>` :
+                            profit < 0 ?
+                            `<div class="profit-badge" style="background: linear-gradient(135deg, rgba(255, 71, 87, 0.9), rgba(220, 53, 69, 0.9));">
+                                <i class="ri-trending-down-fill me-1"></i>
+                                ${formatPrice(Math.abs(profit))} ₽
+                            </div>` : ''
+                        }
+                    </div>
+
+                    <!-- ТЕЛО КАРТОЧКИ -->
+                    <div class="modern-card-body" onclick="window.location.href='${item.url}'">
+                        <!-- ЗАГОЛОВОК -->
+                        <h6 class="modern-title">${escapeHtml(title)}</h6>
+
+                        <!-- БЕЙДЖИ ИСТОЧНИКА, РЕЙТИНГА И ПРОДАВЦА -->
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            ${source === 'auto_ru' ?
+                                `<div class="source-badge source-auto-ru" title="Auto.ru">
+                                    <i class="ri-car-fill" style="font-size: 12px;"></i>
+                                    <span>Auto.ru</span>
+                                </div>` :
+                                source === 'avito' ?
+                                `<div class="source-badge source-avito" title="Авито">
+                                    <i class="ri-home-4-fill" style="font-size: 12px;"></i>
+                                    <span>Авито</span>
+                                </div>` : ''
+                            }
+
+                            ${sellerRating > 0 ?
+                                `<div class="modern-rating">
+                                    <i class="ri-star-fill text-warning" style="font-size: 12px;"></i>
+                                    <span class="fw-semibold">${ratingFormatted}</span>
+                                </div>` : ''
+                            }
+
+                            ${sellerType === 'Компания' || sellerType === 'Магазин' ?
+                                `<span class="seller-badge reseller">
+                                    <i class="ri-store-2-line"></i>${sellerType}
+                                </span>` :
+                                `<span class="seller-badge private">
+                                    <i class="ri-user-line"></i>${sellerType || 'Частное лицо'}
+                                </span>`
+                            }
+                        </div>
+
+                        <!-- ЦЕНЫ И ПРИБЫЛЬ -->
+                        <div class="price-section mb-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="current-price">
+                                    ${price} ₽
+                                </div>
+                                ${targetPrice > 0 ?
+                                    `<div class="target-price">
+                                        цель ${formatPrice(targetPrice)} ₽
+                                    </div>` : ''
+                                }
+                            </div>
+
+                            <!-- Для Авито - прибыль/убыток -->
+                            ${source === 'avito' ?
+                                (profit > 0 ?
+                                    `<div class="price-status price-fair">
+                                        <i class="ri-arrow-up-line me-1"></i>
+                                        Прибыль: +${formatPrice(profit)} ₽
+                                    </div>` :
+                                    profit < 0 ?
+                                    `<div class="price-status price-high">
+                                        <i class="ri-arrow-down-line me-1"></i>
+                                        Убыток: ${formatPrice(Math.abs(profit))} ₽
+                                    </div>` : ''
+                                ) :
+                                ''
+                            }
+
+                            <!-- Для Auto.ru - статус цены -->
+                            ${source === 'auto_ru' && priceStatus ?
+                                (priceStatus.includes('Выше') || priceStatus.includes('Above') ?
+                                    `<div class="price-status price-high">
+                                        <i class="ri-arrow-up-line me-1"></i>
+                                        ${escapeHtml(priceStatus)}
+                                    </div>` :
+                                    priceStatus.includes('Ниже') || priceStatus.includes('Below') ?
+                                    `<div class="price-status price-fair">
+                                        <i class="ri-arrow-down-line me-1"></i>
+                                        ${escapeHtml(priceStatus)}
+                                    </div>` :
+                                    priceStatus.includes('Справедливая') || priceStatus.includes('Fair') ?
+                                    `<div class="price-status price-low">
+                                        <i class="ri-check-line me-1"></i>
+                                        ${escapeHtml(priceStatus)}
+                                    </div>` :
+                                    priceStatus ?
+                                    `<div class="price-status">
+                                        <i class="ri-information-line me-1"></i>
+                                        ${escapeHtml(priceStatus)}
+                                    </div>` : ''
+                                ) :
+                                ''
+                            }
+
+                            <!-- Для других источников или процента прибыли -->
+                            ${profitPercent > 0 && !priceStatus && source !== 'avito' ?
+                                `<div class="price-status price-fair">
+                                    <i class="ri-arrow-up-line me-1"></i>
+                                    Прибыль: +${profitPercent}%
+                                </div>` : ''
+                            }
+                        </div>
+
+                        <!-- БЛОК ПРОДАВЦА С АВАТАРОМ И РЕЙТИНГОМ -->
+                        ${seller || sellerRating > 0 ? `
+                        <div class="seller-rating-sidebar">
+                            <div class="seller-avatar">
+                                ${item.seller_avatar && item.seller_avatar !== 'null' && item.seller_avatar.trim() !== '' ?
+                                    `<img src="${item.seller_avatar}" alt="Аватар продавца" onerror="this.src='/static/assets/img/avatars/1.png'" style="width: 100%; height: 100%; object-fit: cover;">` :
+                                    `<img src="/static/assets/img/avatars/1.png" alt="Аватар продавца" style="width: 100%; height: 100%; object-fit: cover;">`
+                                }
+                            </div>
+                            <div class="seller-info-sidebar">
+                                ${sellerRating > 0 ? `
+                                <div class="seller-rating-row">
+                                    <!-- ЗВЕЗДЫ РЕЙТИНГА -->
+                                    <div class="seller-rating-stars">
+                                        ${renderStars(sellerRating)}
+                                    </div>
+
+                                    <!-- РЕЙТИНГ РЯДОМ СО ЗВЕЗДАМИ -->
+                                    <div class="seller-rating-value">
+                                        ${ratingFormatted}
+                                    </div>
+                                </div>
+                                ` : ''}
+
+                                <!-- ВТОРАЯ СТРОКА: ИМЯ ПРОДАВЦА -->
+                                ${seller ? `
+                                <div class="seller-name-row">
+                                    <div class="seller-name">${escapeHtml(seller)}</div>
+                                    ${reviewsCount > 0 ?
+                                        `<div class="seller-reviews">(${reviewsCount} ${reviewsCount === 1 ? 'отзыв' : reviewsCount < 5 ? 'отзыва' : 'отзывов'})</div>` : ''
+                                    }
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <!-- ОСНОВНЫЕ ХАРАКТЕРИСТИКИ -->
+                        <div class="modern-details-grid">
+                            ${category ?
+                                `<div class="detail-item">
+                                    <i class="ri-price-tag-3-line"></i>
+                                    <span class="detail-text">${escapeHtml(category)}</span>
+                                </div>` : ''
+                            }
+
+                            ${city ?
+                                `<div class="detail-item">
+                                    <i class="ri-map-pin-line"></i>
+                                    <span class="detail-text">${escapeHtml(city)}</span>
+                                </div>` : ''
+                            }
+
+                            ${year ?
+                                `<div class="detail-item">
+                                    <i class="ri-calendar-line"></i>
+                                    <span class="detail-text">${year} год</span>
+                                </div>` : ''
+                            }
+
+                            ${mileage ?
+                                `<div class="detail-item">
+                                    <i class="ri-roadster-line"></i>
+                                    <span class="detail-text">${escapeHtml(mileage)}</span>
+                                </div>` : ''
+                            }
+
+                            ${color ?
+                                `<div class="detail-item">
+                                    <i class="ri-palette-line"></i>
+                                    <span class="detail-text">${escapeHtml(color)}</span>
+                                </div>` : ''
+                            }
+
+                            ${productId ?
+                                `<div class="detail-item">
+                                    <i class="ri-hashtag"></i>
+                                    <span class="detail-text">ID: ${escapeHtml(productId)}</span>
+                                </div>` : ''
+                            }
+                        </div>
+                    </div>
+
+                    <!-- ФУТЕР С ДАТОЙ -->
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="time-info">
+                                <small class="text-muted">${foundAt || 'Дата не указана'}</small>
+                            </div>
+                            <div class="action-buttons">
+                                <a href="${item.url}" target="_blank"
+                                   class="modern-btn modern-btn-primary"
+                                   onclick="event.stopPropagation()"
+                                   title="Открыть на сайте">
+                                    <i class="ri-external-link-line"></i>
+                                </a>
+                                <button class="modern-btn modern-btn-danger favorite-btn"
+                                        data-item-id="${item.id}"
+                                        data-is-favorite="${item.is_favorite}"
+                                        onclick="event.stopPropagation(); toggleFavorite(${item.id}, ${item.is_favorite}, this)"
+                                        title="${item.is_favorite ? 'Удалить из избранного' : 'Добавить в избранное'}">
+                                    <i class="${item.is_favorite ? 'ri-heart-fill' : 'ri-heart-line'}"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        return html;
+    }
+
+    function updateStats(data, searchTime) {
+        if (data.total > 0) {
+            $('#search-stats').show();
+            $('#total-count').text(data.total || 0);
+            $('#search-time').text(searchTime.toFixed(1) + 'с');
+        } else {
+            $('#search-stats').hide();
+        }
+    }
+
+    function toggleFavorite(itemId, isFavorite, button) {
+        const $btn = $(button);
+        const newFavoriteState = !isFavorite;
+
+        $btn.attr('data-is-favorite', newFavoriteState);
+        $btn.find('i').attr('class', newFavoriteState ? 'ri-heart-fill' : 'ri-heart-line');
+        $btn.attr('title', newFavoriteState ? 'Удалить из избранного' : 'Добавить в избранное');
+
+        alert(newFavoriteState ? 'Добавлено в избранное' : 'Удалено из избранного');
+    }
+
+    // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
+
+    // Форма поиска
+    $('#search-form').on('submit', function(e) {
+        e.preventDefault();
+        const query = $('#main-search-input').val().trim();
+        if (query) {
+            performSearch(query);
+        }
+    });
+
+    // Поиск по кнопке
+    $('#search-button').on('click', function() {
+        const query = $('#main-search-input').val().trim();
+        if (query) {
+            performSearch(query);
+        }
+    });
+
+    // Поиск по Enter
+    $('#main-search-input').on('keypress', function(e) {
+        if (e.which === 13) {
+            const query = $(this).val().trim();
+            if (query) {
+                performSearch(query);
+            }
+        }
+    });
+
+    // Динамические подсказки при вводе
+    $('#main-search-input').on('input', function() {
+        const query = $(this).val().trim();
+
+        clearTimeout(searchTimeout);
+
+        if (query.length >= 2) {
+            searchTimeout = setTimeout(function() {
+                showSuggestions(query);
+            }, 300);
+        } else {
+            hideSuggestions();
+        }
+    });
+
+    // Быстрые фильтры
+    $('.quick-filter-btn').on('click', function() {
+        const filter = $(this).data('filter');
+        $(this).toggleClass('active');
+
+        if ($(this).hasClass('active')) {
+            currentFilters[filter] = true;
+        } else {
+            delete currentFilters[filter];
+        }
+
+        if (currentQuery) {
+            performSearch(currentQuery, currentFilters);
+        }
+    });
+
+    // Очистка поиска
+    $('#clear-search-button').on('click', function() {
+        clearSearch();
+    });
+
+    // Закрытие подсказок при клике вне
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#search-suggestions, #main-search-input').length) {
+            hideSuggestions();
+        }
+    });
+
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
+
+    // При загрузке страницы с параметрами
+    const urlParams = new URLSearchParams(window.location.search);
+    const query = urlParams.get('q');
+    const filters = urlParams.get('filters');
+
+    if (query) {
+        $('#main-search-input').val(query);
+        if (filters) {
+            try {
+                currentFilters = JSON.parse(filters);
+                Object.keys(currentFilters).forEach(filter => {
+                    $(`.quick-filter-btn[data-filter="${filter}"]`).addClass('active');
+                });
+            } catch (e) {
+                console.error('Error parsing filters:', e);
+            }
+        }
+        // Запускаем поиск автоматически
+        setTimeout(function() {
+            performSearch(query, currentFilters);
+        }, 100);
+    }
+
+    console.log('✅ JavaScript поиска инициализирован');
+});
+</script>
+{% endblock %}

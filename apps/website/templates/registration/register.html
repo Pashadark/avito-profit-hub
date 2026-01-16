@@ -1,0 +1,356 @@
+{% extends 'base_auth.html' %}
+{% load static %}
+
+{% block title %}Регистрация - Селибри{% endblock %}
+
+{% block auth_content %}
+<div class="card p-md-4 p-3" style="max-width: 450px; margin: 0 auto;">
+    <!-- Logo -->
+    <div class="app-brand justify-content-center mt-3 mb-2">
+        <a href="{% url 'website:dashboard' %}" class="app-brand-link gap-2 text-decoration-none">
+            <span class="app-brand-logo demo">
+                <img src="{% static 'assets/img/logo/logo.svg' %}" alt="Селибри" width="38" onerror="this.style.display='none'">
+            </span>
+            <span class="app-brand-text demo text-heading fw-semibold fs-4">Селибри</span>
+        </a>
+    </div>
+    <!-- /Logo -->
+
+    <div class="card-body mt-1">
+        <center>
+            <h4 class="mb-2 text-gradient-primary fw-semibold">Регистрация</h4>
+            <p class="text-muted mb-4 small">Создайте аккаунт для начала работы</p>
+        </center>
+
+        <!-- Сообщения об ошибках -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="ri-alert-{% if message.tags == 'error' %}line{% else %}success-line{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Форма регистрации -->
+        <form method="post" class="mb-3">
+            {% csrf_token %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-floating form-floating-outline mb-3">
+                        {{ form.first_name }}
+                        <label for="{{ form.first_name.id_for_label }}">
+                            <i class="ri-user-3-line me-1"></i>{{ form.first_name.label }}
+                        </label>
+                        {% if form.first_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.first_name.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating form-floating-outline mb-3">
+                        {{ form.last_name }}
+                        <label for="{{ form.last_name.id_for_label }}">{{ form.last_name.label }}</label>
+                        {% if form.last_name.errors %}
+                            <div class="text-danger small mt-1">{{ form.last_name.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-floating form-floating-outline mb-3">
+                {{ form.username }}
+                <label for="{{ form.username.id_for_label }}">
+                    <i class="ri-user-line me-1"></i>{{ form.username.label }}
+                </label>
+                {% if form.username.help_text %}
+                    <div class="form-text small">{{ form.username.help_text }}</div>
+                {% endif %}
+                {% if form.username.errors %}
+                    <div class="text-danger small mt-1">{{ form.username.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-floating form-floating-outline mb-3">
+                {{ form.email }}
+                <label for="{{ form.email.id_for_label }}">
+                    <i class="ri-mail-line me-1"></i>{{ form.email.label }}
+                </label>
+                {% if form.email.errors %}
+                    <div class="text-danger small mt-1">{{ form.email.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-floating form-floating-outline mb-3">
+                {{ form.phone }}
+                <label for="{{ form.phone.id_for_label }}">
+                    <i class="ri-phone-line me-1"></i>{{ form.phone.label }}
+                </label>
+                {% if form.phone.errors %}
+                    <div class="text-danger small mt-1">{{ form.phone.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-floating form-floating-outline mb-3">
+                {{ form.password1 }}
+                <label for="{{ form.password1.id_for_label }}">
+                    <i class="ri-lock-line me-1"></i>Пароль
+                </label>
+                <div class="form-text small">
+                    <ul class="mb-0 ps-3">
+                        <li>Минимум 8 символов</li>
+                        <li>Не должен быть слишком простым</li>
+                        <li>Не должен состоять только из цифр</li>
+                    </ul>
+                </div>
+                {% if form.password1.errors %}
+                    <div class="text-danger small mt-1">{{ form.password1.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-floating form-floating-outline mb-3">
+                {{ form.password2 }}
+                <label for="{{ form.password2.id_for_label }}">
+                    <i class="ri-lock-2-line me-1"></i>Подтверждение пароля
+                </label>
+                {% if form.password2.errors %}
+                    <div class="text-danger small mt-1">{{ form.password2.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <button class="btn btn-primary d-flex align-items-center justify-content-center w-100 py-2" type="submit">
+                    <i class="ri-user-add-line me-2"></i>
+                    <span>Создать аккаунт</span>
+                </button>
+            </div>
+        </form>
+
+        <div class="divider my-3">
+            <div class="divider-text" style="font-size: 12px;">или</div>
+        </div>
+
+        <div class="mb-2">
+            <a href="{% url 'login' %}" class="btn btn-outline-secondary d-flex align-items-center justify-content-center w-100 py-2">
+                <i class="ri-arrow-left-line me-2"></i>
+                <span>Вернуться к входу</span>
+            </a>
+        </div>
+
+        <div class="text-center mt-3">
+            <p class="small text-muted">
+                Регистрируясь, вы соглашаетесь с нашими
+                <a href="#" class="text-decoration-none">условиями использования</a>
+                и <a href="#" class="text-decoration-none">политикой конфиденциальности</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+.text-gradient-primary {
+    background: linear-gradient(135deg, #666cff 0%, #5a61e0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.form-control {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+
+.form-floating>.form-control~label {
+    padding: 0.75rem 1rem;
+}
+
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+.alert-success {
+    background: rgba(40, 199, 111, 0.1);
+    color: #28c76f;
+}
+
+.alert-error, .alert-danger {
+    background: rgba(234, 84, 85, 0.1);
+    color: #ea5455;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    margin: 1rem 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.divider-text {
+    padding: 0 0.8rem;
+    color: #6c757d;
+    font-size: 0.75rem;
+}
+
+.card {
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.form-text ul {
+    margin-top: 0.5rem;
+}
+
+.form-text li {
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Улучшенная маска для телефона
+    const phoneInput = document.getElementById('{{ form.phone.id_for_label }}');
+    if (phoneInput) {
+        let previousValue = '';
+
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+
+            // Если начинаем ввод с 7 или 8, заменяем на +7
+            if (value.startsWith('7') || value.startsWith('8')) {
+                value = value.substring(1); // Убираем первую цифру
+            }
+
+            // Ограничиваем длину (10 цифр без +7)
+            if (value.length > 10) {
+                value = value.substring(0, 10);
+            }
+
+            // Форматируем номер
+            let formattedValue = '+7 ';
+            if (value.length > 0) {
+                formattedValue += '(' + value.substring(0, 3);
+            }
+            if (value.length > 3) {
+                formattedValue += ') ' + value.substring(3, 6);
+            }
+            if (value.length > 6) {
+                formattedValue += '-' + value.substring(6, 8);
+            }
+            if (value.length > 8) {
+                formattedValue += '-' + value.substring(8, 10);
+            }
+
+            // Обновляем значение только если оно изменилось
+            if (formattedValue !== previousValue) {
+                e.target.value = formattedValue;
+                previousValue = formattedValue;
+            }
+        });
+
+        // Обработка клавиш Backspace и Delete
+        phoneInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                // Даем браузеру обработать удаление, затем форматируем
+                setTimeout(() => {
+                    let value = e.target.value.replace(/\D/g, '');
+                    if (value.length === 0) {
+                        e.target.value = '';
+                        previousValue = '';
+                    }
+                }, 0);
+            }
+        });
+
+        // Автофокус и установка курсора в конец при фокусе
+        phoneInput.addEventListener('focus', function(e) {
+            if (!e.target.value) {
+                e.target.value = '+7 ';
+            }
+            // Устанавливаем курсор в конец
+            setTimeout(() => {
+                e.target.setSelectionRange(e.target.value.length, e.target.value.length);
+            }, 0);
+        });
+
+        // Валидация при потере фокуса
+        phoneInput.addEventListener('blur', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length < 10 && value.length > 0) {
+                // Можно показать предупреждение, но не блокировать отправку
+                console.log('Номер телефона неполный');
+            }
+        });
+    }
+
+    // Валидация формы в реальном времени
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const password1 = document.getElementById('{{ form.password1.id_for_label }}').value;
+            const password2 = document.getElementById('{{ form.password2.id_for_label }}').value;
+
+            if (password1 !== password2) {
+                e.preventDefault();
+                alert('Пароли не совпадают!');
+                return false;
+            }
+
+            // Дополнительная валидация телефона при отправке
+            const phoneValue = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
+            if (phoneValue.length > 0 && phoneValue.length < 10) {
+                e.preventDefault();
+                alert('Пожалуйста, введите полный номер телефона (10 цифр)');
+                phoneInput.focus();
+                return false;
+            }
+        });
+    }
+
+    // Улучшенная обработка полей формы
+    const allInputs = form.querySelectorAll('input');
+    allInputs.forEach(input => {
+        // Авто-переход между полями при заполнении
+        input.addEventListener('input', function(e) {
+            const maxLength = this.getAttribute('maxlength');
+            if (maxLength && this.value.length >= maxLength) {
+                const nextInput = this.nextElementSibling;
+                if (nextInput && nextInput.tagName === 'INPUT') {
+                    nextInput.focus();
+                }
+            }
+        });
+
+        // Разрешаем навигацию стрелками
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const nextInput = this.nextElementSibling;
+                if (nextInput && nextInput.tagName === 'INPUT') {
+                    nextInput.focus();
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

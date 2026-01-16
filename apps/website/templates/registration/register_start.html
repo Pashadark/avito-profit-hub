@@ -1,0 +1,236 @@
+{% extends 'base_auth.html' %}
+{% load static %}
+
+{% block title %}Регистрация - Селибри{% endblock %}
+
+{% block auth_content %}
+<!-- Registration -->
+<div class="card p-md-4 p-3" style="max-width: 480px; margin: 0 auto;">
+    <!-- Logo -->
+    <div class="app-brand justify-content-center mt-3 mb-2">
+        <a href="{% url 'website:dashboard' %}" class="app-brand-link gap-2 text-decoration-none">
+            <span class="app-brand-logo demo">
+                <img src="{% static 'assets/img/logo/logo.svg' %}" alt="Селибри" width="38" onerror="this.style.display='none'">
+            </span>
+            <span class="app-brand-text demo text-heading fw-semibold fs-4">Селибри</span>
+        </a>
+    </div>
+    <!-- /Logo -->
+
+    <div class="card-body mt-1">
+        <center>
+            <p class="text-muted mb-4 small">Регистрация в системе</p>
+        </center>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show mb-3 py-2" role="alert">
+                    <i class="ri-{% if message.tags == 'error' %}error-warning-line{% else %}checkbox-circle-line{% endif %} me-1"></i>
+                    <small>{{ message }}</small>
+                    <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Кнопка Telegram регистрации -->
+        <div class="mb-4">
+            <a href="https://t.me/infopnz58_bot?start=register"
+               class="btn btn-primary d-flex align-items-center justify-content-center w-100 py-2"
+               id="telegramBtn"
+               style="background-color: #0088cc; border-color: #0088cc;"
+               target="_blank">
+                <i class="ri-telegram-line me-2"></i>
+                <span>Зарегистрироваться через бота</span>
+            </a>
+            <div class="text-center mt-2">
+                <small class="text-muted" style="font-size: 11px;">После регистрации в боте вернитесь на эту страницу</small>
+            </div>
+        </div>
+
+        <div class="divider my-3">
+            <div class="divider-text" style="font-size: 12px;">или</div>
+        </div>
+
+        <!-- Форма для ввода кода -->
+        <div class="mb-4">
+            <h6 class="text-center mb-3 small fw-semibold">
+                <i class="ri-shield-keyhole-line me-1"></i>Уже получили код?
+            </h6>
+
+            <form action="{% url 'website:confirm_registration' %}" method="post" id="codeForm">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" style="display: block; position: static; transform: none !important;">Код подтверждения</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="confirmation_code"
+                        name="confirmation_code"
+                        placeholder="Введите код из бота"
+                        maxlength="6"
+                        pattern="[0-9]*"
+                        inputmode="numeric"
+                        required
+                        style="transform: none !important;" />
+                </div>
+
+                <div class="mb-3">
+                    <button class="btn btn-success d-flex align-items-center justify-content-center w-100 py-2" type="submit">
+                        <i class="ri-check-double-line me-2"></i>
+                        <span>Подтвердить регистрацию</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Ссылка на вход -->
+        <div class="text-center">
+            <p class="text-muted mb-0" style="font-size: 11px;">
+                Уже есть аккаунт?
+                <a href="{% url 'login' %}" class="text-decoration-none">Войдите</a>
+            </p>
+        </div>
+    </div>
+</div>
+<!-- /Registration -->
+
+<style>
+    /* Жесткое отключение всех анимаций и трансформаций */
+    .form-label {
+        font-weight: 500;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        display: block !important;
+        position: static !important;
+        transform: none !important;
+        transition: none !important;
+    }
+
+    .form-control {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        transform: none !important;
+        transition: none !important;
+    }
+
+    .form-control:focus {
+        border-color: #666cff;
+        box-shadow: 0 0 0 0.2rem rgba(102, 108, 255, 0.25);
+        outline: 0;
+        transform: none !important;
+    }
+
+    /* Отключаем все floating эффекты */
+    .form-floating,
+    .form-floating-outline,
+    [class*="floating"] {
+        display: none !important;
+    }
+
+    /* Базовые стили */
+    .text-gradient-primary {
+        background: linear-gradient(135deg, #666cff 0%, #5a61e0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .btn-telegram:hover {
+        background: linear-gradient(135deg, #0077b5, #0099e8) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 136, 204, 0.3);
+    }
+
+    .divider {
+        display: flex;
+        align-items: center;
+        margin: 1rem 0;
+    }
+
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .divider-text {
+        padding: 0 0.8rem;
+        color: #6c757d;
+        font-size: 0.75rem;
+    }
+
+    .card {
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .btn {
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .alert {
+        border-radius: 8px;
+        font-size: 0.85rem;
+    }
+
+    /* Принудительно отключаем все трансформации */
+    * {
+        transform: none !important;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Валидация кода в реальном времени
+    const confirmationCode = document.getElementById('confirmation_code');
+    if (confirmationCode) {
+        confirmationCode.addEventListener('input', function(e) {
+            // Оставляем только цифры
+            this.value = this.value.replace(/\D/g, '');
+
+            // Ограничиваем длину
+            if (this.value.length > 6) {
+                this.value = this.value.slice(0, 6);
+            }
+        });
+
+        // Фокус при загрузке
+        confirmationCode.focus();
+    }
+
+    // Автоматический переход при вводе 6 цифр
+    if (confirmationCode) {
+        confirmationCode.addEventListener('input', function(e) {
+            if (this.value.length === 6) {
+                // Можно автоматически отправить форму
+                setTimeout(() => {
+                    document.getElementById('codeForm').dispatchEvent(new Event('submit'));
+                }, 500);
+            }
+        });
+    }
+
+    // Отправка формы по Enter
+    const codeForm = document.getElementById('codeForm');
+    if (codeForm) {
+        codeForm.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.dispatchEvent(new Event('submit'));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

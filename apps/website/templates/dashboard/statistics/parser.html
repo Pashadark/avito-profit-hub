@@ -1,0 +1,899 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Статистика парсера - Селибри{% endblock %}
+
+{% block content %}
+    <!-- Заголовок -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">
+                        <i class="ri-robot-line me-2"></i>
+                        Статистика парсера Avito
+                    </h4>
+                    <div class="btn-group">
+                        <button class="btn btn-primary btn-sm" onclick="refreshStats()">
+                            <i class="ri-refresh-line me-1"></i>Обновить
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="resetParserStats()">
+                            <i class="ri-restart-line me-1"></i>Сбросить статистику
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="exportParserData()">
+                            <i class="ri-download-line me-1"></i>Экспорт
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-0">
+                        Мониторинг производительности парсера Avito. Отслеживайте эффективность поиска и находите лучшие сделки.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скорость работы парсера -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-speed-line me-2"></i>Скорость работы парсера
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="speed-indicator">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="speed-label">Текущая скорость:</span>
+                            <span class="speed-value" id="current-speed">Загрузка...</span>
+                        </div>
+
+                        <!-- Анимированный прогресс-бар с роботом -->
+                        <div class="speed-progress-container">
+                            <div class="progress speed-progress" style="height: 30px; border-radius: 15px;">
+                                <div class="progress-bar speed-progress-bar" role="progressbar"
+                                     style="width: 0%; background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);">
+                                </div>
+                            </div>
+                            <div class="speed-labels d-flex justify-content-between mt-2">
+                                <small class="text-success">🐌 Медленно</small>
+                                <small class="text-warning">⚡ Средне</small>
+                                <small class="text-danger">🚀 Максимальная</small>
+                            </div>
+                        </div>
+
+                        <!-- Детали скорости -->
+                        <div class="row mt-3 text-center">
+                            <div class="col-md-3">
+                                <div class="speed-metric">
+                                    <h4 class="text-info mb-0" id="avg-cycle-time">0с</h4>
+                                    <small class="text-muted">Средний цикл</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="speed-metric">
+                                    <h4 class="text-success mb-0" id="successful-searches">0</h4>
+                                    <small class="text-muted">Успешные поиски</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="speed-metric">
+                                    <h4 class="text-warning mb-0" id="success-rate">0%</h4>
+                                    <small class="text-muted">Успешность</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="speed-metric">
+                                    <h4 class="text-primary mb-0" id="items-per-hour">0/ч</h4>
+                                    <small class="text-muted">Товаров в час</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Основные метрики парсера -->
+    <div class="row mb-4">
+        <!-- Всего поисков -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div class="card-info">
+                            <h5 class="card-title">Всего поисков</h5>
+                            <h2 class="text-primary mb-0" id="total-searches">0</h2>
+                            <small class="text-muted">выполнено запросов</small>
+                        </div>
+                        <div class="card-icon">
+                            <span class="badge bg-primary rounded p-3">
+                                <i class="ri-search-line ri-2x"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Найдено товаров -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div class="card-info">
+                            <h5 class="card-title">Найдено товаров</h5>
+                            <h2 class="text-success mb-0" id="items-found">0</h2>
+                            <small class="text-muted">успешных находок</small>
+                        </div>
+                        <div class="card-icon">
+                            <span class="badge bg-success rounded p-3">
+                                <i class="ri-shopping-bag-line ri-2x"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Хорошие сделки -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div class="card-info">
+                            <h5 class="card-title">Хорошие сделки</h5>
+                            <h2 class="text-warning mb-0" id="good-deals">0</h2>
+                            <small class="text-muted">прибыльных товаров</small>
+                        </div>
+                        <div class="card-icon">
+                            <span class="badge bg-warning rounded p-3">
+                                <i class="ri-trophy-line ri-2x"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Заблокировано дубликатов -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div class="card-info">
+                            <h5 class="card-title">Заблокировано</h5>
+                            <h2 class="text-info mb-0" id="duplicates-blocked">0</h2>
+                            <small class="text-muted">дубликатов</small>
+                        </div>
+                        <div class="card-icon">
+                            <span class="badge bg-info rounded p-3">
+                                <i class="ri-shield-check-line ri-2x"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Статистика по запросам -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-file-list-line me-2"></i>Статистика по запросам
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center mb-4">
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h4 class="text-success mb-0" id="active-queries">0</h4>
+                                <small class="text-muted">Активные</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h4 class="text-danger mb-0" id="error-count">0</h4>
+                                <small class="text-muted">Ошибки</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <h4 class="text-primary mb-0" id="total-processed">0</h4>
+                            <small class="text-muted">Всего обработано</small>
+                        </div>
+                    </div>
+
+                    <h6 class="mb-3">Текущие запросы:</h6>
+                    <div id="current-queries">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Загрузка...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Эффективность -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-dashboard-line me-2"></i>Эффективность
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6>Распределение по типам:</h6>
+                        <div id="efficiency-distribution">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Загрузка...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 class="text-info mb-0" id="efficiency-rate">0%</h4>
+                            <small class="text-muted">Общая эффективность</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning mb-0" id="duplicate-rate">0%</h4>
+                            <small class="text-muted">Дубликаты</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Успешные запросы -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-trophy-line me-2"></i>Самые успешные запросы
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Запрос</th>
+                                    <th>Успешность</th>
+                                    <th>Всего найдено</th>
+                                    <th>Хорошие сделки</th>
+                                    <th>Эффективность</th>
+                                </tr>
+                            </thead>
+                            <tbody id="successful-queries">
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Загрузка...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- История работы -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="ri-line-chart-line me-2"></i>История работы парсера
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="border rounded p-3">
+                                <h3 class="text-primary" id="uptime">0ч 0м</h3>
+                                <small class="text-muted">Время работы</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="border rounded p-3">
+                                <h3 class="text-success" id="avg-success-rate">0%</h3>
+                                <small class="text-muted">Средняя успешность</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center mb-3">
+                            <div class="border rounded p-3">
+                                <h3 class="text-info" id="total-cycles">0</h3>
+                                <small class="text-muted">Всего циклов</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="ri-information-line me-2"></i>
+                        <strong>Как работает парсер:</strong> Система автоматически мониторит Avito по вашим запросам,
+                        фильтрует дубликаты, анализирует изображения с помощью машинного зрения и находит самые выгодные предложения.
+                        Эффективность растет с каждой найденной сделкой!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_js %}
+<script>
+// Обновление статистики парсера
+function refreshStats() {
+    showLoading();
+
+    // Пробуем несколько API endpoints для парсера
+    const apiEndpoints = [
+        '/api/parser-stats/',
+        '/api/parser_stats/',
+        '/api/parser/'
+    ];
+
+    let currentEndpoint = 0;
+
+    function tryNextEndpoint() {
+        if (currentEndpoint >= apiEndpoints.length) {
+            // Все endpoints не сработали, показываем демо-данные
+            console.error('❌ Все API endpoints парсера недоступны');
+            showDemoData();
+            hideLoading();
+            return;
+        }
+
+        const endpoint = apiEndpoints[currentEndpoint];
+        console.log(`🔍 Пробуем endpoint парсера: ${endpoint}`);
+
+        fetch(endpoint)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("✅ Данные парсера получены:", data);
+                if (data.status === 'success' || data.stats) {
+                    updateParserStats(data);
+                    updateSpeedIndicator(data);
+                    hideLoading();
+                } else {
+                    throw new Error('Неверный формат данных парсера');
+                }
+            })
+            .catch(error => {
+                console.error(`❌ Ошибка для ${endpoint}:`, error);
+                currentEndpoint++;
+                tryNextEndpoint();
+            });
+    }
+
+    tryNextEndpoint();
+}
+
+// Обновление индикатора скорости парсера
+function updateSpeedIndicator(data) {
+    const stats = data.stats || {};
+
+    // Рассчитываем скорость на основе времени цикла
+    const avgCycleTime = stats.avg_cycle_time || '0с';
+    const successfulSearches = stats.successful_searches || 0;
+    const totalSearches = stats.total_searches || 1;
+    const itemsFound = stats.items_found || 0;
+
+    // Нормализуем время цикла для прогресс-бара
+    let speedPercentage;
+    let speedText;
+    let speedClass;
+
+    // Извлекаем числовое значение из строки типа "45с"
+    const cycleTimeValue = parseInt(avgCycleTime) || 100;
+
+    if (cycleTimeValue < 30) {
+        // Очень быстро (<30с)
+        speedPercentage = 85 + (Math.random() * 15); // 85-100%
+        speedText = "🚀 Максимальная";
+        speedClass = "text-danger";
+    } else if (cycleTimeValue < 60) {
+        // Быстро (30-60с)
+        speedPercentage = 60 + (Math.random() * 25); // 60-85%
+        speedText = "⚡ Высокая";
+        speedClass = "text-warning";
+    } else if (cycleTimeValue < 120) {
+        // Средне (1-2 минуты)
+        speedPercentage = 30 + (Math.random() * 30); // 30-60%
+        speedText = "📊 Средняя";
+        speedClass = "text-info";
+    } else {
+        // Медленно (>2 минут)
+        speedPercentage = 10 + (Math.random() * 20); // 10-30%
+        speedText = "🐌 Медленная";
+        speedClass = "text-success";
+    }
+
+    // Эффективность системы
+    const successRate = Math.round((successfulSearches / totalSearches) * 100);
+    const itemsPerHour = Math.round(itemsFound * (3600 / cycleTimeValue));
+
+    // Обновляем UI
+    document.getElementById('current-speed').textContent = speedText;
+    document.getElementById('current-speed').className = `speed-value ${speedClass}`;
+
+    document.getElementById('avg-cycle-time').textContent = avgCycleTime;
+    document.getElementById('successful-searches').textContent = successfulSearches;
+    document.getElementById('success-rate').textContent = `${successRate}%`;
+    document.getElementById('items-per-hour').textContent = `${itemsPerHour}/ч`;
+
+    // Анимируем прогресс-бар и робота
+    animateSpeedProgress(speedPercentage);
+}
+
+// Анимация прогресс-бара скорости
+function animateSpeedProgress(targetPercentage) {
+    const progressBar = document.querySelector('.speed-progress-bar');
+
+    let currentPercentage = parseInt(progressBar.style.width) || 0;
+    const startTime = Date.now();
+    const duration = 1500;
+
+    function updateAnimation() {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Плавная анимация с easing
+        const easedProgress = 1 - Math.pow(1 - progress, 3);
+        const newPercentage = currentPercentage + (targetPercentage - currentPercentage) * easedProgress;
+
+        progressBar.style.width = `${newPercentage}%`;
+
+        if (progress < 1) {
+            requestAnimationFrame(updateAnimation);
+        }
+    }
+
+    updateAnimation();
+}
+
+// Обновление всех статистик парсера на странице
+function updateParserStats(data) {
+    const stats = data.stats || {};
+    const history = data.history || [];
+
+    console.log("📊 Получены данные парсера:", data);
+
+    // Основные метрики
+    document.getElementById('total-searches').textContent = stats.total_searches || 0;
+    document.getElementById('items-found').textContent = stats.items_found || 0;
+    document.getElementById('good-deals').textContent = stats.good_deals_found || 0;
+    document.getElementById('duplicates-blocked').textContent = stats.duplicates_blocked || 0;
+
+    // Статистика по запросам
+    document.getElementById('active-queries').textContent = stats.active_queries || 0;
+    document.getElementById('error-count').textContent = stats.error_count || 0;
+    document.getElementById('total-processed').textContent = stats.total_searches || 0;
+
+    // Эффективность
+    const efficiencyRate = Math.round(((stats.items_found || 0) / (stats.total_searches || 1)) * 100);
+    const duplicateRate = Math.round(((stats.duplicates_blocked || 0) / ((stats.items_found || 0) + (stats.duplicates_blocked || 1))) * 100);
+
+    document.getElementById('efficiency-rate').textContent = `${efficiencyRate}%`;
+    document.getElementById('duplicate-rate').textContent = `${duplicateRate}%`;
+
+    // Дополнительная информация
+    document.getElementById('uptime').textContent = stats.uptime || '0ч 0м';
+    document.getElementById('avg-success-rate').textContent = `${Math.round((stats.successful_searches || 0) / (stats.total_searches || 1) * 100)}%`;
+    document.getElementById('total-cycles').textContent = Math.round((stats.total_searches || 0) / (stats.active_queries || 1));
+
+    // Текущие запросы
+    updateCurrentQueries(stats.current_queries || []);
+
+    // Распределение эффективности
+    updateEfficiencyDistribution(stats.efficiency_distribution || []);
+
+    // Успешные запросы
+    updateSuccessfulQueries(stats.successful_queries || []);
+}
+
+// Показать демо-данные при ошибке
+function showDemoData() {
+    const demoData = {
+        stats: {
+            total_searches: 1250,
+            successful_searches: 980,
+            items_found: 345,
+            good_deals_found: 89,
+            duplicates_blocked: 567,
+            active_queries: 8,
+            error_count: 23,
+            avg_cycle_time: '45с',
+            uptime: '12ч 30м',
+            current_queries: [
+                {name: 'iPhone 13', count: 45, success_rate: 85},
+                {name: 'Видеокарта RTX', count: 32, success_rate: 78},
+                {name: 'Пульт Haier', count: 28, success_rate: 92}
+            ],
+            efficiency_distribution: [
+                {category: '🚀 Высокая (>80%)', count: 120},
+                {category: '📊 Средняя (50-80%)', count: 450},
+                {category: '🐌 Низкая (<50%)', count: 250}
+            ],
+            successful_queries: [
+                {name: 'Пульт Haier', success_rate: 95, total_found: 200, good_deals: 45},
+                {name: 'iPhone 13 Pro', success_rate: 88, total_found: 150, good_deals: 32},
+                {name: 'Видеокарта RTX 3060', success_rate: 82, total_found: 180, good_deals: 28}
+            ]
+        }
+    };
+
+    updateParserStats(demoData);
+    updateSpeedIndicator(demoData);
+
+    // Показать предупреждение
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-warning mt-3';
+    alertDiv.innerHTML = `
+        <i class="ri-alert-line me-2"></i>
+        <strong>Внимание:</strong> Отображаются демо-данные. API статистики парсера временно недоступно.
+    `;
+    document.querySelector('.card-body').appendChild(alertDiv);
+}
+
+// Обновление текущих запросов
+function updateCurrentQueries(queries) {
+    const container = document.getElementById('current-queries');
+
+    if (queries.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">Нет активных запросов</p>';
+        return;
+    }
+
+    let html = '';
+    queries.slice(0, 5).forEach(query => {
+        const successPercent = Math.round(query.success_rate || 0);
+        html += `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-truncate" style="max-width: 150px;">${query.name || query.query}</span>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary me-2">${query.count || query.analyses}</span>
+                    <small class="text-muted">${successPercent}%</small>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Обновление распределения эффективности
+function updateEfficiencyDistribution(distribution) {
+    const container = document.getElementById('efficiency-distribution');
+
+    if (distribution.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">Нет данных</p>';
+        return;
+    }
+
+    let html = '';
+    distribution.forEach(dist => {
+        html += `
+            <div class="mb-2">
+                <div class="d-flex justify-content-between mb-1">
+                    <small>${dist.category || dist.range}</small>
+                    <small class="text-muted">${dist.count || dist.queries} запросов</small>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: ${(dist.count / distribution.reduce((sum, d) => sum + (d.count || d.queries), 0)) * 100}%">
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Обновление успешных запросов
+function updateSuccessfulQueries(queries) {
+    const container = document.getElementById('successful-queries');
+
+    if (queries.length === 0) {
+        container.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Нет данных</td></tr>';
+        return;
+    }
+
+    let html = '';
+    queries.forEach(query => {
+        const progressPercent = query.success_rate || query.efficiency;
+        html += `
+            <tr>
+                <td>
+                    <strong>${query.name || query.query}</strong>
+                </td>
+                <td>
+                    <span class="badge bg-success">${progressPercent}%</span>
+                </td>
+                <td>${query.total_found || query.found_items}</td>
+                <td>${query.good_deals || query.profitable_items}</td>
+                <td>
+                    <div class="progress" style="height: 6px; width: 100px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             style="width: ${progressPercent}%">
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Сброс статистики парсера
+function resetParserStats() {
+    if (!confirm('Вы уверены, что хотите сбросить статистику парсера? Это действие нельзя отменить.')) {
+        return;
+    }
+
+    showLoading();
+
+    const endpoints = [
+        '/api/reset-parser-stats/',
+        '/api/reset_parser_stats/',
+        '/api/parser/reset/'
+    ];
+
+    function tryResetEndpoint(index) {
+        if (index >= endpoints.length) {
+            showError('Не удалось сбросить статистику. Все endpoints недоступны.');
+            hideLoading();
+            return;
+        }
+
+        fetch(endpoints[index], {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                showSuccess(data.message || 'Статистика парсера сброшена');
+                refreshStats();
+            } else {
+                throw new Error(data.message || 'Неизвестная ошибка');
+            }
+        })
+        .catch(error => {
+            console.error(`❌ Ошибка для ${endpoints[index]}:`, error);
+            tryResetEndpoint(index + 1);
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    tryResetEndpoint(0);
+}
+
+// Экспорт данных парсера
+function exportParserData() {
+    showLoading();
+
+    const endpoints = [
+        '/api/parser-data/export/',
+        '/api/parser_data/export/',
+        '/api/parser/export/'
+    ];
+
+    function tryExportEndpoint(index) {
+        if (index >= endpoints.length) {
+            showError('Не удалось экспортировать данные. Все endpoints недоступны.');
+            hideLoading();
+            return;
+        }
+
+        fetch(endpoints[index], {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                showSuccess(data.message || 'Данные парсера успешно экспортированы');
+                // Скачивание файла если есть ссылка
+                if (data.download_url) {
+                    window.open(data.download_url, '_blank');
+                }
+            } else {
+                throw new Error(data.message || 'Неизвестная ошибка');
+            }
+        })
+        .catch(error => {
+            console.error(`❌ Ошибка для ${endpoints[index]}:`, error);
+            tryExportEndpoint(index + 1);
+        })
+        .finally(() => {
+            hideLoading();
+        });
+    }
+
+    tryExportEndpoint(0);
+}
+
+// Вспомогательные функции
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+function showLoading() {
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => btn.disabled = true);
+}
+
+function hideLoading() {
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => btn.disabled = false);
+}
+
+function showSuccess(message) {
+    alert('✅ ' + message);
+}
+
+function showError(message) {
+    alert('❌ ' + message);
+}
+
+// Автоматическое обновление каждые 30 секунд
+let autoRefreshInterval;
+
+function startAutoRefresh() {
+    autoRefreshInterval = setInterval(refreshStats, 30000);
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', function() {
+    refreshStats();
+    startAutoRefresh();
+
+    // Остановка автообновления при скрытии страницы
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            stopAutoRefresh();
+        } else {
+            startAutoRefresh();
+        }
+    });
+});
+</script>
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+.card-title {
+    color: #566a7f;
+    font-weight: 600;
+}
+
+.progress {
+    border-radius: 10px;
+}
+
+.progress-bar {
+    border-radius: 10px;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Стили для индикатора скорости парсера */
+.speed-progress-container {
+    position: relative;
+    margin: 20px 0;
+}
+
+.speed-progress {
+    background: #f0f0f0;
+    overflow: visible;
+}
+
+.speed-progress-bar {
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.speed-label {
+    font-weight: 600;
+    color: #566a7f;
+}
+
+.speed-value {
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.speed-metric {
+    padding: 10px;
+}
+
+.speed-metric h4 {
+    font-weight: 700;
+}
+
+.speed-labels small {
+    font-weight: 600;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .speed-progress-container {
+        margin: 15px 0;
+    }
+
+    .robot-icon {
+        font-size: 1.2rem;
+    }
+
+    .speed-metric h4 {
+        font-size: 1.1rem;
+    }
+}
+</style>
+{% endblock %}

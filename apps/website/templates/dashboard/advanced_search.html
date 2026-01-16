@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title mb-0">🎯 Расширенный поиск</h4>
+                <p class="card-subtitle text-muted">Точный поиск с фильтрами</p>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{% url 'website:advanced_search' %}">
+                    {% csrf_token %}
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">🔍 Поисковый запрос</label>
+                                <input type="text" class="form-control" name="query"
+                                       placeholder="Название товара, описание..."
+                                       value="{{ filters.query }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">📂 Категория</label>
+                                <select class="form-select" name="category">
+                                    <option value="">Все категории</option>
+                                    {% for category in categories %}
+                                        <option value="{{ category }}"
+                                                {% if filters.category == category %}selected{% endif %}>
+                                            {{ category }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">💰 Цена от</label>
+                                <input type="number" class="form-control" name="min_price"
+                                       placeholder="0" value="{{ filters.min_price }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">💰 Цена до</label>
+                                <input type="number" class="form-control" name="max_price"
+                                       placeholder="1000000" value="{{ filters.max_price }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">👤 Тип продавца</label>
+                                <select class="form-select" name="seller_type">
+                                    <option value="">Все</option>
+                                    <option value="private" {% if filters.seller_type == 'private' %}selected{% endif %}>
+                                        Частные лица
+                                    </option>
+                                    <option value="reseller" {% if filters.seller_type == 'reseller' %}selected{% endif %}>
+                                        Перекупщики
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">⭐ Минимальный рейтинг</label>
+                                <select class="form-select" name="min_rating">
+                                    <option value="">Любой</option>
+                                    <option value="4.5">4.5+</option>
+                                    <option value="4.0">4.0+</option>
+                                    <option value="3.5">3.5+</option>
+                                    <option value="3.0">3.0+</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">📅 Дата с</label>
+                                <input type="date" class="form-control" name="date_from"
+                                       value="{{ filters.date_from }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">📅 Дата по</label>
+                                <input type="date" class="form-control" name="date_to"
+                                       value="{{ filters.date_to }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="ri-search-line me-2"></i>Найти
+                                </button>
+                                <a href="{% url 'website:search' %}" class="btn btn-outline-secondary">
+                                    <i class="ri-arrow-go-back-line me-2"></i>Простой поиск
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

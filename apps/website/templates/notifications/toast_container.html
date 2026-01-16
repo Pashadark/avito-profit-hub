@@ -1,0 +1,217 @@
+<!-- notifications/templates/notifications/toast_container.html -->
+
+{# CSS для новой системы уведомлений #}
+<link rel="stylesheet" href="/static/notifications/css/notifications.css">
+
+{# Контейнер для уведомлений #}
+<div id="notification-container-global" class="notification-container notification-top-right"></div>
+
+{# Данные уведомлений в формате для новой системы #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Получаем данные уведомлений
+    const notificationData = {{ notifications_json|safe }};
+
+    console.log('📦 Notification data loaded:', notificationData.length, 'items');
+
+    // Показываем все уведомления из данных
+    notificationData.forEach(function(notification) {
+        if (notification.template === 'notifications' || notification.template === 'materialize') {
+            // Используем новую систему
+            showNotificationToast(notification);
+        } else {
+            // Стандартный toastr (для совместимости)
+            switch(notification.type) {
+                case 'success':
+                    if (typeof notificationSuccess === 'function') {
+                        notificationSuccess(notification.message, notification.title);
+                    } else if (typeof toastr !== 'undefined') {
+                        toastr.success(notification.message, notification.title);
+                    }
+                    break;
+                case 'error':
+                    if (typeof notificationError === 'function') {
+                        notificationError(notification.message, notification.title);
+                    } else if (typeof toastr !== 'undefined') {
+                        toastr.error(notification.message, notification.title);
+                    }
+                    break;
+                case 'warning':
+                    if (typeof notificationWarning === 'function') {
+                        notificationWarning(notification.message, notification.title);
+                    } else if (typeof toastr !== 'undefined') {
+                        toastr.warning(notification.message, notification.title);
+                    }
+                    break;
+                case 'info':
+                default:
+                    if (typeof notificationInfo === 'function') {
+                        notificationInfo(notification.message, notification.title);
+                    } else if (typeof toastr !== 'undefined') {
+                        toastr.info(notification.message, notification.title);
+                    }
+                    break;
+            }
+        }
+    });
+
+    // Функция для показа toast в новой системе (альтернативный вариант)
+    function showNotificationToast(notification) {
+        const container = document.getElementById('notification-container-global');
+        if (!container) {
+            console.error('❌ Notification container not found');
+            return;
+        }
+
+        const toastId = 'notification-' + Date.now();
+        const toast = document.createElement('div');
+        toast.id = toastId;
+        toast.className = `notification notification-${notification.type}`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.style.position = 'relative';
+        toast.style.marginBottom = '10px';
+        toast.style.padding = '15px';
+        toast.style.borderRadius = '4px';
+        toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+        toast.style.color = '#fff';
+        toast.style.minWidth = '300px';
+        toast.style.maxWidth = '400px';
+
+        // Цвета по типу
+        const colors = {
+            'success': '#51a351',
+            'error': '#bd362f',
+            'warning': '#f89406',
+            'info': '#2f96b4'
+        };
+
+        toast.style.backgroundColor = colors[notification.type] || '#030303';
+
+        // Иконка по типу
+        const iconClass = notification.icon || getNotificationIcon(notification.type);
+
+        // Заголовок
+        const title = notification.title || getNotificationTitle(notification.type);
+
+        toast.innerHTML = `
+            <div class="notification-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="${iconClass}"></i>
+                    <strong class="notification-title" style="font-size: 14px; font-weight: 600;">${title}</strong>
+                </div>
+                <button type="button" class="notification-close-button" style="background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; line-height: 1;">
+                    &times;
+                </button>
+            </div>
+            <div class="notification-message" style="font-size: 13px; line-height: 1.4;">
+                ${notification.message}
+            </div>
+            ${notification.progressBar ?
+                `<div class="notification-progress" style="position: absolute; bottom: 0; left: 0; height: 3px; background: rgba(255,255,255,0.3); width: 100%; overflow: hidden;">
+                    <div class="notification-progress-bar" style="height: 100%; background: #fff; width: 100%; animation: progress ${notification.timeOut || 5000}ms linear forwards;"></div>
+                </div>`
+                : ''}
+        `;
+
+        // Анимация прогресс-бара
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes progress {
+                from { width: 100%; }
+                to { width: 0%; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        container.appendChild(toast);
+
+        // Анимация появления
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            toast.style.transition = 'all 0.3s ease';
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateX(0)';
+        }, 10);
+
+        // Автоматическое закрытие
+        if (notification.timeOut > 0) {
+            setTimeout(() => {
+                closeNotificationToast(toastId);
+            }, notification.timeOut);
+        }
+
+        // Обработчик кнопки закрытия
+        const closeBtn = toast.querySelector('.notification-close-button');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                closeNotificationToast(toastId);
+            });
+        }
+
+        // Обработчик клика по toast
+        if (notification.onclick) {
+            toast.addEventListener('click', function() {
+                try {
+                    eval(notification.onclick);
+                } catch (e) {
+                    console.error('Error executing onclick:', e);
+                }
+            });
+        }
+    }
+
+    function closeNotificationToast(toastId) {
+        const toast = document.getElementById(toastId);
+        if (toast) {
+            toast.style.transition = 'all 0.3s ease';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 300);
+        }
+    }
+
+    function getNotificationIcon(type) {
+        const icons = {
+            'success': 'ri-checkbox-circle-fill',
+            'error': 'ri-error-warning-fill',
+            'warning': 'ri-alert-fill',
+            'info': 'ri-information-fill'
+        };
+        return icons[type] || 'ri-information-fill';
+    }
+
+    function getNotificationTitle(type) {
+        const titles = {
+            'success': 'Успешно',
+            'error': 'Ошибка',
+            'warning': 'Внимание',
+            'info': 'Информация'
+        };
+        return titles[type] || 'Уведомление';
+    }
+
+    // Глобальные функции для использования в JS (дополнительные)
+    window.showNotificationToast = function(type, message, title = '', options = {}) {
+        const notification = {
+            type: type,
+            message: message,
+            title: title || getNotificationTitle(type),
+            icon: options.icon || getNotificationIcon(type),
+            timeOut: options.timeOut || 5000,
+            closeButton: options.closeButton !== false,
+            progressBar: options.progressBar !== false,
+            onclick: options.onclick,
+            template: 'notifications'
+        };
+
+        showNotificationToast(notification);
+    };
+});
+</script>
