@@ -19,7 +19,6 @@ from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.throttling import UserRateThrottle
 import json
 import os
-import sqlite3
 import shutil
 import re
 import random
@@ -1119,44 +1118,57 @@ def export_vision_knowledge(request):
 
 @require_POST
 @csrf_exempt
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def backup_database(request):
-    """💾 Создание резервной копии базы данных
+    """💾 Создание резервной копии PostgreSQL базы данных
 
-    📁 Копирует db.sqlite3 в папку бэкапов
+    📁 Создает дамп PostgreSQL через pg_dump
     🕒 Добавляет timestamp в имя файла
-    📏 Возвращает размер созданного бэкапа
+    📏 Сжимает файл с помощью gzip
+    📤 Отправляет в Telegram (если настроено)
     """
     try:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_filename = f"backup_{timestamp}.sqlite3"
-        backup_path = os.path.join(BACKUP_DIR, backup_filename)
+        from ..utils.backup_manager import backup_manager
 
-        shutil.copy2('db.sqlite3', backup_path)
+        # Используем наш менеджер бэкапов
+        result = backup_manager.create_postgres_backup()
 
-        file_size = os.path.getsize(backup_path)
-        size_mb = round(file_size / (1024 * 1024), 2)
+        if result['status'] == 'success':
+            backup_path = Path(result['backup_path'])
+            backup_filename = backup_path.name
 
-        return JsonResponse({
-            'status': 'success',
-            'backup_path': backup_filename,
-            'file_size': f'{size_mb} MB',
-            'message': 'Резервная копия создана успешно'
-        })
+            return JsonResponse({
+                'status': 'success',
+                'backup_path': backup_filename,
+                'file_size': f"{result['size'] / 1024:.1f} KB",
+                'full_path': str(backup_path),
+                'message': 'Резервная копия PostgreSQL создана успешно'
+            })
+        else:
+            logger.error(f"Backup creation failed: {result.get('error')}")
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Ошибка создания бэкапа: {result.get("error", "Неизвестная ошибка")}'
+            })
 
     except Exception as e:
+        logger.error(f"Backup database error: {e}")
         return JsonResponse({
             'status': 'error',
-            'message': f'Ошибка создания бэкапа: {str(e)}'
+            'message': f'Ошибка создания бэкапа PostgreSQL: {str(e)}'
         })
 
 
 @require_POST
 @csrf_exempt
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def restore_backup(request):
-    """🔄 Восстановление базы данных из резервной копии
+    """🔄 Восстановление PostgreSQL базы данных из резервной копии
 
     ⚠️ Создает safety backup текущей базы
-    📂 Восстанавливает из указанного файла
+    📂 Восстанавливает из указанного файла .sql.gz
     🔒 Проверяет существование файла
     """
     try:
@@ -1166,95 +1178,150 @@ def restore_backup(request):
         if not filename:
             return JsonResponse({'status': 'error', 'message': 'Не указано имя файла'})
 
-        backup_path = os.path.join(BACKUP_DIR, filename)
+        backup_path = BACKUP_DIR / filename
 
-        if not os.path.exists(backup_path):
+        if not backup_path.exists():
             return JsonResponse({'status': 'error', 'message': 'Файл бэкапа не найден'})
 
-        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safety_backup = f"safety_backup_{current_time}.sqlite3"
-        safety_backup_path = os.path.join(BACKUP_DIR, safety_backup)
+        # Проверяем, что это PostgreSQL бэкап
+        if not filename.endswith('.sql.gz'):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Неправильный формат файла. Ожидается .sql.gz'
+            })
 
-        if os.path.exists('db.sqlite3'):
-            shutil.copy2('db.sqlite3', safety_backup_path)
+        logger.info(f"🔄 Восстановление PostgreSQL из бэкапа: {filename}")
 
-        shutil.copy2(backup_path, 'db.sqlite3')
+        # Создаем safety backup текущей базы
+        safety_result = backup_manager.create_postgres_backup()
+        if safety_result['status'] != 'success':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Не удалось создать safety backup: {safety_result.get("error")}'
+            })
 
-        return JsonResponse({
-            'status': 'success',
-            'message': f'База данных восстановлена из {filename}. Текущая база сохранена как {safety_backup}'
-        })
+        # Восстанавливаем через менеджер
+        restore_result = backup_manager.restore_postgres_backup(filename)
+
+        if restore_result['status'] == 'success':
+            return JsonResponse({
+                'status': 'success',
+                'message': f'База данных PostgreSQL восстановлена из {filename}. Safety backup создан: {safety_result.get("backup_path")}',
+                'safety_backup': Path(safety_result['backup_path']).name
+            })
+        else:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Ошибка восстановления: {restore_result.get("error", "Неизвестная ошибка")}'
+            })
 
     except Exception as e:
+        logger.error(f"Restore backup error: {e}")
         return JsonResponse({
             'status': 'error',
-            'message': f'Ошибка восстановления: {str(e)}'
+            'message': f'Ошибка восстановления PostgreSQL: {str(e)}'
         })
 
 
+@require_GET
+@login_required
 def list_backups(request):
-    """📋 Получение списка всех резервных копий
+    """📋 Получение списка всех резервных копий PostgreSQL
 
     📁 Сканирует папку бэкапов
     📏 Показывает размер каждого файла
     🕒 Сортировка по дате создания (новые сверху)
+    🔍 Фильтрация по типу бэкапа
     """
     try:
         backups = []
 
-        if os.path.exists(BACKUP_DIR):
-            for filename in os.listdir(BACKUP_DIR):
-                if filename.endswith('.sqlite3'):
-                    filepath = os.path.join(BACKUP_DIR, filename)
-                    if os.path.isfile(filepath):
-                        file_size = os.path.getsize(filepath)
-                        size_mb = round(file_size / (1024 * 1024), 2)
-                        created_time = datetime.fromtimestamp(os.path.getctime(filepath))
+        if BACKUP_DIR.exists():
+            # Ищем файлы PostgreSQL бэкапов
+            for file in BACKUP_DIR.glob('*.sql.gz'):
+                if file.is_file():
+                    file_size = file.stat().st_size
+                    created_time = datetime.fromtimestamp(file.stat().st_mtime)
 
-                        backups.append({
-                            'filename': filename,
-                            'size': f'{size_mb} MB',
-                            'created': created_time.strftime("%d.%m.%Y %H:%M"),
-                            'timestamp': created_time.timestamp()
-                        })
+                    # Определяем тип бэкапа по имени
+                    backup_type = 'unknown'
+                    if 'postgres' in file.name.lower():
+                        backup_type = 'postgres'
+                    elif 'vision' in file.name.lower():
+                        backup_type = 'vision'
+                    elif 'emergency' in file.name.lower():
+                        backup_type = 'emergency'
 
-        backups.sort(key=lambda x: x['timestamp'], reverse=True)
+                    backups.append({
+                        'filename': file.name,
+                        'size': f'{file_size / 1024:.1f} KB',
+                        'size_bytes': file_size,
+                        'created': created_time.strftime("%d.%m.%Y %H:%M"),
+                        'created_timestamp': created_time.timestamp(),
+                        'type': backup_type,
+                        'is_postgres': 'postgres' in file.name.lower()
+                    })
+
+            # Сортировка по дате (новые сверху)
+            backups.sort(key=lambda x: x['created_timestamp'], reverse=True)
 
         return JsonResponse({
             'status': 'success',
             'backups': backups,
-            'total': len(backups)
+            'total': len(backups),
+            'postgres_count': len([b for b in backups if b['is_postgres']]),
+            'directory': str(BACKUP_DIR.absolute())
         })
 
     except Exception as e:
+        logger.error(f"List backups error: {e}")
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка получения списка бэкапов: {str(e)}'
         })
 
 
+@require_GET
+@login_required
 def download_backup(request):
-    """⬇️ Скачивание резервной копии
+    """⬇️ Скачивание резервной копии PostgreSQL
 
     📥 Отправляет файл как attachment
     🔒 Проверяет существование файла
+    📦 Отправляет сжатый .gz файл
     """
     try:
         filename = request.GET.get('filename')
         if not filename:
             return JsonResponse({'status': 'error', 'message': 'Не указано имя файла'})
 
-        backup_path = os.path.join(BACKUP_DIR, filename)
+        backup_path = BACKUP_DIR / filename
 
-        if not os.path.exists(backup_path):
+        if not backup_path.exists():
             return JsonResponse({'status': 'error', 'message': 'Файл не найден'})
 
+        # Определяем Content-Type
+        if filename.endswith('.gz'):
+            content_type = 'application/gzip'
+        elif filename.endswith('.sql'):
+            content_type = 'application/sql'
+        else:
+            content_type = 'application/octet-stream'
+
         response = FileResponse(open(backup_path, 'rb'))
-        response['Content-Type'] = 'application/x-sqlite3'
+        response['Content-Type'] = content_type
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['Content-Length'] = backup_path.stat().st_size
+
+        # Дополнительные заголовки для безопасности
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+
+        logger.info(f"📥 Скачивание бэкапа: {filename} ({backup_path.stat().st_size / 1024:.1f} KB)")
         return response
 
     except Exception as e:
+        logger.error(f"Download backup error: {e}")
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка скачивания: {str(e)}'
@@ -1263,11 +1330,14 @@ def download_backup(request):
 
 @require_POST
 @csrf_exempt
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def delete_backup(request):
-    """🗑️ Удаление резервной копии
+    """🗑️ Удаление конкретной резервной копии PostgreSQL
 
-    ⚠️ Удаляет указанный файл бэкапа
+    🔐 ТОЛЬКО для суперпользователей
     🔒 Проверяет существование файла
+    📝 Логирует операцию
     """
     try:
         data = json.loads(request.body)
@@ -1276,19 +1346,33 @@ def delete_backup(request):
         if not filename:
             return JsonResponse({'status': 'error', 'message': 'Не указано имя файла'})
 
-        backup_path = os.path.join(BACKUP_DIR, filename)
+        backup_path = BACKUP_DIR / filename
 
-        if not os.path.exists(backup_path):
+        if not backup_path.exists():
             return JsonResponse({'status': 'error', 'message': 'Файл не найден'})
 
-        os.remove(backup_path)
+        # Получаем информацию о файле перед удалением
+        file_size = backup_path.stat().st_size
+        created_time = datetime.fromtimestamp(backup_path.stat().st_mtime)
+
+        # Удаляем файл
+        backup_path.unlink()
+
+        logger.info(f"🗑️ Удален бэкап PostgreSQL: {filename} ({file_size / 1024:.1f} KB)")
+        add_to_console(f"🗑️ Удален бэкап: {filename}")
 
         return JsonResponse({
             'status': 'success',
-            'message': f'Бэкап {filename} удален'
+            'message': f'Бэкап PostgreSQL {filename} удален',
+            'deleted_file': {
+                'filename': filename,
+                'size_kb': round(file_size / 1024, 2),
+                'created': created_time.strftime("%d.%m.%Y %H:%M")
+            }
         })
 
     except Exception as e:
+        logger.error(f"Delete backup error: {e}")
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка удаления: {str(e)}'
@@ -1297,34 +1381,54 @@ def delete_backup(request):
 
 @require_POST
 @csrf_exempt
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def clean_old_backups(request):
-    """🧹 Очистка старых резервных копий (старше 30 дней)
+    """🧹 Очистка старых резервных копий PostgreSQL (старше 30 дней)
 
-    ⏰ Удаляет файлы старше 30 дней
+    ⏰ Удаляет файлы старше указанного количества дней
     📊 Возвращает количество удаленных файлов
+    ⚙️ Можно указать кастомное количество дней
     """
     try:
-        cutoff_date = datetime.now() - timedelta(days=30)
+        data = json.loads(request.body) if request.body else {}
+        days_to_keep = int(data.get('days', 30))
+
+        cutoff_date = datetime.now() - timedelta(days=days_to_keep)
         deleted_count = 0
+        deleted_files = []
 
-        if os.path.exists(BACKUP_DIR):
-            for filename in os.listdir(BACKUP_DIR):
-                if filename.endswith('.sqlite3'):
-                    filepath = os.path.join(BACKUP_DIR, filename)
-                    if os.path.isfile(filepath):
-                        created_time = datetime.fromtimestamp(os.path.getctime(filepath))
+        if BACKUP_DIR.exists():
+            for file in BACKUP_DIR.glob('*.sql.gz'):
+                if file.is_file():
+                    created_time = datetime.fromtimestamp(file.stat().st_mtime)
 
-                        if created_time < cutoff_date:
-                            os.remove(filepath)
+                    if created_time < cutoff_date:
+                        try:
+                            file_size = file.stat().st_size
+                            file.unlink()
                             deleted_count += 1
+                            deleted_files.append({
+                                'filename': file.name,
+                                'size_kb': file_size / 1024,
+                                'created': created_time.strftime("%d.%m.%Y")
+                            })
+                        except Exception as e:
+                            logger.error(f"Error deleting {file.name}: {e}")
+                            continue
+
+        add_to_console(f"🧹 Очистка PostgreSQL бэкапов: удалено {deleted_count} файлов старше {days_to_keep} дней")
 
         return JsonResponse({
             'status': 'success',
             'deleted_count': deleted_count,
-            'message': f'Удалено {deleted_count} старых бэкапов'
+            'days_to_keep': days_to_keep,
+            'deleted_files': deleted_files,
+            'message': f'Удалено {deleted_count} старых PostgreSQL бэкапов (старше {days_to_keep} дней)'
         })
 
     except Exception as e:
+        logger.error(f"Clean old backups error: {e}")
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка очистки бэкапов: {str(e)}'
@@ -4071,136 +4175,146 @@ def add_from_telegram(request):
 
 # ========== УПРАВЛЕНИЕ БАЗОЙ ДАННЫХ ==========
 
+@require_GET
+@login_required
 def database_stats(request):
-    """📊 Возвращает детальную статистику базы данных
+    """📊 Возвращает детальную статистику базы данных PostgreSQL
 
-    📏 Размер базы данных в MB
+    📏 Размер базы данных
     💾 Свободное место на диске
     📋 Количество таблиц и записей
     🗃️ Статистика по каждой таблице
     """
     try:
-        db_path = 'db.sqlite3'
-
-        if not os.path.exists(db_path):
-            return JsonResponse({'status': 'error', 'message': 'Файл базы не найден'})
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        db_size = os.path.getsize(db_path)
-        db_size_mb = db_size / (1024 * 1024)
-
+        # Проверяем наличие psutil для информации о диске
         try:
             import psutil
-            disk_usage = psutil.disk_usage('..')
-            free_space = disk_usage.free / (1024 * 1024 * 1024)
-            total_space = disk_usage.total / (1024 * 1024 * 1024)
-            disk_usage_percent = (db_size_mb / (total_space * 1024)) * 100
+            disk_info = psutil.disk_usage('/')
+            free_space_gb = disk_info.free / (1024 ** 3)
+            total_space_gb = disk_info.total / (1024 ** 3)
+            has_psutil = True
         except ImportError:
-            free_space = 0
-            total_space = 0
-            disk_usage_percent = 0
+            free_space_gb = 0
+            total_space_gb = 0
+            has_psutil = False
 
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = cursor.fetchall()
+        with connection.cursor() as cursor:
+            # Размер базы данных
+            cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database()));")
+            db_size_pretty = cursor.fetchone()[0]
 
-        table_stats = {}
-        total_records = 0
+            cursor.execute("SELECT pg_database_size(current_database());")
+            db_size_bytes = cursor.fetchone()[0]
+            db_size_mb = db_size_bytes / (1024 ** 2)
 
-        for table in tables:
-            table_name = table[0]
-            try:
-                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-                count = cursor.fetchone()[0]
-                table_stats[table_name] = count
-                total_records += count
-            except:
-                continue
+            # Список таблиц и их размер
+            cursor.execute("""
+                SELECT 
+                    table_name,
+                    pg_size_pretty(pg_total_relation_size('"' || table_schema || '"."' || table_name || '"')) as size,
+                    (SELECT COUNT(*) FROM information_schema.tables t2 WHERE t2.table_schema = t.table_schema) as row_count
+                FROM information_schema.tables t
+                WHERE table_schema = 'public'
+                AND table_type = 'BASE TABLE'
+                ORDER BY pg_total_relation_size('"' || table_schema || '"."' || table_name || '"') DESC;
+            """)
 
-        conn.close()
+            table_stats = {}
+            total_tables = 0
+            total_records = 0
+
+            for row in cursor.fetchall():
+                table_name, size, row_count = row
+                table_stats[table_name] = {
+                    'size': size,
+                    'row_count': row_count
+                }
+                total_tables += 1
+                total_records += row_count
+
+            # Активные соединения
+            cursor.execute("SELECT COUNT(*) FROM pg_stat_activity WHERE state = 'active';")
+            active_connections = cursor.fetchone()[0]
+
+            # Время работы базы
+            cursor.execute("SELECT pg_postmaster_start_time();")
+            start_time = cursor.fetchone()[0]
 
         return JsonResponse({
             'status': 'success',
-            'database_size_mb': round(db_size_mb, 2),
-            'free_disk_space_gb': round(free_space, 2),
-            'total_disk_space_gb': round(total_space, 2),
-            'disk_usage_percent': round(disk_usage_percent, 2),
-            'total_tables': len(tables),
-            'total_records': total_records,
+            'database': {
+                'size': db_size_pretty,
+                'size_mb': round(db_size_mb, 2),
+                'tables_count': total_tables,
+                'total_records': total_records,
+                'active_connections': active_connections,
+                'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S')
+            },
+            'disk': {
+                'free_space_gb': round(free_space_gb, 2) if has_psutil else 'N/A',
+                'total_space_gb': round(total_space_gb, 2) if has_psutil else 'N/A',
+                'usage_percent': round((db_size_mb / (total_space_gb * 1024)) * 100,
+                                       2) if has_psutil and total_space_gb > 0 else 'N/A'
+            },
             'table_stats': table_stats
         })
 
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
+        logger.error(f"Database stats error: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
 
 
+@require_GET
+@login_required
 def database_info(request):
-    """ℹ️ Получение информации о базе данных
+    """ℹ️ Получение информации о базе данных PostgreSQL
 
-    🔍 Проверка существования файла базы
+    🔍 Статистика базы данных
     📊 Подсчет всех записей во всех таблицах
     ⏰ Поиск записей старше 30 дней
     """
     try:
-        db_path = 'db.sqlite3'
+        from ..models import FoundItem
 
-        if not os.path.exists(db_path):
-            return JsonResponse({
-                'status': 'error',
-                'message': 'Файл базы данных не найден'
-            })
+        cutoff_date = timezone.now() - timedelta(days=30)
 
-        db_size = os.path.getsize(db_path)
-        db_size_mb = round(db_size / (1024 * 1024), 2)
+        with connection.cursor() as cursor:
+            # Получаем размер базы
+            cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database()));")
+            db_size = cursor.fetchone()[0]
 
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+            # Получаем список таблиц
+            cursor.execute("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_type = 'BASE TABLE';
+            """)
+            tables = [row[0] for row in cursor.fetchall()]
 
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = cursor.fetchall()
+            # Статистика по записям старше 30 дней
+            old_items_count = FoundItem.objects.filter(found_at__lt=cutoff_date).count()
 
-        total_records_count = 0
-        old_records_count = 0
-        cutoff_date = datetime.now() - timedelta(days=30)
-
-        for table in tables:
-            table_name = table[0]
-            try:
-                if table_name.startswith('sqlite_'):
-                    continue
-
-                cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-                count = cursor.fetchone()[0]
-                total_records_count += count
-
-                cursor.execute(f"PRAGMA table_info({table_name})")
-                columns = [col[1] for col in cursor.fetchall()]
-
-                date_columns = [col for col in columns if
-                                any(keyword in col.lower() for keyword in ['date', 'created', 'timestamp', 'time'])]
-
-                if date_columns:
-                    date_column = date_columns[0]
-                    cursor.execute(f"SELECT COUNT(*) FROM {table_name} WHERE {date_column} < ?", (cutoff_date,))
-                    old_count = cursor.fetchone()[0]
-                    old_records_count += old_count
-
-            except Exception as e:
-                add_to_console(f"Ошибка при обработке таблицы {table_name}: {e}")
-                continue
-
-        conn.close()
+            # Общее количество записей
+            total_records = 0
+            for table in tables:
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                total_records += cursor.fetchone()[0]
 
         return JsonResponse({
             'status': 'success',
-            'database_size': f'{db_size_mb} MB',
-            'old_records_count': old_records_count,
-            'total_records_count': total_records_count,
-            'tables_count': len(tables)
+            'database_size': db_size,
+            'old_records_count': old_items_count,
+            'total_records_count': total_records,
+            'tables_count': len(tables),
+            'tables_list': tables[:10]  # Возвращаем только первые 10 таблиц
         })
 
     except Exception as e:
+        logger.error(f"Database info error: {e}")
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка получения информации: {str(e)}'
@@ -4209,8 +4323,10 @@ def database_info(request):
 
 @require_POST
 @csrf_exempt
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def clean_database(request):
-    """🧹 Очистка старых записей базы данных по ID
+    """🧹 Очистка старых записей базы данных PostgreSQL
 
     ⏰ Удаление записей старше N дней
     🗑️ Очистка найденных товаров и поисковых запросов
@@ -4218,112 +4334,74 @@ def clean_database(request):
     """
     try:
         data = json.loads(request.body)
-        days_to_keep = data.get('days_to_keep', 30)
+        days_to_keep = int(data.get('days_to_keep', 30))
         clean_logs = data.get('clean_logs', True)
         clean_products = data.get('clean_products', True)
 
-        db_path = 'db.sqlite3'
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
+        cutoff_date = timezone.now() - timedelta(days=days_to_keep)
         deleted_total = 0
 
-        add_to_console(f"🧹 Начинаем очистку. Режим: {days_to_keep} дней")
+        add_to_console(f"🧹 Начинаем очистку PostgreSQL. Режим: {days_to_keep} дней")
 
-        if clean_products:
-            try:
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='website_founditem'")
-                if cursor.fetchone():
+        with connection.cursor() as cursor:
+            if clean_products:
+                # Удаляем старые товары
+                if days_to_keep == 0:  # Удалить все
+                    cursor.execute("DELETE FROM website_founditem;")
+                    deleted_found = cursor.rowcount
+                else:
+                    cursor.execute("""
+                        DELETE FROM website_founditem 
+                        WHERE found_at < %s;
+                    """, [cutoff_date])
+                    deleted_found = cursor.rowcount
 
-                    if days_to_keep == 'all':
-                        cursor.execute("DELETE FROM website_founditem")
-                        deleted_found = cursor.rowcount
-                        deleted_total += deleted_found
-                        add_to_console(f"🗑️ Удалено ВСЕХ товаров: {deleted_found}")
+                deleted_total += deleted_found
+                add_to_console(f"🗑️ Удалено товаров: {deleted_found}")
 
-                    else:
-                        try:
-                            cursor.execute("DELETE FROM website_founditem WHERE found_at < datetime('now', ?)",
-                                           (f'-{days_to_keep} days',))
-                            deleted_found = cursor.rowcount
+            # Очищаем старые поисковые запросы без привязанных товаров
+            cursor.execute("""
+                DELETE FROM website_searchquery 
+                WHERE id NOT IN (
+                    SELECT DISTINCT search_query_id 
+                    FROM website_founditem 
+                    WHERE search_query_id IS NOT NULL
+                );
+            """)
+            deleted_queries = cursor.rowcount
+            deleted_total += deleted_queries
+            add_to_console(f"🗑️ Удалено поисковых запросов: {deleted_queries}")
 
-                            if deleted_found == 0:
-                                cursor.execute(
-                                    "DELETE FROM website_founditem WHERE id IN (SELECT id FROM website_founditem ORDER BY id ASC LIMIT 1000)")
-                                deleted_found = cursor.rowcount
-                                add_to_console(f"🗑️ Удалено товаров по ID: {deleted_found}")
-                            else:
-                                add_to_console(f"🗑️ Удалено товаров по дате: {deleted_found}")
+            # Оптимизируем базу
+            cursor.execute("VACUUM ANALYZE;")
+            add_to_console("✅ База PostgreSQL оптимизирована")
 
-                            deleted_total += deleted_found
-
-                        except Exception as e:
-                            add_to_console(f"⚠️ Ошибка удаления по дате: {e}")
-                            cursor.execute(
-                                "DELETE FROM website_founditem WHERE id IN (SELECT id FROM website_founditem ORDER BY id ASC LIMIT 1000)")
-                            deleted_found = cursor.rowcount
-                            deleted_total += deleted_found
-                            add_to_console(f"🗑️ Удалено товаров по ID (резервный метод): {deleted_found}")
-
-            except Exception as e:
-                add_to_console(f"❌ Ошибка очистки товаров: {e}")
-
-        if clean_products:
-            try:
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='website_searchquery'")
-                if cursor.fetchone():
-
-                    if days_to_keep == 'all':
-                        cursor.execute("DELETE FROM website_searchquery")
-                        deleted_queries = cursor.rowcount
-                        deleted_total += deleted_queries
-                        add_to_console(f"🗑️ Удалено ВСЕХ поисковых запросов: {deleted_queries}")
-
-                    else:
-                        cursor.execute("""
-                            DELETE FROM website_searchquery 
-                            WHERE id NOT IN (SELECT DISTINCT search_query_id FROM website_founditem WHERE search_query_id IS NOT NULL)
-                            AND id IN (SELECT id FROM website_searchquery ORDER BY id ASC LIMIT 500)
-                        """)
-                        deleted_queries = cursor.rowcount
-                        deleted_total += deleted_queries
-                        add_to_console(f"🗑️ Удалено старых поисковых запросов: {deleted_queries}")
-
-            except Exception as e:
-                add_to_console(f"❌ Ошибка очистки запросов: {e}")
-
-        conn.commit()
-
-        try:
-            cursor.execute("VACUUM")
-            print("✅ База оптимизирована")
-        except Exception as e:
-            add_to_console(f"⚠️ Ошибка VACUUM: {e}")
-
-        db_size = os.path.getsize(db_path)
-        db_size_mb = round(db_size / (1024 * 1024), 2)
-
-        conn.close()
+        # Получаем размер базы после очистки
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database()));")
+            db_size = cursor.fetchone()[0]
 
         return JsonResponse({
             'status': 'success',
             'deleted_total': deleted_total,
-            'database_size': f'{db_size_mb} MB',
-            'message': f'Очистка завершена! Удалено записей: {deleted_total}'
+            'database_size': db_size,
+            'message': f'Очистка PostgreSQL завершена! Удалено записей: {deleted_total}'
         })
 
     except Exception as e:
-        add_to_console(f"❌ Критическая ошибка: {e}")
+        add_to_console(f"❌ Критическая ошибка очистки PostgreSQL: {e}")
+        logger.error(f"Clean database error: {e}")
         return JsonResponse({
             'status': 'error',
-            'message': f'Ошибка очистки: {str(e)}'
+            'message': f'Ошибка очистки PostgreSQL: {str(e)}'
         })
 
 
 @require_POST
 @csrf_exempt
+@user_passes_test(lambda u: u.is_superuser)
 def force_clean_database(request):
-    """🔥 Экстренная очистка ВСЕХ данных
+    """🔥 Экстренная очистка ВСЕХ данных PostgreSQL
 
     🔐 ТОЛЬКО для суперпользователей
     💾 Создает резервную копию перед очисткой
@@ -4331,53 +4409,67 @@ def force_clean_database(request):
     ⚡ Полная очистка базы данных
     """
     try:
-        if not request.user.is_superuser:
-            return JsonResponse({'status': 'error', 'message': 'Требуются права администратора'})
-
-        db_path = 'db.sqlite3'
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
+        # Сначала создаем резервную копию
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = f"backup_emergency_{timestamp}.sqlite3"
-        shutil.copy2(db_path, backup_path)
+        backup_filename = f"postgres_emergency_backup_{timestamp}.sql"
+        backup_path = BACKUP_DIR / backup_filename
 
-        deleted_total = 0
+        from ..utils.backup_manager import backup_manager
+        backup_result = backup_manager.create_postgres_backup()
 
-        cursor.execute("DELETE FROM website_founditem")
-        deleted_found = cursor.rowcount
-        deleted_total += deleted_found
+        if backup_result['status'] != 'success':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Не удалось создать резервную копию: {backup_result.get("error", "Неизвестная ошибка")}'
+            })
 
-        cursor.execute("DELETE FROM website_searchquery")
-        deleted_queries = cursor.rowcount
-        deleted_total += deleted_queries
+        # Удаляем данные
+        with connection.cursor() as cursor:
+            # Отключаем foreign key проверки для безопасности
+            cursor.execute("SET session_replication_role = 'replica';")
 
-        conn.commit()
-        cursor.execute("VACUUM")
+            # Удаляем данные из таблиц
+            cursor.execute("DELETE FROM website_founditem;")
+            deleted_found = cursor.rowcount
 
-        db_size = os.path.getsize(db_path)
-        db_size_mb = round(db_size / (1024 * 1024), 2)
+            cursor.execute("DELETE FROM website_searchquery;")
+            deleted_queries = cursor.rowcount
 
-        conn.close()
+            # Восстанавливаем foreign key проверки
+            cursor.execute("SET session_replication_role = 'origin';")
+
+            # VACUUM для освобождения места
+            cursor.execute("VACUUM ANALYZE;")
+
+        # Получаем размер базы
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database()));")
+            db_size = cursor.fetchone()[0]
+
+        deleted_total = deleted_found + deleted_queries
+
+        add_to_console(f"🔥 Экстренная очистка PostgreSQL: удалено {deleted_total} записей")
 
         return JsonResponse({
             'status': 'success',
             'deleted_total': deleted_total,
-            'database_size': f'{db_size_mb} MB',
-            'backup_file': backup_path,
-            'message': f'Экстренная очистка! Удалено: {deleted_total} записей. Резервная копия создана.'
+            'database_size': db_size,
+            'backup_file': backup_result.get('backup_path'),
+            'message': f'Экстренная очистка PostgreSQL! Удалено: {deleted_total} записей. Резервная копия создана.'
         })
 
     except Exception as e:
+        logger.error(f"Force clean error: {e}")
         return JsonResponse({
             'status': 'error',
-            'message': f'Ошибка экстренной очистки: {str(e)}'
+            'message': f'Ошибка экстренной очистки PostgreSQL: {str(e)}'
         })
 
 
 @login_required
+@user_passes_test(lambda u: u.is_superuser)
 def diagnose_decimal_problems(request):
-    """🔍 Расширенная диагностика проблемных Decimal значений во ВСЕЙ базе
+    """🔍 Расширенная диагностика проблемных Decimal значений во ВСЕЙ базе PostgreSQL
 
     📊 Анализ типов данных в полях price, target_price, profit
     🎯 Поиск проблемных записей с неправильными типами
@@ -4385,186 +4477,96 @@ def diagnose_decimal_problems(request):
     💡 Рекомендации по исправлению
     """
     try:
-        import sqlite3
-        from decimal import Decimal, InvalidOperation
-        import json
         import time
-
-        db_path = 'db.sqlite3'
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        from decimal import Decimal, InvalidOperation
+        from ..models import FoundItem
 
         start_time = time.time()
 
-        cursor.execute("""
-            SELECT 
-                COUNT(*) as total_records,
-                SUM(CASE WHEN typeof(price) != 'real' THEN 1 ELSE 0 END) as price_type_problems,
-                SUM(CASE WHEN typeof(target_price) != 'real' THEN 1 ELSE 0 END) as target_price_type_problems,
-                SUM(CASE WHEN typeof(profit) != 'real' THEN 1 ELSE 0 END) as profit_type_problems,
-                SUM(CASE WHEN price = '' OR price IS NULL THEN 1 ELSE 0 END) as price_empty,
-                SUM(CASE WHEN target_price = '' OR target_price IS NULL THEN 1 ELSE 0 END) as target_price_empty,
-                SUM(CASE WHEN profit = '' OR profit IS NULL THEN 1 ELSE 0 END) as profit_empty,
-                MIN(id) as min_id,
-                MAX(id) as max_id
-            FROM website_founditem
-        """)
+        # Статистика через PostgreSQL
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as total_records,
+                    COUNT(CASE WHEN price IS NULL OR price::text = '' THEN 1 END) as price_empty,
+                    COUNT(CASE WHEN target_price IS NULL OR target_price::text = '' THEN 1 END) as target_price_empty,
+                    COUNT(CASE WHEN profit IS NULL OR profit::text = '' THEN 1 END) as profit_empty,
+                    MIN(id) as min_id,
+                    MAX(id) as max_id
+                FROM website_founditem
+            """)
 
-        stats = cursor.fetchone()
+            stats = cursor.fetchone()
 
         total_records = stats[0]
-        price_type_problems = stats[1]
-        target_price_type_problems = stats[2]
-        profit_type_problems = stats[3]
-        price_empty = stats[4]
-        target_price_empty = stats[5]
-        profit_empty = stats[6]
-        min_id = stats[7]
-        max_id = stats[8]
+        price_empty = stats[1]
+        target_price_empty = stats[2]
+        profit_empty = stats[3]
+        min_id = stats[4]
+        max_id = stats[5]
 
-        cursor.execute("""
-            SELECT id, title, price, target_price, profit, 
-                   typeof(price) as price_type, 
-                   typeof(target_price) as target_price_type, 
-                   typeof(profit) as profit_type
-            FROM website_founditem 
-            WHERE typeof(price) != 'real' 
-               OR typeof(target_price) != 'real'
-               OR typeof(profit) != 'real'
-               OR price = '' OR target_price = '' OR profit = ''
-               OR price IS NULL OR target_price IS NULL OR profit IS NULL
-            ORDER BY id ASC
-        """)
-
-        all_problematic_records = cursor.fetchall()
+        # Проверяем проблемные записи
+        problematic_items = FoundItem.objects.filter(
+            Q(price__isnull=True) | Q(price='') |
+            Q(target_price__isnull=True) | Q(target_price='') |
+            Q(profit__isnull=True) | Q(profit='')
+        ).order_by('id')[:50]  # Ограничиваем для производительности
 
         detailed_problematic = []
-        sample_size = min(50, len(all_problematic_records))
-
-        for i, record in enumerate(all_problematic_records[:sample_size]):
-            (item_id, title, price, target_price, profit,
-             price_type, target_price_type, profit_type) = record
-
+        for item in problematic_items:
             record_info = {
-                'id': item_id,
-                'title': title[:100] + '...' if title and len(title) > 100 else title,
-                'price_raw': str(price) if price is not None else 'NULL',
-                'target_price_raw': str(target_price) if target_price is not None else 'NULL',
-                'profit_raw': str(profit) if profit is not None else 'NULL',
-                'price_type': price_type,
-                'target_price_type': target_price_type,
-                'profit_type': profit_type,
+                'id': item.id,
+                'title': item.title[:100] + '...' if item.title and len(item.title) > 100 else item.title,
                 'problems': [],
                 'raw_values': {
-                    'price': price,
-                    'target_price': target_price,
-                    'profit': profit
+                    'price': str(item.price),
+                    'target_price': str(item.target_price),
+                    'profit': str(item.profit)
                 }
             }
 
-            for field_name, field_value in [('price', price), ('target_price', target_price), ('profit', profit)]:
-                if field_value is not None and field_value != '':
+            # Проверяем каждое поле
+            for field_name in ['price', 'target_price', 'profit']:
+                value = getattr(item, field_name)
+                if value is None or value == '':
+                    record_info['problems'].append(f"{field_name}: пустое значение")
+                else:
                     try:
-                        decimal_value = Decimal(str(field_value))
+                        # Пробуем преобразовать в Decimal
+                        decimal_value = Decimal(str(value))
                         quantized = decimal_value.quantize(Decimal('0.01'))
                         record_info[f'{field_name}_decimal'] = float(quantized)
                     except (InvalidOperation, TypeError, ValueError) as e:
                         problem_desc = f"{field_name}: {type(e).__name__} - {str(e)}"
                         record_info['problems'].append(problem_desc)
                         record_info[f'{field_name}_error'] = str(e)
-                else:
-                    record_info['problems'].append(f"{field_name}: пустое значение")
 
             detailed_problematic.append(record_info)
 
-        cursor.execute("""
-            SELECT id, title, price, target_price, profit, 
-                   typeof(price) as price_type, 
-                   typeof(target_price) as target_price_type, 
-                   typeof(profit) as profit_type
-            FROM website_founditem 
-            WHERE typeof(price) = 'real' 
-               AND typeof(target_price) = 'real'
-               AND typeof(profit) = 'real'
-               AND price != '' AND target_price != '' AND profit != ''
-            ORDER BY RANDOM()
-            LIMIT 10
-        """)
+        # Получаем нормальные записи для сравнения
+        normal_samples = FoundItem.objects.exclude(
+            Q(price__isnull=True) | Q(price='') |
+            Q(target_price__isnull=True) | Q(target_price='') |
+            Q(profit__isnull=True) | Q(profit='')
+        ).order_by('?')[:10].values('id', 'title', 'price', 'target_price', 'profit')
 
-        normal_samples = []
-        for record in cursor.fetchall():
-            (item_id, title, price, target_price, profit,
-             price_type, target_price_type, profit_type) = record
-
-            normal_samples.append({
-                'id': item_id,
-                'title': title[:100] + '...' if title and len(title) > 100 else title,
-                'price': float(price) if price else 0,
-                'target_price': float(target_price) if target_price else 0,
-                'profit': float(profit) if profit else 0,
-                'types': f"P:{price_type}, T:{target_price_type}, Pr:{profit_type}"
-            })
-
-        conn.close()
         end_time = time.time()
-
-        if all_problematic_records:
-            problematic_ids = [r[0] for r in all_problematic_records]
-            problem_ranges = []
-
-            current_range = [problematic_ids[0], problematic_ids[0]]
-            for i in range(1, len(problematic_ids)):
-                if problematic_ids[i] == problematic_ids[i - 1] + 1:
-                    current_range[1] = problematic_ids[i]
-                else:
-                    problem_ranges.append(current_range)
-                    current_range = [problematic_ids[i], problematic_ids[i]]
-            problem_ranges.append(current_range)
-
-            range_display = []
-            for r in problem_ranges[:10]:
-                if r[0] == r[1]:
-                    range_display.append(str(r[0]))
-                else:
-                    range_display.append(f"{r[0]}-{r[1]}")
-
-            if len(problem_ranges) > 10:
-                range_display.append(f"... и еще {len(problem_ranges) - 10} диапазонов")
-        else:
-            range_display = ["Нет проблемных записей"]
 
         report = {
             'processing_time': round(end_time - start_time, 2),
             'database_stats': {
                 'total_records': total_records,
                 'id_range': f"{min_id} - {max_id}",
-                'price_problems': {
-                    'type_issues': price_type_problems,
-                    'empty_values': price_empty,
-                    'total': price_type_problems + price_empty
-                },
-                'target_price_problems': {
-                    'type_issues': target_price_type_problems,
-                    'empty_values': target_price_empty,
-                    'total': target_price_type_problems + target_price_empty
-                },
-                'profit_problems': {
-                    'type_issues': profit_type_problems,
-                    'empty_values': profit_empty,
-                    'total': profit_type_problems + profit_empty
-                },
-                'total_problematic_records': len(all_problematic_records),
-                'problem_percentage': round((len(all_problematic_records) / total_records) * 100,
+                'price_problems': {'empty_values': price_empty, 'total': price_empty},
+                'target_price_problems': {'empty_values': target_price_empty, 'total': target_price_empty},
+                'profit_problems': {'empty_values': profit_empty, 'total': profit_empty},
+                'total_problematic_records': problematic_items.count(),
+                'problem_percentage': round((problematic_items.count() / total_records) * 100,
                                             2) if total_records > 0 else 0
             },
-            'problem_distribution': {
-                'ranges': range_display,
-                'oldest_problem_id': all_problematic_records[0][0] if all_problematic_records else None,
-                'newest_problem_id': all_problematic_records[-1][0] if all_problematic_records else None
-            },
             'detailed_problematic': detailed_problematic,
-            'normal_samples': normal_samples,
-            'recommendation': f"Рекомендуется исправить {len(all_problematic_records)} проблемных записей" if all_problematic_records else "База данных в порядке"
+            'normal_samples': list(normal_samples),
+            'recommendation': f"Рекомендуется исправить {problematic_items.count()} проблемных записей" if problematic_items.count() > 0 else "База данных в порядке"
         }
 
         return JsonResponse({
@@ -4574,6 +4576,7 @@ def diagnose_decimal_problems(request):
 
     except Exception as e:
         import traceback
+        logger.error(f"Diagnose decimal error: {e}")
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка диагностики: {str(e)}',
@@ -4582,30 +4585,34 @@ def diagnose_decimal_problems(request):
 
 
 @require_GET
+@login_required
 def check_database_stats(request):
-    """📈 Проверка статистики базы данных
+    """📈 Проверка статистики базы данных PostgreSQL
 
     📊 Количество записей в основных таблицах
     🔍 Проверка существования таблиц
     📈 Общая статистика системы
     """
     try:
-        conn = sqlite3.connect('db.sqlite3')
-        cursor = conn.cursor()
+        from ..models import FoundItem, SearchQuery, UserProfile, ParserSettings
 
-        cursor.execute("SELECT COUNT(*) FROM website_founditem")
-        found_items_count = cursor.fetchone()[0]
+        with connection.cursor() as cursor:
+            # Получаем статистику с помощью Django ORM
+            found_items_count = FoundItem.objects.count()
+            search_queries_count = SearchQuery.objects.count()
 
-        cursor.execute("SELECT COUNT(*) FROM website_searchquery")
-        search_queries_count = cursor.fetchone()[0]
+            # Для UserProfile и ParserSettings используем прямой запрос
+            cursor.execute("SELECT COUNT(*) FROM website_userprofile")
+            profiles_count = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM website_parsersettings")
-        settings_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM website_parsersettings")
+            settings_count = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM website_userprofile")
-        profiles_count = cursor.fetchone()[0]
-
-        conn.close()
+            # Получаем размер базы данных
+            cursor.execute("""
+                SELECT pg_size_pretty(pg_database_size(current_database()));
+            """)
+            db_size = cursor.fetchone()[0]
 
         return JsonResponse({
             'status': 'success',
@@ -4614,13 +4621,18 @@ def check_database_stats(request):
                 'search_queries': search_queries_count,
                 'parser_settings': settings_count,
                 'user_profiles': profiles_count,
-                'total_records': found_items_count + search_queries_count + settings_count + profiles_count
+                'total_records': found_items_count + search_queries_count + settings_count + profiles_count,
+                'database_size': db_size
             },
-            'message': f'Найдено товаров: {found_items_count}, Поисковых запросов: {search_queries_count}'
+            'message': f'Найдено товаров: {found_items_count}, Поисковых запросов: {search_queries_count}, Размер БД: {db_size}'
         })
 
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
+        logger.error(f"Database stats error: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Ошибка получения статистики: {str(e)}'
+        })
 
 
 # ========== KANBAN TODO СИСТЕМА ==========
