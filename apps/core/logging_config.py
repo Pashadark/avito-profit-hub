@@ -13,20 +13,65 @@ _logging_initialized = False
 
 
 class SafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
-    """Безопасный обработчик файлов с защитой от блокировки файлов"""
+    """Безопасный обработчик файлов с защитой от блокировки файлов (кросс-платформенный)"""
 
     def __init__(self, *args, **kwargs):
         # Всегда используем delay=True чтобы избежать блокировки файлов
         kwargs['delay'] = True
         super().__init__(*args, **kwargs)
+        self._last_rollover_check = time.time()
+        self._rollover_check_interval = 60  # Проверять ротацию раз в 60 секунд
+
+    def emit(self, record):
+        """Безопасная запись в лог с проверкой ротации"""
+        try:
+            # Проверяем нужно ли делать ротацию (но не чаще чем раз в interval)
+            current_time = time.time()
+            if current_time - self._last_rollover_check > self._rollover_check_interval:
+                if self.shouldRollover(record):
+                    try:
+                        self.doRollover()
+                    except Exception as e:
+                        # Если не удалось сделать ротацию, продолжаем писать в текущий файл
+                        sys.stderr.write(f"⚠️ Не удалось сделать ротацию логов: {e}\n")
+                self._last_rollover_check = current_time
+
+            super().emit(record)
+        except Exception as e:
+            # Если произошла ошибка, пишем в stderr
+            sys.stderr.write(f"❌ Ошибка записи в лог: {e}\n")
+            # Пытаемся использовать резервный логгер
+            try:
+                backup_logger = logging.getLogger('__backup__')
+                if not backup_logger.handlers:
+                    backup_handler = logging.StreamHandler(sys.stderr)
+                    backup_handler.setFormatter(logging.Formatter('%(asctime)s | BACKUP | %(message)s'))
+                    backup_logger.addHandler(backup_handler)
+                    backup_logger.setLevel(logging.INFO)
+                backup_logger.info(f"Ошибка основного логирования: {record.getMessage()}")
+            except:
+                pass
 
     def doRollover(self):
         """Безопасная ротация файлов с обработкой ошибок"""
         try:
+            # Временно закрываем файл
+            if self.stream:
+                self.stream.close()
+                self.stream = None
+
+            # Выполняем ротацию
             super().doRollover()
-        except (OSError, IOError) as e:
-            # Если не удалось сделать ротацию, пишем в текущий файл
-            print(f"⚠️ Не удалось сделать ротацию логов: {e}", file=sys.stderr)
+
+        except (OSError, IOError, Exception) as e:
+            # Если не удалось сделать ротацию, продолжаем использовать текущий файл
+            sys.stderr.write(f"⚠️ Не удалось сделать ротацию логов: {e}\n")
+            try:
+                # Пытаемся открыть файл заново
+                if not self.stream:
+                    self.stream = self._open()
+            except Exception as open_error:
+                sys.stderr.write(f"⚠️ Не удалось открыть файл логов: {open_error}\n")
 
 
 class CustomFormatter(logging.Formatter):
@@ -53,6 +98,7 @@ class CustomFormatter(logging.Formatter):
         'user': Fore.LIGHTGREEN_EX,
         'apps': Fore.LIGHTCYAN_EX,
         'core': Fore.LIGHTGREEN_EX,
+        'system': Fore.LIGHTYELLOW_EX,
     }
 
     def __init__(self, *args, **kwargs):
@@ -79,7 +125,7 @@ class CustomFormatter(logging.Formatter):
             record.reset = Style.RESET_ALL
 
             return super().format(record)
-        except Exception as e:
+        except Exception:
             # 🔥 ВАЖНО: при ошибке НЕ логируем, а возвращаем простой формат
             return f"{record.levelname}: {record.getMessage()}"
         finally:
@@ -176,7 +222,7 @@ class DjangoServerLogFilter(logging.Filter):
 
                             record.msg = f"{status_emoji} {method} {path} → {status_code} ({size_str})"
 
-                    except Exception as e:
+                    except Exception:
                         # Если не удалось распарсить, оставляем как есть но добавляем эмодзи
                         record.msg = f"🌐 {original_message}"
 
@@ -185,25 +231,35 @@ class DjangoServerLogFilter(logging.Filter):
             self._filtering = False
 
 
-def setup_logging():
+def setup_logging(process_name=None):
     """Настройка единой системы логирования для всего проекта"""
     global _logging_initialized
 
-    # ✅ Защита от повторной инициализации
-    if _logging_initialized:
-        return
-
-    _logging_initialized = True
+    # Если указано имя процесса, используем специфичную конфигурацию
+    if process_name:
+        init_key = f"process_{process_name}_{os.getpid()}"
+    else:
+        # ✅ Защита от повторной инициализации для глобального логирования
+        if _logging_initialized:
+            return
+        _logging_initialized = True
+        init_key = "global"
 
     # Создаем папку для логов если её нет
-    os.makedirs('logs', exist_ok=True)
-    # Создаем подпапки для разных компонентов
-    os.makedirs('logs/system', exist_ok=True)
-    os.makedirs('logs/bot', exist_ok=True)
-    os.makedirs('logs/django', exist_ok=True)
-    os.makedirs('logs/parsing', exist_ok=True)
-    os.makedirs('logs/website', exist_ok=True)
-    os.makedirs('logs/apps', exist_ok=True)
+    log_dirs = ['logs', 'logs/system', 'logs/bot', 'logs/django',
+                'logs/parsing', 'logs/website', 'logs/apps', 'logs/postgresql']
+
+    for log_dir in log_dirs:
+        os.makedirs(log_dir, exist_ok=True)
+
+    # Если указано имя процесса, создаем отдельную папку
+    if process_name:
+        process_log_dir = f'logs/process_{process_name}'
+        os.makedirs(process_log_dir, exist_ok=True)
+
+    # Базовый форматтер с PID
+    pid = os.getpid()
+    detailed_format = f'%(asctime)s | PID:{pid} | %(levelname)-8s | %(name)-25s | %(message)s'
 
     LOGGING_CONFIG = {
         'version': 1,
@@ -220,7 +276,7 @@ def setup_logging():
                 'datefmt': '%H:%M:%S'
             },
             'detailed': {
-                'format': '%(asctime)s | %(levelname)-8s | %(name)-25s | %(message)s',
+                'format': detailed_format,
                 'datefmt': '%Y-%m-%d %H:%M:%S'
             },
             'django_server': {
@@ -347,16 +403,6 @@ def setup_logging():
                 'propagate': False
             },
             'website.management.commands': {
-                'handlers': ['console', 'website_file'],
-                'level': 'INFO',
-                'propagate': False
-            },
-            'website.management.commands.create_backup': {
-                'handlers': ['console', 'website_file'],
-                'level': 'INFO',
-                'propagate': False
-            },
-            'website.management.commands.deduct_daily_payments': {
                 'handlers': ['console', 'website_file'],
                 'level': 'INFO',
                 'propagate': False
@@ -545,12 +591,31 @@ def setup_logging():
         }
     }
 
+    # Для специфичных процессов добавляем отдельный обработчик
+    if process_name:
+        LOGGING_CONFIG['handlers'][f'{process_name}_file'] = {
+            '()': SafeRotatingFileHandler,
+            'filename': f'logs/process_{process_name}/{process_name}.log',
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 3,
+            'formatter': 'detailed',
+            'level': 'INFO',
+            'encoding': 'utf-8',
+        }
+
+        # Добавляем этот обработчик ко всем логгерам
+        for logger_name in LOGGING_CONFIG['loggers']:
+            if logger_name:  # Пропускаем корневой логгер
+                if 'handlers' in LOGGING_CONFIG['loggers'][logger_name]:
+                    LOGGING_CONFIG['loggers'][logger_name]['handlers'].append(f'{process_name}_file')
+
     # Применяем конфигурацию
     logging.config.dictConfig(LOGGING_CONFIG)
 
     # Тестовое сообщение
     logger = logging.getLogger('system.run')
-    logger.info("🎨 Система логирования инициализирована (консоль + файлы)")
+    logger.info(f"🎨 Система логирования инициализирована (процесс: {process_name or 'global'}, PID: {pid})")
+
 
 # Простые функции для красивого вывода (для run.py)
 def print_success(text):

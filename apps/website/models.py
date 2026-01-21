@@ -90,6 +90,36 @@ class FoundItem(models.Model):
     mileage = models.CharField(max_length=50, blank=True, null=True, verbose_name="Пробег")
     owners = models.CharField(max_length=50, blank=True, null=True, verbose_name="Количество владельцев")
     pts = models.CharField(max_length=50, blank=True, null=True, verbose_name="ПТС")
+    parse_time_display = models.CharField(
+        max_length=20,
+        verbose_name='Время парсинга',
+        help_text='Время в формате ММ:СС',
+        blank=True,
+        default='0:00'
+    )
+
+    parse_time_seconds = models.IntegerField(
+        verbose_name='Длительность парсинга (секунды)',
+        default=0
+    )
+
+    search_duration_seconds = models.IntegerField(
+        verbose_name='Длительность поиска (секунды)',
+        default=0
+    )
+
+    total_processing_seconds = models.IntegerField(
+        verbose_name='Общее время обработки (секунды)',
+        default=0
+    )
+
+    time_status = models.CharField(
+        max_length=50,
+        verbose_name='Статус скорости обработки',
+        blank=True,
+        default=''
+    )
+
     ml_freshness_score = models.FloatField(
         default=0.5,
         verbose_name="ML оценка свежести",

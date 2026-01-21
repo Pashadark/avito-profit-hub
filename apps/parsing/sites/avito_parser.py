@@ -703,17 +703,17 @@ class AvitoParser(BaseSiteParser):
         try:
             # Паттерны для разных форматов URL Avito
             patterns = [
-                r'avito\.ru/.+/(\d+)$',  # /category/ID
-                r'avito\.ru/.+/.+_(\d+)$',  # /category/item_NAME_ID
-                r'avito\.ru/items/(\d+)$',  # /items/ID (как в твоем примере)
-                r'/(\d+)(?:\?|$)',  # /ID? или /ID
+                r'avito\.ru/.+/(\d{9,10})(?:\?|$)',  # /category/ID? или /category/ID
+                r'avito\.ru/.+/.+_(\d{9,10})(?:\?|$)',  # /category/item_NAME_ID? или /category/item_NAME_ID
+                r'avito\.ru/items/(\d{9,10})(?:\?|$)',  # /items/ID? или /items/ID
+                r'/(\d{9,10})(?:\?|$)',  # /ID? или /ID
             ]
 
             for pattern in patterns:
                 match = re.search(pattern, url)
                 if match:
                     item_id = match.group(1)
-                    if item_id.isdigit():
+                    if item_id.isdigit() and 9 <= len(item_id) <= 10:  # дополнительная проверка
                         self.logger.info(f"✅ ID товара извлечен из URL: {item_id}")
                         return int(item_id)
 

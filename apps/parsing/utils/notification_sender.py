@@ -1,6 +1,7 @@
 import random
 import logging
 import asyncio
+import time
 from asgiref.sync import sync_to_async
 from urllib.parse import urlparse
 import hashlib
@@ -8,6 +9,8 @@ import base64
 import aiohttp
 from html import escape
 import re
+from typing import Optional, Dict, Any
+from datetime import datetime
 
 from telegram import Bot, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
 from shared.utils.config import get_bot_token, get_chat_id
@@ -16,11 +19,48 @@ logger = logging.getLogger('bot.notifications')
 
 
 class NotificationSender:
-    """УНИВЕРСАЛЬНЫЙ ОТПРАВЩИК УВЕДОМЛЕНИЙ - ПРОСТАЯ ПРОВЕРКА ДУБЛЕЙ"""
+    """УНИВЕРСАЛЬНЫЙ ОТПРАВЩИК УВЕДОМЛЕНИЙ С ТРЕКИНГОМ ВРЕМЕНИ"""
 
     def __init__(self):
         self.retry_count = 0
         self.max_retries = 3
+
+    @staticmethod
+    def format_duration(seconds: float) -> str:
+        """Форматирует время в читаемый вид ММ:СС"""
+        seconds = int(seconds)
+
+        if seconds < 60:
+            return f"0:{seconds:02d}"
+
+        minutes = seconds // 60
+        remaining_seconds = seconds % 60
+
+        return f"{minutes}:{remaining_seconds:02d}"
+
+    @staticmethod
+    def calculate_performance_metrics(parse_duration: float, search_duration: float) -> Dict[str, Any]:
+        """Вычисляет метрики производительности"""
+        total_duration = parse_duration + search_duration
+
+        # Определяем категорию скорости
+        if total_duration <= 5:
+            speed_category = "⚡ Молниеносно"
+        elif total_duration <= 15:
+            speed_category = "🚀 Быстро"
+        elif total_duration <= 30:
+            speed_category = "🐇 Нормально"
+        elif total_duration <= 60:
+            speed_category = "🐢 Медленно"
+        else:
+            speed_category = "🚧 Очень медленно"
+
+        return {
+            'total_seconds': total_duration,
+            'speed_category': speed_category,
+            'parse_percentage': (parse_duration / total_duration * 100) if total_duration > 0 else 0,
+            'search_percentage': (search_duration / total_duration * 100) if total_duration > 0 else 0,
+        }
 
     def extract_product_id(self, url):
         """Извлекает ID товара из URL Avito"""
@@ -162,18 +202,28 @@ class NotificationSender:
             traceback.print_exc()
             return 0
 
-    async def _save_to_cache(self, product_id, normalized_url, product_name):
-        """Сохранение в кэш"""
+    async def _save_to_cache(self, product_id, normalized_url, product_name, time_data=None):
+        """Сохранение в кэш с данными о времени"""
         try:
             from apps.website.models import NotificationCache
 
             @sync_to_async
             def save_to_database():
-                return NotificationCache.add_to_cache(
+                cache_entry = NotificationCache.add_to_cache(
                     product_id=product_id,
                     normalized_url=normalized_url,
                     product_name=product_name[:255]
                 )
+
+                # Если есть данные о времени, обновляем дополнительными полями
+                if time_data and cache_entry:
+                    cache_entry.parse_duration = time_data.get('parse_duration_seconds', 0)
+                    cache_entry.search_duration = time_data.get('search_duration_seconds', 0)
+                    cache_entry.total_duration = time_data.get('total_duration_seconds', 0)
+                    cache_entry.time_status = time_data.get('time_status', '')
+                    cache_entry.save()
+
+                return cache_entry
 
             cache_entry = await save_to_database()
             return cache_entry
@@ -361,6 +411,14 @@ class NotificationSender:
         metro_text = self._format_metro_info(product_data)
         address_text = self._format_address_info(product_data)
 
+        # 🔥 ДОБАВЛЯЕМ ВРЕМЯ ПАРСИНГА
+        time_section = ""
+        parse_time_display = product_data.get('parse_time_display')
+        time_status = product_data.get('time_status')
+
+        if parse_time_display and time_status:
+            time_section = f"⏱️ <b>Время обработки:</b> {parse_time_display} ({time_status})"
+
         message_lines = []
         message_lines.append(header)
         message_lines.append("")
@@ -425,6 +483,11 @@ class NotificationSender:
 
         if address_text:
             message_lines.append(f"📍 <b>Адрес:</b> {address_text}")
+
+        # 🔥 ВРЕМЯ ОБРАБОТКИ
+        if time_section:
+            message_lines.append("")
+            message_lines.append(time_section)
 
         message_lines.append("")
 
@@ -544,237 +607,6 @@ class NotificationSender:
             logger.error(f"❌ Ошибка удаления секции: {e}")
             return lines
 
-    def send_favorite_to_telegram(product_data, user):
-        """📨 Отправляет уведомление о добавлении в избранное в Telegram
-
-        🎯 Использует существующий NotificationSender для форматирования
-        ❤️ Всегда показывает "ДОБАВЛЕНО В ИЗБРАННОЕ"
-        📸 Отправляет фото через медиагруппу как парсер
-        🔗 Ссылка на сайт ВНУТРИ текста (как у парсера)
-        """
-        try:
-            logger.info(f"🚀 Отправка избранного для {user.username}")
-
-            # 1. Подготавливаем данные для notification_sender
-            # Добавляем недостающие поля
-            if 'economy' not in product_data:
-                economy = product_data.get('target_price', 0) - product_data.get('price', 0)
-                product_data['economy'] = economy
-                if product_data.get('target_price', 0) > 0:
-                    product_data['economy_percent'] = int((economy / product_data['target_price']) * 100)
-                else:
-                    product_data['economy_percent'] = 0
-
-            # Определяем source если нет
-            if 'source' not in product_data:
-                url = product_data.get('url', '').lower()
-                if 'auto.ru' in url:
-                    product_data['source'] = 'auto_ru'
-                    product_data['site'] = 'auto.ru'
-                else:
-                    product_data['source'] = 'avito'
-                    product_data['site'] = 'avito'
-
-            # Добавляем необходимые поля для NotificationSender
-            if 'avito_category' not in product_data and 'category' in product_data:
-                product_data['avito_category'] = product_data['category']
-
-            # Проверяем наличие rating полей
-            if 'seller_rating' not in product_data:
-                product_data['seller_rating'] = product_data.get('seller_rating', 5.0)
-
-            if 'reviews_count' not in product_data:
-                product_data['reviews_count'] = product_data.get('reviews_count', 0)
-
-            # Проверяем seller_type
-            if 'seller_type' not in product_data:
-                seller_type = product_data.get('seller_type', '')
-                if seller_type in ['Магазин', 'Компания', 'reseller']:
-                    product_data['seller_type'] = 'reseller'
-                else:
-                    product_data['seller_type'] = 'private'
-
-            # Проверяем состояние товара
-            if 'condition' not in product_data:
-                product_data['condition'] = 'Не указано'
-
-            # Проверяем цвет
-            if 'color' not in product_data:
-                product_data['color'] = 'Разноцветный'
-
-            # 2. Получаем фото из разных источников
-            all_images = []
-
-            # Сначала image_urls
-            image_urls = product_data.get('image_urls', [])
-            if image_urls:
-                logger.info(f"📸 Найдено {len(image_urls)} изображений в image_urls")
-                all_images = image_urls[:10]  # Берем до 10 фото (максимум для медиагруппы)
-
-            # Если нет image_urls, пробуем image_url
-            if not all_images and product_data.get('image_url'):
-                image_url = product_data['image_url']
-                logger.info(f"📸 Используем основное фото: {image_url}")
-                all_images = [image_url]
-
-            # Если совсем нет фото
-            if not all_images:
-                logger.warning("⚠️ Нет фото для отправки")
-
-            logger.info(f"📸 Всего фото для отправки: {len(all_images)}")
-
-            # 3. Используем существующий NotificationSender
-            notification_sender = NotificationSender()
-
-            # Форматируем сообщение через существующий метод
-            message = notification_sender._format_message(product_data)
-
-            logger.info(f"📝 Сформировано сообщение ({len(message)} символов)")
-
-            # 4. Меняем заголовок на "ДОБАВЛЕНО В ИЗБРАННОЕ"
-            # Находим первую строку с заголовком
-            lines = message.split('\n')
-
-            if lines and 'ВЫГОДНАЯ СДЕЛКА' in lines[0]:
-                # Меняем заголовок для выгодной сделки
-                lines[0] = '❤️ <b>ДОБАВЛЕНО В ИЗБРАННОЕ</b>'
-                # Добавляем подзаголовок о выгоде на второй строке
-                lines.insert(1, '💰 <b>Выгодное предложение!</b>')
-                logger.info("✅ Заголовок изменен на '❤️ ДОБАВЛЕНО В ИЗБРАННОЕ' с подзаголовком о выгоде")
-            elif lines and 'ИНТЕРЕСНОЕ ПРЕДЛОЖЕНИЕ' in lines[0] or 'ИНТЕРЕСНЫЙ АВТОМОБИЛЬ' in lines[0]:
-                # Меняем заголовок для обычного предложения
-                lines[0] = '❤️ <b>ДОБАВЛЕНО В ИЗБРАННОЕ</b>'
-                logger.info("✅ Заголовок изменен на '❤️ ДОБАВЛЕНО В ИЗБРАННОЕ'")
-            elif lines and '❤️' not in lines[0]:
-                # Если нет узнаваемого заголовка, добавляем наш
-                lines.insert(0, '❤️ <b>ДОБАВЛЕНО В ИЗБРАННОЕ</b>')
-                logger.info("✅ Добавлен заголовок '❤️ ДОБАВЛЕНО В ИЗБРАННОЕ'")
-
-            # Для Auto.ru добавляем тег #избранное в конец тегов
-            if 'auto.ru' in product_data.get('url', '').lower():
-                for i, line in enumerate(lines):
-                    if line.startswith("#️⃣ <b>Теги:</b>"):
-                        lines[i] = line + " #избранное"
-                        break
-
-            # Для Avito добавляем тег #избранное
-            elif 'avito' in product_data.get('url', '').lower():
-                for i, line in enumerate(lines):
-                    if line.startswith("#️⃣ <b>Теги:</b>"):
-                        lines[i] = line + " #избранное"
-                        break
-
-            message = '\n'.join(lines)
-
-            # 5. Отправляем сообщение через существующий бот
-            try:
-                from shared.utils.config import get_bot_token, get_chat_id
-                from telegram import Bot
-
-                token = get_bot_token()
-                chat_id = get_chat_id()
-
-                if not token or not chat_id:
-                    logger.error("❌ Токен или Chat ID не установлены")
-                    return False
-
-                # Фильтруем валидные URL фото (исключаем миниатюры и невалидные)
-                valid_image_urls = []
-                for url in all_images:
-                    if url and isinstance(url, str) and url != '' and not url.startswith('data:'):
-                        # Пропускаем миниатюры (авто.ru часто их добавляет)
-                        if '128x96' not in url and '64x48' not in url and '32x24' not in url:
-                            # Проверяем, что это обычная картинка, а не иконка
-                            if not url.endswith('.svg') and not url.endswith('.ico'):
-                                valid_image_urls.append(url)
-
-                logger.info(f"📸 Валидных фото для отправки: {len(valid_image_urls)}")
-
-                # Отправляем через существующий бот
-                bot = Bot(token=token)
-
-                async def send_async():
-                    try:
-                        # Если есть фото - отправляем с фото через медиагруппу
-                        if valid_image_urls:
-                            logger.info(f"📸 Отправляем медиа-группу из {len(valid_image_urls)} фото")
-
-                            # Загружаем фото в base64 как это делает NotificationSender
-                            image_data_list = []
-
-                            for photo_url in valid_image_urls[:10]:  # максимум 10 фото для медиагруппы
-                                try:
-                                    image_base64 = await notification_sender._url_to_base64(photo_url)
-                                    if image_base64:
-                                        image_data_list.append(image_base64)
-                                        logger.info(f"✅ Загружено фото: {photo_url}")
-                                    else:
-                                        logger.warning(f"⚠️ Не удалось загрузить фото: {photo_url}")
-                                except Exception as e:
-                                    logger.warning(f"⚠️ Ошибка загрузки фото {photo_url}: {e}")
-
-                            if image_data_list:
-                                # 🔥 ВАЖНО: В медиагруппе НЕ используем reply_markup (кнопки не поддерживаются)
-                                # Ссылка уже есть в тексте (как у парсера)
-                                success = await notification_sender._send_media_group_with_caption(
-                                    bot, chat_id, image_data_list, message, reply_markup=None  # ← БЕЗ кнопок!
-                                )
-
-                                if success:
-                                    logger.info(
-                                        f"✅ Уведомление отправлено с {len(image_data_list)} фото: {product_data.get('name')}")
-                                    return True
-                                else:
-                                    logger.warning("⚠️ Не удалось отправить медиа-группу, пробуем текст")
-                                    # Fallback на текстовое сообщение БЕЗ кнопок
-                                    await bot.send_message(
-                                        chat_id=chat_id,
-                                        text=message,
-                                        parse_mode='HTML',
-                                        disable_web_page_preview=True
-                                    )
-                                    logger.info(f"✅ Текстовое уведомление отправлено: {product_data.get('name')}")
-                                    return True
-                            else:
-                                logger.warning("⚠️ Не удалось загрузить ни одного фото, отправляем текст")
-
-                        # Если нет фото или не удалось отправить фото - отправляем текст БЕЗ кнопок
-                        logger.info("📨 Отправляем текстовое сообщение БЕЗ кнопок")
-                        await bot.send_message(
-                            chat_id=chat_id,
-                            text=message,
-                            parse_mode='HTML',
-                            disable_web_page_preview=True
-                        )
-
-                        logger.info(f"✅ Уведомление отправлено: {product_data.get('name')}")
-                        return True
-
-                    except Exception as e:
-                        logger.error(f"❌ Ошибка отправки: {e}")
-                        import traceback
-                        traceback.print_exc()
-                        return False
-
-                # Запускаем асинхронную отправку
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    result = loop.run_until_complete(send_async())
-                    return result
-                finally:
-                    loop.close()
-
-            except Exception as e:
-                logger.error(f"❌ Ошибка в отправке: {e}")
-                return False
-
-        except Exception as e:
-            logger.error(f"❌ Критическая ошибка в send_favorite_to_telegram: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-
     def _format_avito_message(self, product_data):
         """Форматирует сообщение для Авито (ваша существующая логика)"""
         economy = product_data.get('economy', 0)
@@ -789,7 +621,7 @@ class NotificationSender:
 
         hashtags = self._generate_hashtags(product_data)
         rating_text = self._format_rating(product_data)
-        seller_text = self._format_seller_info(product_data)  # Ваш существующий метод
+        seller_text = self._format_seller_info(product_data)
 
         posted_date = product_data.get('posted_date', 'Дата не указана')
         city = product_data.get('city', 'Не указан')
@@ -805,6 +637,14 @@ class NotificationSender:
 
         metro_text = self._format_metro_info(product_data)
         address_text = self._format_address_info(product_data)
+
+        # 🔥 ДОБАВЛЯЕМ ВРЕМЯ ПАРСИНГА
+        time_section = ""
+        parse_time_display = product_data.get('parse_time_display')
+        time_status = product_data.get('time_status')
+
+        if parse_time_display and time_status:
+            time_section = f"⏱️ <b>Время обработки:</b> {parse_time_display} ({time_status})"
 
         message_lines = []
         message_lines.append(header)
@@ -823,6 +663,12 @@ class NotificationSender:
         if address_text:
             message_lines.append(f"📍 <b>Адрес:</b> {address_text}")
 
+        # 🔥 ВРЕМЯ ОБРАБОТКИ
+        if time_section:
+            message_lines.append("")
+            message_lines.append(time_section)
+
+        message_lines.append("")
         message_lines.append(
             f"📂 <b>Категория:</b> {escape(product_data.get('avito_category', product_data.get('category', 'Не указана')))}")
         message_lines.append("")
@@ -933,7 +779,21 @@ class NotificationSender:
             # ✅ СОХРАНЯЕМ В БАЗУ ТОЛЬКО ПРИ УСПЕШНОЙ ОТПРАВКЕ
             if success:
                 try:
-                    await self._save_to_cache(product_id, normalized_url, product_data['name'])
+                    # 🔥 СОБИРАЕМ ДАННЫЕ О ВРЕМЕНИ ДЛЯ СОХРАНЕНИЯ В КЭШ
+                    time_data = {}
+                    parse_duration = product_data.get('parse_time_seconds', 0)
+                    search_duration = product_data.get('search_duration', 0)
+                    total_duration = parse_duration + search_duration
+
+                    if total_duration > 0:
+                        time_data = {
+                            'parse_duration_seconds': int(parse_duration),
+                            'search_duration_seconds': int(search_duration),
+                            'total_duration_seconds': int(total_duration),
+                            'time_status': product_data.get('time_status', '')
+                        }
+
+                    await self._save_to_cache(product_id, normalized_url, product_data['name'], time_data)
                     logger.info(
                         f"✅ Уведомление отправлено и сохранено в базу: {product_data['name']} (ID: {product_id})")
                 except Exception as db_error:
@@ -1088,7 +948,7 @@ class NotificationSender:
 
     @sync_to_async
     def save_product_to_db(self, product, economy, economy_percent, user_id):
-        """СОХРАНЕНИЕ В БАЗУ ДЛЯ КОНКРЕТНОГО ПОЛЬЗОВАТЕЛЯ С ВСЕМИ ПОЛЯМИ AUTO.RU И ML"""
+        """СОХРАНЕНИЕ В БАЗУ ДЛЯ КОНКРЕТНОГО ПОЛЬЗОВАТЕЛЯ С ВСЕМИ ПОЛЯМИ AUTO.RU И ML И ВРЕМЕНЕМ"""
         try:
             from apps.website.models import FoundItem, SearchQuery
             from django.contrib.auth.models import User
@@ -1137,9 +997,22 @@ class NotificationSender:
                     updated = True
                     logger.info(f"📝 Обновлен freshness_category: {product['ml_freshness_category']}")
 
+                # 🔥 ОБНОВЛЯЕМ ПОЛЯ ВРЕМЕНИ
+                parse_time_display = product.get('parse_time_display')
+                time_status = product.get('time_status')
+                if parse_time_display and hasattr(existing_item, 'parse_time_display'):
+                    existing_item.parse_time_display = parse_time_display
+                    updated = True
+                    logger.info(f"📝 Обновлено время парсинга: {parse_time_display}")
+
+                if time_status and hasattr(existing_item, 'time_status'):
+                    existing_item.time_status = time_status
+                    updated = True
+                    logger.info(f"📝 Обновлен статус времени: {time_status}")
+
                 if updated:
                     existing_item.save()
-                    logger.info(f"📝 Обновлен существующий товар с ML-полями")
+                    logger.info(f"📝 Обновлен существующий товар с ML-полями и временем")
 
                 return False
 
@@ -1208,7 +1081,27 @@ class NotificationSender:
                 # Если нет в данных, извлекаем из URL
                 product_id = self.extract_product_id(product['url'])
 
-            # 🔥 СОЗДАЕМ ОБЪЕКТ С ВСЕМИ НОВЫМИ ПОЛЯМИ ВКЛЮЧАЯ ML
+            # 🔥 ВЫЧИСЛЯЕМ ВРЕМЯ И СТАТУС
+            parse_duration = product.get('parse_time_seconds', 0)
+            search_duration = product.get('search_duration', 0)
+            total_duration = parse_duration + search_duration
+
+            # Форматируем время
+            parse_time_display = product.get('parse_time_display', self.format_duration(parse_duration))
+
+            # Определяем статус времени
+            if total_duration <= 5:
+                time_status = "⚡ Молниеносно"
+            elif total_duration <= 15:
+                time_status = "🚀 Быстро"
+            elif total_duration <= 30:
+                time_status = "🐇 Нормально"
+            elif total_duration <= 60:
+                time_status = "🐢 Медленно"
+            else:
+                time_status = "🚧 Очень медленно"
+
+            # 🔥 СОЗДАЕМ ОБЪЕКТ С ВСЕМИ НОВЫМИ ПОЛЯМИ ВКЛЮЧАЯ ML И ВРЕМЯ
             found_item_data = {
                 'search_query': search_query,
                 'parsed_by': user,
@@ -1262,6 +1155,13 @@ class NotificationSender:
                 'ml_freshness_score': product.get('ml_freshness_score', 0.5),  # ← ML ОЦЕНКА СВЕЖЕСТИ
                 'priority_score': product.get('priority_score', 50.0),  # ← ПРИОРИТЕТНЫЙ СКОР
                 'freshness_category': product.get('ml_freshness_category', 'БЕЗ ML'),  # ← КАТЕГОРИЯ СВЕЖЕСТИ
+
+                # 🔥 НОВЫЕ ПОЛЯ ДЛЯ ТРЕКИНГА ВРЕМЕНИ
+                'parse_time_display': parse_time_display,
+                'parse_time_seconds': int(parse_duration),
+                'search_duration_seconds': int(search_duration),
+                'total_processing_seconds': int(total_duration),
+                'time_status': time_status,
             }
 
             # 🔥 ДОБАВЛЯЕМ seller_type ТОЛЬКО ЕСЛИ ОНО ЕСТЬ В МОДЕЛИ
@@ -1269,25 +1169,17 @@ class NotificationSender:
                 # Проверяем, существует ли поле seller_type в модели FoundItem
                 if hasattr(FoundItem, 'seller_type'):
                     found_item_data['seller_type'] = product.get('seller_type', 'Не указано')
-                    logger.info("✅ Поле seller_type добавлено в данные для сохранения")
-                else:
-                    logger.warning("⚠️ Поле seller_type отсутствует в модели FoundItem")
-            except Exception as e:
-                logger.warning(f"⚠️ Не удалось проверить поле seller_type: {e}")
+            except Exception:
+                pass  # Молча игнорируем, если поле не существует
 
-            # 🔥 ДЕБАГ: проверяем, какие ML поля есть в модели FoundItem
-            logger.info(f"🔍 ПРОВЕРКА ML ПОЛЕЙ В МОДЕЛИ FoundItem:")
-            ml_fields_to_check = ['ml_freshness_score', 'priority_score', 'freshness_category']
-            for field_name in ml_fields_to_check:
-                if hasattr(FoundItem, field_name):
-                    logger.info(f"✅ Поле {field_name} есть в модели FoundItem")
-                else:
-                    logger.warning(f"⚠️ Поле {field_name} НЕТ в модели FoundItem")
-
-            # 🔥 УБИРАЕМ ML-ПОЛЯ КОТОРЫХ НЕТ В МОДЕЛИ
-            for field_name in ['ml_freshness_score', 'priority_score', 'freshness_category']:
+            # 🔥 УБИРАЕМ ПОЛЯ КОТОРЫХ НЕТ В МОДЕЛИ
+            fields_to_check = [
+                'ml_freshness_score', 'priority_score', 'freshness_category',
+                'parse_time_display', 'parse_time_seconds', 'search_duration_seconds',
+                'total_processing_seconds', 'time_status'
+            ]
+            for field_name in fields_to_check:
                 if field_name in found_item_data and not hasattr(FoundItem, field_name):
-                    logger.warning(f"⚠️ Убираем поле {field_name} - нет в модели FoundItem")
                     del found_item_data[field_name]
 
             found_item = FoundItem(**found_item_data)
@@ -1295,9 +1187,9 @@ class NotificationSender:
             try:
                 found_item.save()
 
-                # 🔥 ЛОГИРУЕМ ВСЕ СОХРАНЕННЫЕ ДАННЫЕ С ML
+                # 🔥 ЛОГИРУЕМ ВСЕ СОХРАНЕННЫЕ ДАННЫЕ С ML И ВРЕМЕНЕМ
                 logger.info(f"✅ Товар сохранен в базу для пользователя {user.username}: {product['name']}")
-                logger.info(f"📦 Сохраненные данные (с ML полями):")
+                logger.info(f"📦 Сохраненные данные:")
                 logger.info(f"├──👤 Владелец: {user.username} (ID: {user_id})")
                 logger.info(f"├──🚗 Модель: {found_item.title}")
                 logger.info(f"├──💰 Цена: {found_item.price}₽")
@@ -1318,6 +1210,17 @@ class NotificationSender:
                     logger.info(f"├──📊 Категория свежести: {found_item.freshness_category}")
                 else:
                     logger.info(f"├──📊 Категория свежести: НЕ СОХРАНЕНО (нет в модели)")
+
+                # 🔥 ЛОГИРУЕМ ВРЕМЯ ОБРАБОТКИ
+                if hasattr(found_item, 'parse_time_display'):
+                    logger.info(f"├──⏱️ Время парсинга: {found_item.parse_time_display}")
+                else:
+                    logger.info(f"├──⏱️ Время парсинга: НЕ СОХРАНЕНО (нет в модели)")
+
+                if hasattr(found_item, 'time_status'):
+                    logger.info(f"├──🏁 Статус скорости: {found_item.time_status}")
+                else:
+                    logger.info(f"├──🏁 Статус скорости: НЕ СОХРАНЕНО (нет в модели)")
 
                 logger.info(f"├──🏷️ Статус цены: {getattr(found_item, 'price_status', '')}")
                 logger.info(f"├──🆔 ID: {getattr(found_item, 'product_id', '')}")
@@ -1348,7 +1251,7 @@ class NotificationSender:
                 logger.info(f"├──📊 Отзывов: {getattr(found_item, 'reviews_count', 0)}")
                 logger.info(f"├──👁️ Просмотры: {getattr(found_item, 'views_count', 0)}")
                 logger.info(
-                    f"├──👁️ Просмотров сегодня: {getattr(found_item, 'views_today', 0)}")  # ← ВАЖНО: теперь будет показывать правильное значение
+                    f"├──👁️ Просмотров сегодня: {getattr(found_item, 'views_today', 0)}")
                 logger.info(f"├──📅 Дата размещения: {getattr(found_item, 'posted_date', '')}")
                 logger.info(f"├──🖼️ Фото: {len(getattr(found_item, 'image_urls', []))}")
                 logger.info(f"├──💰 Цена со скидкой: {getattr(found_item, 'discount_price', 0)}₽")
@@ -1457,6 +1360,237 @@ class NotificationSender:
             logger.error(f"❌ Ошибка добавления в избранное: {e}")
             return False
 
+    def send_favorite_to_telegram(self, product_data, user):
+        """📨 Отправляет уведомление о добавлении в избранное в Telegram
+
+        🎯 Использует существующий NotificationSender для форматирования
+        ❤️ Всегда показывает "ДОБАВЛЕНО В ИЗБРАННОЕ"
+        📸 Отправляет фото через медиагруппу как парсер
+        🔗 Ссылка на сайт ВНУТРИ текста (как у парсера)
+        """
+        try:
+            logger.info(f"🚀 Отправка избранного для {user.username}")
+
+            # 1. Подготавливаем данные для notification_sender
+            # Добавляем недостающие поля
+            if 'economy' not in product_data:
+                economy = product_data.get('target_price', 0) - product_data.get('price', 0)
+                product_data['economy'] = economy
+                if product_data.get('target_price', 0) > 0:
+                    product_data['economy_percent'] = int((economy / product_data['target_price']) * 100)
+                else:
+                    product_data['economy_percent'] = 0
+
+            # Определяем source если нет
+            if 'source' not in product_data:
+                url = product_data.get('url', '').lower()
+                if 'auto.ru' in url:
+                    product_data['source'] = 'auto_ru'
+                    product_data['site'] = 'auto.ru'
+                else:
+                    product_data['source'] = 'avito'
+                    product_data['site'] = 'avito'
+
+            # Добавляем необходимые поля для NotificationSender
+            if 'avito_category' not in product_data and 'category' in product_data:
+                product_data['avito_category'] = product_data['category']
+
+            # Проверяем наличие rating полей
+            if 'seller_rating' not in product_data:
+                product_data['seller_rating'] = product_data.get('seller_rating', 5.0)
+
+            if 'reviews_count' not in product_data:
+                product_data['reviews_count'] = product_data.get('reviews_count', 0)
+
+            # Проверяем seller_type
+            if 'seller_type' not in product_data:
+                seller_type = product_data.get('seller_type', '')
+                if seller_type in ['Магазин', 'Компания', 'reseller']:
+                    product_data['seller_type'] = 'reseller'
+                else:
+                    product_data['seller_type'] = 'private'
+
+            # Проверяем состояние товара
+            if 'condition' not in product_data:
+                product_data['condition'] = 'Не указано'
+
+            # Проверяем цвет
+            if 'color' not in product_data:
+                product_data['color'] = 'Разноцветный'
+
+            # 2. Получаем фото из разных источников
+            all_images = []
+
+            # Сначала image_urls
+            image_urls = product_data.get('image_urls', [])
+            if image_urls:
+                logger.info(f"📸 Найдено {len(image_urls)} изображений в image_urls")
+                all_images = image_urls[:10]  # Берем до 10 фото (максимум для медиагруппы)
+
+            # Если нет image_urls, пробуем image_url
+            if not all_images and product_data.get('image_url'):
+                image_url = product_data['image_url']
+                logger.info(f"📸 Используем основное фото: {image_url}")
+                all_images = [image_url]
+
+            # Если совсем нет фото
+            if not all_images:
+                logger.warning("⚠️ Нет фото для отправки")
+
+            logger.info(f"📸 Всего фото для отправки: {len(all_images)}")
+
+            # 3. Используем существующий NotificationSender
+            notification_sender = NotificationSender()
+
+            # Форматируем сообщение через существующий метод
+            message = notification_sender._format_message(product_data)
+
+            logger.info(f"📝 Сформировано сообщение ({len(message)} символов)")
+
+            # 4. Меняем заголовок на "ДОБАВЛЕНО В ИЗБРАННОЕ"
+            # Находим первую строку с заголовком
+            lines = message.split('\n')
+
+            if lines and 'ВЫГОДНАЯ СДЕЛКА' in lines[0]:
+                # Меняем заголовок для выгодной сделки
+                lines[0] = '❤️ <b>ДОБАВЛЕНО В ИЗБРАННОЕ</b>'
+                # Добавляем подзаголовок о выгоде на второй строке
+                lines.insert(1, '💰 <b>Выгодное предложение!</b>')
+                logger.info("✅ Заголовок изменен на '❤️ ДОБАВЛЕНО В ИЗБРАННОЕ' с подзаголовком о выгоде")
+            elif lines and 'ИНТЕРЕСНОЕ ПРЕДЛОЖЕНИЕ' in lines[0] or 'ИНТЕРЕСНЫЙ АВТОМОБИЛЬ' in lines[0]:
+                # Меняем заголовок для обычного предложения
+                lines[0] = '❤️ <b>ДОБАВЛЕНО В ИЗБРАННОЕ</b>'
+                logger.info("✅ Заголовок изменен на '❤️ ДОБАВЛЕНО В ИЗБРАННОЕ'")
+            elif lines and '❤️' not in lines[0]:
+                # Если нет узнаваемого заголовка, добавляем наш
+                lines.insert(0, '❤️ <b>ДОБАВЛЕНО В ИЗБРАННОЕ</b>')
+                logger.info("✅ Добавлен заголовок '❤️ ДОБАВЛЕНО В ИЗБРАННОЕ'")
+
+            # Для Auto.ru добавляем тег #избранное в конец тегов
+            if 'auto.ru' in product_data.get('url', '').lower():
+                for i, line in enumerate(lines):
+                    if line.startswith("#️⃣ <b>Теги:</b>"):
+                        lines[i] = line + " #избранное"
+                        break
+
+            # Для Avito добавляем тег #избранное
+            elif 'avito' in product_data.get('url', '').lower():
+                for i, line in enumerate(lines):
+                    if line.startswith("#️⃣ <b>Теги:"):
+                        lines[i] = line + " #избранное"
+                        break
+
+            message = '\n'.join(lines)
+
+            # 5. Отправляем сообщение через существующий бот
+            try:
+                from shared.utils.config import get_bot_token, get_chat_id
+                from telegram import Bot
+
+                token = get_bot_token()
+                chat_id = get_chat_id()
+
+                if not token or not chat_id:
+                    logger.error("❌ Токен или Chat ID не установлены")
+                    return False
+
+                # Фильтруем валидные URL фото (исключаем миниатюры и невалидные)
+                valid_image_urls = []
+                for url in all_images:
+                    if url and isinstance(url, str) and url != '' and not url.startswith('data:'):
+                        # Пропускаем миниатюры (авто.ru часто их добавляет)
+                        if '128x96' not in url and '64x48' not in url and '32x24' not in url:
+                            # Проверяем, что это обычная картинка, а не иконка
+                            if not url.endswith('.svg') and not url.endswith('.ico'):
+                                valid_image_urls.append(url)
+
+                logger.info(f"📸 Валидных фото для отправки: {len(valid_image_urls)}")
+
+                # Отправляем через существующий бот
+                bot = Bot(token=token)
+
+                async def send_async():
+                    try:
+                        # Если есть фото - отправляем с фото через медиагруппу
+                        if valid_image_urls:
+                            logger.info(f"📸 Отправляем медиа-группу из {len(valid_image_urls)} фото")
+
+                            # Загружаем фото в base64 как это делает NotificationSender
+                            image_data_list = []
+
+                            for photo_url in valid_image_urls[:10]:  # максимум 10 фото для медиагруппы
+                                try:
+                                    image_base64 = await notification_sender._url_to_base64(photo_url)
+                                    if image_base64:
+                                        image_data_list.append(image_base64)
+                                        logger.info(f"✅ Загружено фото: {photo_url}")
+                                    else:
+                                        logger.warning(f"⚠️ Не удалось загрузить фото: {photo_url}")
+                                except Exception as e:
+                                    logger.warning(f"⚠️ Ошибка загрузки фото {photo_url}: {e}")
+
+                            if image_data_list:
+                                # 🔥 ВАЖНО: В медиагруппе НЕ используем reply_markup (кнопки не поддерживаются)
+                                # Ссылка уже есть в тексте (как у парсера)
+                                success = await notification_sender._send_media_group_with_caption(
+                                    bot, chat_id, image_data_list, message, reply_markup=None  # ← БЕЗ кнопок!
+                                )
+
+                                if success:
+                                    logger.info(
+                                        f"✅ Уведомление отправлено с {len(image_data_list)} фото: {product_data.get('name')}")
+                                    return True
+                                else:
+                                    logger.warning("⚠️ Не удалось отправить медиа-группу, пробуем текст")
+                                    # Fallback на текстовое сообщение БЕЗ кнопок
+                                    await bot.send_message(
+                                        chat_id=chat_id,
+                                        text=message,
+                                        parse_mode='HTML',
+                                        disable_web_page_preview=True
+                                    )
+                                    logger.info(f"✅ Текстовое уведомление отправлено: {product_data.get('name')}")
+                                    return True
+                            else:
+                                logger.warning("⚠️ Не удалось загрузить ни одного фото, отправляем текст")
+
+                        # Если нет фото или не удалось отправить фото - отправляем текст БЕЗ кнопок
+                        logger.info("📨 Отправляем текстовое сообщение БЕЗ кнопок")
+                        await bot.send_message(
+                            chat_id=chat_id,
+                            text=message,
+                            parse_mode='HTML',
+                            disable_web_page_preview=True
+                        )
+
+                        logger.info(f"✅ Уведомление отправлено: {product_data.get('name')}")
+                        return True
+
+                    except Exception as e:
+                        logger.error(f"❌ Ошибка отправки: {e}")
+                        import traceback
+                        traceback.print_exc()
+                        return False
+
+                # Запускаем асинхронную отправку
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    result = loop.run_until_complete(send_async())
+                    return result
+                finally:
+                    loop.close()
+
+            except Exception as e:
+                logger.error(f"❌ Ошибка в отправке: {e}")
+                return False
+
+        except Exception as e:
+            logger.error(f"❌ Критическая ошибка в send_favorite_to_telegram: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
     async def send_demo_notification(self):
         """Отправляет демо-уведомление"""
         try:
@@ -1484,7 +1618,9 @@ class NotificationSender:
                     ],
                     'address': 'Москва, Нижняя Радищевская ул.',
                     'economy': 8850,
-                    'economy_percent': 30
+                    'economy_percent': 30,
+                    'parse_time_display': '2:57',
+                    'time_status': '⚡ Молниеносно'
                 }
             ]
 
@@ -1519,11 +1655,12 @@ class NotificationSender:
             message_lines.append("")
             message_lines.append(test_message)
             message_lines.append("")
+            message_lines.append("⏱️ <b>Время обработки:</b> 2:57 (⚡ Молниеносно)")
             message_lines.append("✅ Система работает корректно")
             message_lines.append("🕒 Время теста")
             message_lines.append("📊 Статус: Активен")
             message_lines.append("")
-            message_lines.append("#тест #система #работает")
+            message_lines.append("#тест #система #работает #время_обработки")
 
             message = "\n".join(message_lines)
 

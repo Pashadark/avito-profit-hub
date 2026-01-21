@@ -50,27 +50,6 @@ except ImportError as e:
     def get_smart_user_agent_for_parser(window_id, last_user_agent=None):
         return None
 
-# ✅ ДОБАВИТЬ ИМПОРТ ДЛЯ VISION SERVICE
-try:
-    from apps.bot.services.vision_service import vision_service
-
-    VISION_FEEDBACK_AVAILABLE = True
-    logger.info("✅ Система обратной связи vision загружена в парсере")
-except ImportError as e:
-    logger.warning(f"⚠️ Система обратной связи vision не доступна в парсере: {e}")
-    VISION_FEEDBACK_AVAILABLE = False
-
-
-    class VisionServiceStub:
-        def __init__(self):
-            self.initialized = False
-
-        async def send_vision_feedback_request(self, *args, **kwargs):
-            return False
-
-
-    vision_service = VisionServiceStub()
-
 # Вместо глобального импорта - динамическая загрузка
 DJANGO_AVAILABLE = False  # По умолчанию
 
@@ -402,16 +381,6 @@ class SeleniumAvitoParser(BaseParser):
 
         # 🔔 УМНАЯ СИСТЕМА УВЕДОМЛЕНИЙ
         self.smart_notifier = SmartNotificationSystem(self.notification_sender)
-
-        # ✅ ИНИЦИАЛИЗАЦИЯ VISION СЕРВИСА
-        self.vision_service = None
-        if VISION_FEEDBACK_AVAILABLE:
-            try:
-                from apps.bot.services.vision_service import vision_service
-                self.vision_service = vision_service
-                logger.info("✅ Система обратной связи vision инициализирована в парсере")
-            except Exception as e:
-                logger.warning(f"⚠️ Система обратной связи vision не инициализирована: {e}")
 
         # 🔥 УЛУЧШЕННЫЕ КОМПОНЕНТЫ
         self.optimized_cache = AdvancedCache()
@@ -779,9 +748,17 @@ class SeleniumAvitoParser(BaseParser):
             # Загружаем состояние обучения если есть
             await self.learning_system.load_learning_state()
 
-            # 🔥 ИНИЦИАЛИЗИРУЕМ ТОЛЬКО СУЩЕСТВУЮЩИЕ КОМПОНЕНТЫ
-            await self.price_predictor.initialize_model()
-            await self.publication_predictor.initialize_model()
+            # 🔥 ПРОСТО ЗАГРУЖАЕМ МОДЕЛИ БЕЗ СЛОЖНЫХ ПРОВЕРОК
+            logger.info("🔧 Загрузка ML моделей...")
+
+            # Запускаем инициализацию моделей
+            await asyncio.gather(
+                self.price_predictor.initialize_model(),
+                self.publication_predictor.initialize_model(),
+                return_exceptions=True
+            )
+
+            logger.info("✅ ML модели запущены на загрузку")
 
             # 🔥 ПРОВЕРЯЕМ И ИНИЦИАЛИЗИРУЕМ FRESHNESS QUERY OPTIMIZER ЕСЛИ ОН ЕСТЬ
             if hasattr(self, 'freshness_query_optimizer') and self.freshness_query_optimizer:
@@ -1196,20 +1173,9 @@ class SeleniumAvitoParser(BaseParser):
             await self._initialize_super_ai()
             self.ai_initialized = True
 
-        # 🔥 ПРОВЕРЯЕМ ЧТО МОДЕЛИ ЗАГРУЖЕНЫ
-        if not self.price_predictor.is_trained or self.price_predictor.freshness_model is None:
-            logger.warning("⚠️ ML модели не загружены, проверяем...")
-
-            # Дадим немного времени на загрузку
-            import asyncio
-            await asyncio.sleep(0.5)
-
-            # Повторная проверка
-            if not self.price_predictor.is_trained or self.price_predictor.freshness_model is None:
-                logger.info("🔧 Запуск повторной инициализации ML моделей...")
-                await self._initialize_ml_models()
-            else:
-                logger.info("✅ Модели загрузились, продолжаем...")
+        # 🔥 ВООБЩЕ НЕ ПРОВЕРЯЕМ МОДЕЛИ - они уже должны быть загружены
+        # Если нет - это проблема в инициализации, а не здесь
+        logger.info("✅ AI система готова к работе")
 
         # 🔥 ОЧИСТКА СТАРЫХ КЭШЕЙ
         await self.cleanup_old_caches()
@@ -1588,6 +1554,11 @@ class SeleniumAvitoParser(BaseParser):
                 logger.info(f"🔴 Окно {window_index} | Прерывание обработки на товаре {product_index + 1}")
                 break
 
+            # 🔥 НАЧАЛО ТРЕКИНГА ВРЕМЕНИ ДЛЯ ВСЕГО ТОВАРА (ДО ВСЕХ ПРОВЕРОК!)
+            product_start_time = time.time()
+            logger.info(
+                f"⏱️ Окно {window_index} | Начало обработки товара {product_index + 1}: {product['name'][:50]}...")
+
             detailed_product = None
 
             try:
@@ -1787,13 +1758,62 @@ class SeleniumAvitoParser(BaseParser):
 
                     if not user_id:
                         logger.error(f"🚨 Окно {window_index} | ОШИБКА: Парсер не настроен для пользователя!")
-                        # Можно добавить fallback на request.user если это Django view
-                        # user_id = request.user.id если контекст позволяет
-                        continue  # или return False
+                        continue
 
                     logger.info(f"👤 Окно {window_index} | Отправка товара для пользователя ID: {user_id}")
 
-                    # 🔥 ПРАВИЛЬНЫЙ ВЫЗОВ С user_id
+                    # 🔥 ВЫЧИСЛЯЕМ ОБЩЕЕ ВРЕМЯ ОБРАБОТКИ ТОВАРА (С МОМЕНТА НАЧАЛА)
+                    product_end_time = time.time()
+                    parse_duration = product_end_time - product_start_time
+
+                    # Форматируем время
+                    minutes = int(parse_duration // 60)
+                    seconds = int(parse_duration % 60)
+                    parse_time_str = f"{minutes}:{seconds:02d}"
+
+                    # Определяем статус скорости
+                    if parse_duration <= 5:
+                        time_status = "⚡ Молниеносно"
+                    elif parse_duration <= 15:
+                        time_status = "🚀 Быстро"
+                    elif parse_duration <= 30:
+                        time_status = "🐇 Нормально"
+                    elif parse_duration <= 60:
+                        time_status = "🐢 Медленно"
+                    else:
+                        time_status = "🚧 Очень медленно"
+
+                    # Добавляем данные о времени в товар
+                    detailed_product['parse_time_display'] = parse_time_str
+                    detailed_product['parse_time_seconds'] = int(parse_duration)
+                    detailed_product['time_status'] = time_status
+
+                    # 🔥 ДОБАВЛЯЕМ ВРЕМЯ ПОИСКА ЕСЛИ ОНО ЕСТЬ В ДАННЫХ
+                    search_duration = product.get('search_duration', 0)
+                    if search_duration > 0:
+                        search_minutes = int(search_duration // 60)
+                        search_seconds = int(search_duration % 60)
+                        search_time_str = f"{search_minutes}:{search_seconds:02d}"
+                        detailed_product['search_time_display'] = search_time_str
+                        detailed_product['search_duration'] = search_duration
+                        detailed_product['search_duration_seconds'] = int(search_duration)
+
+                        # 🔥 ОБЩЕЕ ВРЕМЯ = ВРЕМЯ ПОИСКА + ВРЕМЯ ПАРСИНГА
+                        total_duration = search_duration + parse_duration
+                        total_minutes = int(total_duration // 60)
+                        total_seconds = int(total_duration % 60)
+                        total_time_str = f"{total_minutes}:{total_seconds:02d}"
+                        detailed_product['total_time_display'] = total_time_str
+                        detailed_product['total_processing_seconds'] = int(total_duration)
+
+                    logger.info(f"⏱️ Окно {window_index} | ТОВАР ОБРАБОТАН за {parse_time_str} ({time_status})")
+                    if search_duration > 0:
+                        logger.info(
+                            f"🔍 Окно {window_index} | Время поиска: {detailed_product.get('search_time_display', '0:00')}")
+                        logger.info(
+                            f"⏱️ Окно {window_index} | ОБЩЕЕ время: {detailed_product.get('total_time_display', parse_time_str)}")
+
+                    # 🔥 ПРАВИЛЬНЫЙ ВЫЗОВ С user_id И ДАННЫМИ О ВРЕМЕНИ
                     success = await self._safe_async_operation(
                         f"notification_{window_index}_{product_index}",
                         self.notification_sender.process_and_notify,

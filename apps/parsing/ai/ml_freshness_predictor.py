@@ -14,7 +14,7 @@ logger = logging.getLogger('parser.ai.freshness')
 class MLFreshnessPredictor:
     def __init__(self):
         """Инициализация предиктора свежести"""
-        self.model = None
+        self._model = None  # Изменено на _model
         self.scaler = None
         self.feature_count = 10
         self.is_trained = False
@@ -29,11 +29,11 @@ class MLFreshnessPredictor:
     def model(self, value):
         if value:
             model_type = type(value).__name__
-            print(f"✅ Модель установлена: {model_type}")
+            logger.info(f"✅ Модель установлена: {model_type}")  # ЗДЕСЬ ИСПРАВЛЕНО
 
             # 🎯 ФИКС: проверяем ТОЛЬКО для VotingRegressor
             if model_type == 'VotingRegressor' and hasattr(value, 'estimators_'):
-                print(f"  🎯 VotingRegressor с {len(value.estimators_)} estimators")
+                logger.info(f"  🎯 VotingRegressor с {len(value.estimators_)} estimators")  # И ЗДЕСЬ
 
                 # Добавляем __getitem__ если нужно
                 if not hasattr(value, '__getitem__'):
@@ -43,7 +43,7 @@ class MLFreshnessPredictor:
                         return None
 
                     value.__getitem__ = voting_getitem.__get__(value, type(value))
-                    print("  ✅ __getitem__ добавлен")
+                    logger.info("  ✅ __getitem__ добавлен")  # И ЕЩЕ ЗДЕСЬ
 
         self._model = value
 
@@ -341,20 +341,20 @@ class MLFreshnessPredictor:
                     self.model = model
                     self.scaler = scaler
 
-                    print(f"✅ Модель загружена: {type(model).__name__}")
+                    logger.info(f"✅ Модель загружена: {type(model).__name__}")
 
                 elif hasattr(loaded, 'predict'):  # Если это просто модель
                     self.model = loaded
                     self.scaler = StandardScaler()
-                    print(f"✅ Модель загружена как объект: {type(loaded).__name__}")
+                    logger.info(f"✅ Модель загружена как объект: {type(loaded).__name__}")
 
                 else:
-                    print("⚠️ Непонятный формат данных, создаю простую модель")
+                    logger.warning("⚠️ Непонятный формат данных, создаю простую модель")
                     raise ValueError("Непонятный формат")
 
             except Exception as e:
-                print(f"⚠️ Не удалось загрузить модель: {e}")
-                print("🔄 Создаю простую модель...")
+                logger.error(f"⚠️ Не удалось загрузить модель: {e}")
+                logger.info("🔄 Создаю простую модель...")
 
                 from sklearn.ensemble import RandomForestRegressor
                 self.model = RandomForestRegressor(n_estimators=50, random_state=42)
@@ -363,13 +363,13 @@ class MLFreshnessPredictor:
             self.feature_count = 10
             self.is_trained = True
 
-            print(f"✅ Итог: {type(self.model).__name__} готова к работе")
+            logger.info(f"✅ Итог: {type(self.model).__name__} готова к работе")
             return True
 
         except Exception as e:
-            print(f"💥 Критическая ошибка в load_model: {e}")
+            logger.error(f"💥 Критическая ошибка в load_model: {e}")
             import traceback
-            traceback.print_exc()
+            logger.error(traceback.format_exc())  # Изменено на logger.error
 
             # Аварийный фолбэк
             try:
@@ -379,10 +379,10 @@ class MLFreshnessPredictor:
                 self.scaler = StandardScaler()
                 self.feature_count = 10
                 self.is_trained = True
-                print("🔄 Создана аварийная фолбэк модель")
+                logger.info("🔄 Создана аварийная фолбэк модель")
                 return True
             except:
-                print("💀 Не удалось создать даже фолбэк модель")
+                logger.critical("💀 Не удалось создать даже фолбэк модель")
                 return False
 
     def get_freshness_category(self, freshness_score):
