@@ -703,7 +703,7 @@ class MLPricePredictor:
 
         except Exception as e:
             logger.warning(f"⚠️ Ошибка предсказания цены: {e}")
-            return float(product_data.get('price', 0)) * 1.2
+            return float(product_data.get('apps/parsing/ai/ml_models/price', 0)) * 1.2
 
     async def predict_freshness_ultra(self, product_data):
         """🎯 УЛЬТРА-ПРЕДСКАЗАНИЕ СВЕЖЕСТИ"""
@@ -845,8 +845,8 @@ class MLPricePredictor:
         """💾 Сохранение модели цены"""
         try:
             if self.price_model and self.scaler_price:
-                joblib.dump(self.price_model, 'ultra_price_model.joblib')
-                joblib.dump(self.scaler_price, 'ultra_price_scaler.joblib')
+                joblib.dump(self.price_model, 'apps/parsing/ai/ml_models/ultra_price_model.joblib')
+                joblib.dump(self.scaler_price, 'apps/parsing/ai/ml_models/ultra_price_scaler.joblib')
 
                 model_info = {
                     'version': self.model_version,
@@ -855,7 +855,7 @@ class MLPricePredictor:
                     'training_log': self.training_log[-5:]  # 5 последних логов
                 }
 
-                with open('ultra_price_model_info.json', 'w', encoding='utf-8') as f:
+                with open('apps/parsing/ai/ml_models/ultra_price_model_info.json', 'w', encoding='utf-8') as f:
                     json.dump(model_info, f, ensure_ascii=False, indent=2)
 
                 logger.info("💾 Ультра-модель цены сохранена")
@@ -866,8 +866,8 @@ class MLPricePredictor:
         """💾 Сохранение модели свежести"""
         try:
             if self.freshness_model and self.scaler_freshness:
-                joblib.dump(self.freshness_model, 'ultra_freshness_model.joblib')
-                joblib.dump(self.scaler_freshness, 'ultra_freshness_scaler.joblib')
+                joblib.dump(self.freshness_model, 'apps/parsing/ai/ml_models/ultra_freshness_model.joblib')
+                joblib.dump(self.scaler_freshness, 'apps/parsing/ai/ml_models/ultra_freshness_scaler.joblib')
 
                 freshness_info = {
                     'version': self.model_version,
@@ -876,7 +876,7 @@ class MLPricePredictor:
                     'training_log': self.training_log[-5:]
                 }
 
-                with open('ultra_freshness_model_info.json', 'w', encoding='utf-8') as f:
+                with open('apps/parsing/ai/ml_models/ultra_freshness_model_info.json', 'w', encoding='utf-8') as f:
                     json.dump(freshness_info, f, ensure_ascii=False, indent=2)
 
                 logger.info("💾 Ультра-модель свежести сохранена")
@@ -887,7 +887,7 @@ class MLPricePredictor:
         """📂 Загрузка модели цены"""
         try:
             # 🔥 ФИКС: ultra_price_model.joblib - это СЛОВАРЬ!
-            model_data = joblib.load('ultra_price_model.joblib')
+            model_data = joblib.load('apps/parsing/ai/ml_models/ultra_price_model.joblib')
 
             # Извлекаем модель из словаря
             if isinstance(model_data, dict) and 'model' in model_data:
@@ -896,7 +896,7 @@ class MLPricePredictor:
                 logger.info(f"✅ Модель цены извлечена из словаря: {type(self.price_model).__name__}")
             else:
                 self.price_model = model_data
-                self.scaler_price = joblib.load('ultra_price_scaler.joblib')
+                self.scaler_price = joblib.load('apps/parsing/ai/ml_models/ultra_price_scaler.joblib')
 
             self.is_price_trained = True
             logger.info("📂 Ультра-модель цены загружена")
@@ -909,8 +909,8 @@ class MLPricePredictor:
     async def _load_freshness_model(self):
         """📂 Загрузка модели свежести"""
         try:
-            self.freshness_model = joblib.load('ultra_freshness_model.joblib')
-            self.scaler_freshness = joblib.load('ultra_freshness_scaler.joblib')
+            self.freshness_model = joblib.load('apps/parsing/ai/ml_models/ultra_freshness_model.joblib')
+            self.scaler_freshness = joblib.load('apps/parsing/ai/ml_models/ultra_freshness_scaler.joblib')
             self.is_freshness_trained = True
 
             logger.info("📂 Ультра-модель свежести загружена")
@@ -957,7 +957,7 @@ class MLPricePredictor:
 
             # 1. Загружаем модель цены
             try:
-                model_data = joblib.load('ultra_price_model.joblib')
+                model_data = joblib.load('apps/parsing/ai/ml_models/ultra_price_model.joblib')
 
                 # 🔥 ФИКС: Извлекаем из словаря
                 if isinstance(model_data, dict) and 'model' in model_data:
@@ -968,7 +968,7 @@ class MLPricePredictor:
                     # Если это уже модель (не словарь)
                     self.price_model = model_data
                     try:
-                        self.scaler_price = joblib.load('ultra_price_scaler.joblib')
+                        self.scaler_price = joblib.load('apps/parsing/ai/ml_models/ultra_price_scaler.joblib')
                     except:
                         self.scaler_price = StandardScaler()
 
@@ -985,10 +985,10 @@ class MLPricePredictor:
 
             # 2. Загружаем модель свежести
             try:
-                self.freshness_model = joblib.load('ultra_freshness_model.joblib')
+                self.freshness_model = joblib.load('apps/parsing/ai/ml_models/ultra_freshness_model.joblib')
 
                 try:
-                    self.scaler_freshness = joblib.load('ultra_freshness_scaler.joblib')
+                    self.scaler_freshness = joblib.load('apps/parsing/ai/ml_models/ultra_freshness_scaler.joblib')
                 except:
                     self.scaler_freshness = StandardScaler()
 

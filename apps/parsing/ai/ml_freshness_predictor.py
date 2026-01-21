@@ -258,7 +258,7 @@ class MLFreshnessPredictor:
         return synthetic_data
 
     def predict_freshness(self, product_data):
-        """🎯 Предсказание свежести"""
+
         try:
             if not self.is_trained or self.model is None:
                 return self._fallback_prediction(product_data)
@@ -280,7 +280,7 @@ class MLFreshnessPredictor:
     def _fallback_prediction(self, product_data):
         """🔄 Фолбэк предсказание"""
         try:
-            time_listed = product_data.get('time_listed', 24)
+            time_listed = product_data.get('apps/parsing/ai/ml_models/time_listed', 24)
             title = product_data.get('title', '').lower()
 
             base_score = 0.5
@@ -307,7 +307,7 @@ class MLFreshnessPredictor:
             return 0.5
 
     async def _save_model(self):
-        """💾 Сохранение модели"""
+
         try:
             if self.model:
                 model_data = {
@@ -316,7 +316,7 @@ class MLFreshnessPredictor:
                     'feature_count': self.feature_count,
                     'trained_at': datetime.now().isoformat()
                 }
-                joblib.dump(model_data, 'freshness_model.joblib')
+                joblib.dump(model_data, 'apps/parsing/ai/ml_models/freshness_model.joblib')
                 logger.info("💾 Модель свежести сохранена")
         except Exception as e:
             logger.warning(f"⚠️ Не удалось сохранить модель: {e}")
@@ -327,10 +327,10 @@ class MLFreshnessPredictor:
             import joblib
             from sklearn.preprocessing import StandardScaler
 
-            print("🔄 Загрузка модели свежести...")
+            logger.info("🔄 Загрузка модели свежести...")
 
             try:
-                loaded = joblib.load('freshness_model.joblib')
+                loaded = joblib.load('apps/parsing/ai/ml_models/freshness_model.joblib')
 
                 # Если это словарь с моделью
                 if isinstance(loaded, dict) and 'model' in loaded:
@@ -412,7 +412,7 @@ class MLFreshnessPredictor:
     async def load_model_compat(self):
         """📂 Загрузка модели с совместимостью для VotingRegressor"""
         try:
-            model_data = joblib.load('freshness_model.joblib')
+            model_data = joblib.load('apps/parsing/ai/ml_models/freshness_model.joblib')
             self.model = model_data['model']  # 🔥 Используем setter!
             self.scaler = model_data['scaler']
             self.feature_count = model_data.get('feature_count', 10)
@@ -523,7 +523,7 @@ class MLFreshnessPredictor:
 
             # 2. Загружаем модель свежести
             try:
-                data = joblib.load('ultra_freshness_model.joblib')
+                data = joblib.load('apps/parsing/ai/ml_models/ultra_freshness_model.joblib')
 
                 # 🔥 ФИКС: ultra_freshness_model.joblib - это уже модель, не словарь
                 if isinstance(data, dict):
@@ -545,7 +545,7 @@ class MLFreshnessPredictor:
                 logger.warning(f"⚠️ Ошибка загрузки ultra_freshness_model: {e}")
                 # Пробуем старую версию
                 try:
-                    data = joblib.load('freshness_model.joblib')
+                    data = joblib.load('apps/parsing/ai/ml_models/freshness_model.joblib')
                     if isinstance(data, dict) and 'model' in data:
                         self.freshness_model = data['model']
                         self.scaler_freshness = data.get('scaler', StandardScaler())

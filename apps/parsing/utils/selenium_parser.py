@@ -25,7 +25,6 @@ from ..utils.notification_sender import NotificationSender
 from ..utils.product_validator import ProductValidator
 from ..ai.ml_price_predictor import MLPricePredictor
 from ..ai.ml_learning_system import MLLearningSystem
-from ..ai.query_optimizer import QueryOptimizer
 from ..ai.publication_predictor import PublicationPredictor
 
 # ✅ Создаем логгер для парсера
@@ -382,14 +381,14 @@ class SeleniumAvitoParser(BaseParser):
         # 🔥 УНИФИЦИРОВАННЫЕ AI-КОМПОНЕНТЫ - ВСЕ ИЗ parser/ai/
         self.price_predictor = MLPricePredictor()  # ✅ Цена + свежесть в одном!
         self.learning_system = MLLearningSystem()  # ✅ Универсальное обучение
-        self.query_optimizer = QueryOptimizer()  # ✅ Умные запросы
         self.publication_predictor = PublicationPredictor()  # ✅ Паттерны публикаций
 
         # 🔥 ДОБАВЛЯЕМ FRESHNESS QUERY OPTIMIZER (исправление ошибки)
         try:
-            from apps.parsing.utils.freshness_query_optimizer import FreshnessQueryOptimizer
-            self.freshness_query_optimizer = FreshnessQueryOptimizer()
-            logger.info("🎯 FreshnessQueryOptimizer инициализирован")
+            # from apps.parsing.utils.freshness_query_optimizer import FreshnessQueryOptimizer  # Файл удален
+            # self.freshness_query_optimizer = FreshnessQueryOptimizer()  # Отключено
+            self.freshness_query_optimizer = None  # Просто ставим None
+            logger.info("✅ FreshnessQueryOptimizer отключен, используем простые запросы")
         except Exception as e:
             logger.warning(f"⚠️ Не удалось инициализировать FreshnessQueryOptimizer: {e}")
             # Создаем простую заглушку
@@ -451,7 +450,6 @@ class SeleniumAvitoParser(BaseParser):
             'successful_queries': [],
             'cache_hit_rate': 0,
             'adaptive_pause': 60,
-            'ai_optimized_queries': 0,
             'predicted_deals': 0,
             'trend_analysis_used': 0,
             'ml_learning_cycles': 0,
@@ -1146,48 +1144,14 @@ class SeleniumAvitoParser(BaseParser):
             return False
 
     async def _ai_optimize_search_queries_for_freshness(self):
-        """🔥 AI-оптимизация запросов для поиска СВЕЖИХ объявлений с реальными компонентами"""
-        try:
-            if not self.search_queries:
-                return self.search_queries
-
-            logger.info("🎯 Запуск AI-оптимизации запросов для СВЕЖЕСТИ с реальными компонентами...")
-
-            # Определяем время суток для временных модификаторов
-            current_hour = datetime.now().hour
-            if 5 <= current_hour < 12:
-                time_of_day = 'morning'
-            elif 12 <= current_hour < 17:
-                time_of_day = 'afternoon'
-            elif 17 <= current_hour < 23:
-                time_of_day = 'evening'
-            else:
-                time_of_day = 'night'
-
-            # 🔥 ОПТИМИЗИРУЕМ ЗАПРОСЫ ДЛЯ СВЕЖЕСТИ С РЕАЛЬНЫМ КОМПОНЕНТОМ
-            if self.freshness_query_optimizer:
-                optimized_queries = await self.freshness_query_optimizer.optimize_for_freshness(
-                    self.search_queries,
-                    time_of_day=time_of_day
-                )
-            else:
-                # Фоллбэк если оптимизатор не загружен
-                logger.warning("⚠️ FreshnessQueryOptimizer не загружен, используем базовые запросы")
-                optimized_queries = self.search_queries
-
-            # 🔥 ОБУЧАЕМСЯ НА УСПЕШНЫХ ЗАПРОСАХ С РЕАЛЬНЫМ КОМПОНЕНТОМ
-            successful_queries = self.search_stats.get('successful_queries', [])
-            if successful_queries and self.freshness_query_optimizer:
-                await self.freshness_query_optimizer.learn_from_successful_queries(successful_queries)
-
-            self.search_stats['ai_optimized_queries'] = len(optimized_queries)
-            logger.info(f"🎯 AI оптимизировал {len(optimized_queries)} запросов для свежести")
-
-            return optimized_queries[:20]
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка AI-оптимизации для свежести: {e}")
+        """Поиск свежих объявлений (AI оптимизация отключена)"""
+        if not self.search_queries:
             return self.search_queries
+
+        logger.info(f"🔍 Поиск свежих объявлений: {len(self.search_queries)} запросов")
+
+        # Просто возвращаем оригинальные запросы, ограниченные по количеству
+        return self.search_queries[:20]  # Максимум 20 запросов
 
     async def _background_ai_learning(self):
         """🔁 Фоновое обучение AI системы"""
@@ -1269,8 +1233,8 @@ class SeleniumAvitoParser(BaseParser):
 
         self.is_running = True
         self.force_stop = False  # 🔥 Сбрасываем флаг принудительной остановки
-        logger.info("🔥 СУПЕР-ПАРСЕР АКТИВИРОВАН! AI-фичи активны!")
-        logger.info(f"🎯 AI-ОПТИМИЗИРОВАННЫЕ ЗАПРОСЫ: {self.search_queries}")
+        logger.info("🔥 СУПЕР-ПАРСЕР АКТИВИРОВАН!")
+        logger.info(f"🎯 ЗАПРОСЫ: {self.search_queries}")  # Убрали "AI-"
         logger.info(f"🖥️ ОКОН: {self.browser_windows}")
 
         cycle_count = 0
@@ -1312,17 +1276,12 @@ class SeleniumAvitoParser(BaseParser):
                 if cycle_count % 5 == 0:
                     await self._safe_async_operation("fast_settings_check", self._fast_settings_check)
 
-                    # 🔥 ПРОВЕРКА ОСТАНОВКИ
+                    # 🔥 ПРОВЕРКА ОСТАНОВКИ - AI оптимизация удалена, оставляем только эту проверку
                     if self.force_stop:
-                        logger.info("🔴 Прерывание цикла перед AI оптимизацией")
+                        logger.info("🔴 Прерывание цикла перед обновлением статистики")
                         break
 
-                    # 🎯 ПЕРИОДИЧЕСКАЯ AI-ОПТИМИЗАЦИЯ
-                    optimized_queries = await self._safe_async_operation("ai_optimize",
-                                                                         self._ai_optimize_search_queries)
-                    if optimized_queries and optimized_queries != self.search_queries:
-                        self.search_queries = optimized_queries
-                        logger.info(f"🔄 AI обновил запросы: {len(self.search_queries)} запросов")
+                    # AI оптимизация удалена - сразу переходим к следующему блоку
 
                 # 🔥 ПРОВЕРКА ОСТАНОВКИ
                 if self.force_stop:
@@ -1343,7 +1302,7 @@ class SeleniumAvitoParser(BaseParser):
                     logger.warning("❤️ ВНИМАНИЕ: Система работает нестабильно!")
 
                 logger.info(
-                    f"🌀 Цикл #{cycle_count} | AI-запросы: {len(self.search_queries)} | Здоровье: {health_status}")
+                    f"🌀 Цикл #{cycle_count} | Запросы: {len(self.search_queries)} | Здоровье: {health_status}")  # Убрали "AI-"
 
                 # 🔥 ПРОВЕРКА ОСТАНОВКИ ПЕРЕД ПАРАЛЛЕЛЬНОЙ ОБРАБОТКОЙ
                 if self.force_stop:
@@ -1994,8 +1953,6 @@ class SeleniumAvitoParser(BaseParser):
         logger.info(
             f"   🚫 ДУБЛИКАТОВ В КЭШЕ: {self.search_stats['duplicates_blocked']} | 🗄️ В БАЗЕ: {self.search_stats['database_duplicates_skipped']}")
         logger.info(
-            f"   AI-оптимизировано: {self.search_stats['ai_optimized_queries']} | Предсказано: {self.search_stats['predicted_deals']}")
-        logger.info(
             f"   Здоровье: {health_metrics.get('health_status', 'UNKNOWN')} | Успешность: {health_metrics.get('recent_success_rate', 0):.0%}")
         logger.info(f"   Кэш: {cache_stats['hit_rate']}% | Пауза: {self.search_stats['adaptive_pause']}с")
         logger.info(f"   AI обучение: {self.search_stats.get('ml_learning_cycles', 0)} циклов")
@@ -2025,7 +1982,6 @@ class SeleniumAvitoParser(BaseParser):
                                                                                                 0) > 0.5 else 'learning',
                 'recommendations': learning_insights.get('recommendations', []),
                 'ml_learning_cycles': self.search_stats.get('ml_learning_cycles', 0),
-                'ai_optimized_queries': self.search_stats.get('ai_optimized_queries', 0),
                 'freshness_analysis_count': self.search_stats.get('freshness_analysis_count', 0),
                 'fresh_deals_found': self.search_stats.get('fresh_deals_found', 0),
                 'dual_ml_system_active': True  # Флаг что работают обе ML системы

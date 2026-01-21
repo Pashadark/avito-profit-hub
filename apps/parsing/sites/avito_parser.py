@@ -275,18 +275,6 @@ class AvitoParser(BaseSiteParser):
 
             self.logger.info(f"✅ Найдено {len(converted_items)} товаров для запроса: '{query}'")
 
-            # 🔥 ЛОГИРОВАНИЕ РЕЗУЛЬТАТОВ
-            if converted_items:
-                self.logger.info(f"📊 Примеры товаров (первые 3):")
-                for i, item in enumerate(converted_items[:3]):
-                    name = item.get('name', 'Без названия')
-                    price = item.get('price', 'N/A')
-                    url = item.get('url', 'N/A')
-                    self.logger.info(f"   [{i + 1}] '{name[:50]}...' - {price}₽")
-                    self.logger.info(f"       🔗 {url[:80]}...")
-            else:
-                self.logger.warning(f"⚠️  Товары не найдены для запроса: '{query}'")
-
             self.logger.info(f"🎯 ПОИСК НА AVITO ЗАВЕРШЕН: '{query}'")
             return converted_items  # 🔥 ВОЗВРАЩАЕМ КОНВЕРТИРОВАННЫЕ ТОВАРЫ!
 
