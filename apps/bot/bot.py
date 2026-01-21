@@ -6,6 +6,12 @@ ProfitHub Telegram Bot
 import os
 import sys
 import logging
+import random
+import asyncio
+import threading
+import time
+from datetime import timedelta
+
 logger = logging.getLogger('bot.telegram')
 
 # ========== КРИТИЧЕСКИ ВАЖНО! ==========
@@ -18,11 +24,13 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'apps.core.settings')
 
 try:
     import django
+
     django.setup()
     logger.info("✅ Django настроен")
 except django.core.exceptions.AppRegistryNotReady:
     # Пробуем еще раз через секунду
     import time
+
     time.sleep(1)
     django.setup()
     logger.info("✅ Django настроен (со второй попытки)")
@@ -30,38 +38,31 @@ except Exception as e:
     logger.error(f"⚠️ Ошибка настройки Django: {e}")
 # ======================================
 
-import logging
-import asyncio
-import threading
 from asgiref.sync import sync_to_async
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, CallbackQueryHandler, filters
 from telegram.error import TelegramError, NetworkError
-import base64
-import time
-from datetime import timedelta
 from telegram.constants import ParseMode
+import base64
 
 # Импорты из нашего приложения (после настройки Django!)
 try:
     from apps.bot.group_manager import group_manager
     from apps.bot.handlers.todo_handlers import setup_handlers as setup_todo_handlers
-    from apps.bot.services.vision_service import vision_service
     from apps.bot.handlers.registration_handler import setup_handlers as setup_registration_handlers
+
     logger.info("✅ Импорты бота загружены")
 except ImportError as e:
     logger.info(f"⚠️ Ошибка импорта модулей бота: {e}")
     # Создаем заглушки
     group_manager = None
     setup_todo_handlers = None
-    vision_service = None
     setup_registration_handlers = None
 
-# ✅ ДОБАВЬ ЭТУ СТРОКУ ДЛЯ ОПРЕДЕЛЕНИЯ ПЕРЕМЕННОЙ
-VISION_SYSTEM_AVAILABLE = True
-
-# ✅ Настраиваем логгер ДО всего остального
-logger = logging.getLogger('bot.telegram')
+from django.utils import timezone
+from django.contrib.auth.models import User
+from shared.utils.config import get_bot_token, get_chat_id
+from apps.website.models import UserProfile, UserSubscription, FoundItem, TodoCard, TodoBoard
 
 
 def sync_send_notification(message):
@@ -137,11 +138,10 @@ async def send_telegram_message(message):
 
         bot = Bot(token=token)
 
-        # ИСПРАВЛЕНИЕ: используем ParseMode.HTML вместо строки
         await bot.send_message(
             chat_id=chat_id,
             text=message,
-            parse_mode=ParseMode.HTML  # ← ИСПРАВЛЕНО ЗДЕСЬ
+            parse_mode=ParseMode.HTML
         )
 
         logger.info("✅ Тестовое сообщение отправлено в Telegram")
@@ -153,6 +153,7 @@ async def send_telegram_message(message):
     except Exception as e:
         logger.error(f"❌ Общая ошибка: {e}")
         return False
+
 
 # ✅ Настраиваем Django ОДИН РАЗ при импорте
 def setup_django():
@@ -174,13 +175,9 @@ def setup_django():
         django.setup()
         logger.info("✅ Django настроен в боте")
 
+
 # Вызываем настройку Django при импорте модуля
 setup_django()
-
-from django.utils import timezone
-from django.contrib.auth.models import User
-from shared.utils.config import get_bot_token, get_chat_id
-from apps.website.models import UserProfile, UserSubscription, FoundItem, ParserSettings
 
 
 class ProfitHubBot:
@@ -210,9 +207,6 @@ class ProfitHubBot:
 
             logger.info("✅ Бот @infopnz58_bot инициализирован успешно")
 
-            # ✅ ЗАПУСКАЕМ ПЕРИОДИЧЕСКИЙ АНАЛИЗ ПОСЛЕ ИНИЦИАЛИЗАЦИИ
-            self.vision_task = self.start_vision_analysis()  # Сохраняем задачу
-
         except Exception as e:
             logger.error(f"❌ Ошибка инициализации бота: {e}")
             raise
@@ -232,15 +226,9 @@ class ProfitHubBot:
         self.application.add_handler(CommandHandler("link", self.link_account_command))
         self.application.add_handler(CommandHandler("verify", self.verify_code_command))
         self.application.add_handler(CommandHandler("groupinfo", self.group_info_command))
-        self.application.add_handler(CommandHandler("vision", self.vision_command))
         self.application.add_handler(CommandHandler("parser", self.parser_command))
 
-        # ✅ НОВЫЕ КОМАНДЫ ДЛЯ БАЛЛОВ
-        self.application.add_handler(CommandHandler("points", self.points_command))
-        self.application.add_handler(CommandHandler("leaderboard", self.leaderboard_command))
-        self.application.add_handler(CommandHandler("learning", self.learning_stats_command))
-
-        # ✅ ДОБАВЛЯЕМ КОМАНДЫ ДЛЯ ЗАДАЧ
+        # ✅ КОМАНДЫ ДЛЯ ЗАДАЧ
         self.application.add_handler(CommandHandler("todo", self.todo_command))
         self.application.add_handler(CommandHandler("tasks", self.tasks_command))
 
@@ -252,7 +240,7 @@ class ProfitHubBot:
 
         # Обработчик кнопок
         self.application.add_handler(CallbackQueryHandler(self.button_handler))
-        # Обработчик цвета
+        # Обработчик изображений (упрощенный)
         self.application.add_handler(MessageHandler(filters.PHOTO, self.handle_image_message))
 
         self.application.add_handler(CallbackQueryHandler(
@@ -263,17 +251,6 @@ class ProfitHubBot:
             self.handle_toggle_code,
             pattern="^toggle_code_"
         ))
-
-        # ✅ ДОБАВИТЬ ОБРАБОТЧИКИ VISION СИСТЕМЫ
-        if VISION_SYSTEM_AVAILABLE:
-            try:
-                from bot.handlers.vision_feedback import vision_handlers
-                handlers = vision_handlers.get_handlers()
-                for handler in handlers:
-                    self.application.add_handler(handler)
-                logger.info("✅ Обработчики vision feedback добавлены")
-            except Exception as e:
-                logger.error(f"❌ Ошибка добавления обработчиков vision: {e}")
 
         logger.info("✅ Обработчики команд настроены")
 
@@ -521,8 +498,6 @@ class ProfitHubBot:
             logger.info(f"📝 Параметры задачи: title='{title}', description='{description}'")
 
             # Получаем или создаем доску
-            from apps.website.models import TodoBoard, TodoCard
-
             board, created = await sync_to_async(TodoBoard.objects.get_or_create)(
                 user=user,
                 defaults={'name': 'Мои задачи'}
@@ -559,7 +534,6 @@ class ProfitHubBot:
     async def start_task(self, query, task_id, user):
         """Начать выполнение задачи"""
         try:
-            from apps.website.models import TodoCard
             task = await sync_to_async(TodoCard.objects.get)(id=task_id, board__user=user)
             task.status = 'in_progress'
             await sync_to_async(task.save)()
@@ -585,7 +559,6 @@ class ProfitHubBot:
     async def complete_task(self, query, task_id, user):
         """Завершить задачу"""
         try:
-            from apps.website.models import TodoCard
             task = await sync_to_async(TodoCard.objects.get)(id=task_id, board__user=user)
             task.status = 'done'
             await sync_to_async(task.save)()
@@ -614,7 +587,6 @@ class ProfitHubBot:
     async def delete_task(self, query, task_id, user):
         """Удалить задачу"""
         try:
-            from apps.website.models import TodoCard
             task = await sync_to_async(TodoCard.objects.get)(id=task_id, board__user=user)
             task_title = task.title
             await sync_to_async(task.delete)()
@@ -637,7 +609,6 @@ class ProfitHubBot:
     async def get_user_tasks(self, user):
         """Получить задачи пользователя с улучшенной диагностикой"""
         try:
-            from apps.website.models import TodoBoard, TodoCard
             logger.info(f"🔍 Получение задач для пользователя: {user.username}")
 
             board = await sync_to_async(TodoBoard.objects.filter(user=user).first)()
@@ -722,7 +693,6 @@ class ProfitHubBot:
                 user = query.from_user
 
                 # Ищем профиль пользователя
-                from asgiref.sync import sync_to_async
                 user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
                 if not user_profile:
@@ -736,12 +706,10 @@ class ProfitHubBot:
 
                 # Ищем товар по хэшу URL в базе данных
                 try:
-                    from apps.website.models import FoundItem
                     import hashlib
 
                     def find_item_by_hash(url_hash, user_id):
                         """Находит товар по хэшу URL для конкретного пользователя"""
-                        from apps.website.models import UserProfile
                         user_profile = UserProfile.objects.filter(telegram_user_id=user_id).first()
                         if not user_profile:
                             return None
@@ -791,7 +759,6 @@ class ProfitHubBot:
                     else:
                         # Если товар не найден по хэшу, ищем последний товар пользователя
                         def find_recent_item(user_id):
-                            from apps.website.models import UserProfile
                             user_profile = UserProfile.objects.filter(telegram_user_id=user_id).first()
                             if not user_profile:
                                 return None
@@ -835,42 +802,29 @@ class ProfitHubBot:
             await query.message.reply_text("❌ Произошла непредвиденная ошибка.")
 
     async def handle_image_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Обработчик изображений - анализирует цвета с помощью VisionAnalyzer"""
+        """Обработчик изображений - упрощенная версия"""
         try:
             user = update.effective_user
             message = update.message
 
             # Проверяем, что это изображение
             if not message.photo:
-                await message.reply_text("📸 Пожалуйста, отправьте изображение для анализа цветов")
+                await message.reply_text("📸 Пожалуйста, отправьте изображение")
                 return
 
-            # Получаем самое качественное изображение
+            # Получаем информацию об изображении
             photo = message.photo[-1]
-            file = await context.bot.get_file(photo.file_id)
 
-            await message.reply_text("🎨 Анализирую цвета на изображении...")
-
-            # Скачиваем изображение
-            image_data = await self.download_image(file.file_path)
-
-            if not image_data:
-                await message.reply_text("❌ Не удалось загрузить изображение")
-                return
-
-            # Используем упрощенный анализ через VisionAnalyzer
-            colors_analysis = await self.simple_color_analysis_with_vision(image_data)
-
-            if colors_analysis:
-                response_text = self.format_colors_response(colors_analysis)
-                await message.reply_text(response_text, parse_mode='HTML')
-            else:
-                await message.reply_text("❌ Не удалось проанализировать цвета на изображении")
+            await message.reply_text(
+                "📸 Изображение получено!\n\n"
+                f"📏 Размер: {photo.width}x{photo.height}\n"
+                f"📦 Размер файла: {photo.file_size // 1024} KB\n\n"
+                "⚠️ Система анализа изображений в настоящее время недоступна."
+            )
 
         except Exception as e:
-            logger.error(f"❌ Ошибка анализа изображения: {e}")
-            await update.message.reply_text("❌ Произошла ошибка при анализе изображения")
-
+            logger.error(f"❌ Ошибка обработки изображения: {e}")
+            await update.message.reply_text("❌ Произошла ошибка при обработке изображения")
 
     async def send_registration_confirmation(self, phone_number, confirmation_code, user_data=None):
         """Отправка кода подтверждения регистрации через бот"""
@@ -878,25 +832,25 @@ class ProfitHubBot:
             chat_id = get_chat_id()  # ID группы/чата куда отправлять
 
             if not chat_id:
-                logger.error("❌ TELEGRAM_CHAT_ID не установлен")
+                logger.error("❌ TELEGRAM_CHAT_ID не установен")
                 return False
 
             # Форматируем сообщение
             message = f"""
-    🔐 <b>НОВАЯ РЕГИСТРАЦИЯ</b>
+🔐 <b>НОВАЯ РЕГИСТРАЦИЯ</b>
 
-    📱 <b>Телефон:</b> {phone_number}
-    🔢 <b>Код подтверждения:</b> <code>{confirmation_code}</code>
+📱 <b>Телефон:</b> {phone_number}
+🔢 <b>Код подтверждения:</b> <code>{confirmation_code}</code>
 
-    👤 <b>Данные пользователя:</b>
-    • Имя: {user_data.get('first_name', 'Не указано')}
-    • Фамилия: {user_data.get('last_name', 'Не указано')} 
-    • Email: {user_data.get('email', 'Не указан')}
-    • Username: {user_data.get('username', 'Не указан')}
+👤 <b>Данные пользователя:</b>
+• Имя: {user_data.get('first_name', 'Не указано')}
+• Фамилия: {user_data.get('last_name', 'Не указано')} 
+• Email: {user_data.get('email', 'Не указан')}
+• Username: {user_data.get('username', 'Не указан')}
 
-    ⏰ <b>Код действителен 10 минут</b>
+⏰ <b>Код действителен 10 минут</b>
 
-    💡 <i>Пользователь должен ввести этот код на сайте для завершения регистрации</i>
+💡 <i>Пользователь должен ввести этот код на сайте для завершения регистрации</i>
             """
 
             # Создаем кнопку для быстрого копирования кода
@@ -977,358 +931,6 @@ class ProfitHubBot:
             logger.error(f"❌ Ошибка переключения кода: {e}")
             await query.answer("Ошибка обновления кода", show_alert=True)
 
-
-    async def download_image(self, file_path):
-        """Скачивает изображение из Telegram"""
-        try:
-            import requests
-            from io import BytesIO
-
-            response = requests.get(file_path, timeout=30)
-            if response.status_code == 200:
-                # Возвращаем BytesIO с данными
-                image_bytes = BytesIO(response.content)
-                # Сбрасываем позицию в начало
-                image_bytes.seek(0)
-                return image_bytes
-            return None
-        except Exception as e:
-            logger.error(f"❌ Ошибка загрузки изображения: {e}")
-            return None
-
-    def format_colors_response(self, analysis):
-        """Форматирует ответ с анализом цветов"""
-        dominant_colors = analysis['dominant_colors']
-        color_palette = analysis['color_palette']
-        background_color = analysis.get('background_color')
-        object_colors = analysis.get('object_colors', [])
-
-        response = f"""🎨 <b>ДЕТАЛЬНЫЙ АНАЛИЗ ЦВЕТОВ</b>
-
-    📐 <b>Размер:</b> {analysis['image_size']}
-    🎯 <b>Значимых цветов:</b> {analysis['colors_count']}
-
-    <b>🌈 ОСНОВНЫЕ ЦВЕТА:</b>
-    """
-
-        for i, color in enumerate(dominant_colors[:5], 1):
-            color_block = self._get_color_emoji(color['name'])
-
-            response += f"{i}. {color_block} <b>{color['name'].upper()}</b>\n"
-            response += f"   📊 {color['percentage']}% | HEX: {color['hex']} | RGB: {color['rgb']}\n"
-
-        # Добавляем информацию о фоне и объекте
-        if background_color:
-            response += f"\n<b>🎪 ФОН:</b> {background_color['name']} ({background_color['percentage']}%)"
-
-        if object_colors:
-            response += f"\n<b>🎯 ЦВЕТА ОБЪЕКТА:</b> "
-            object_color_names = [f"{color['name']} ({color['percentage']}%)" for color in object_colors[:3]]
-            response += ", ".join(object_color_names)
-
-        response += f"""\n
-    <b>🎨 ЦВЕТОВАЯ ПАЛИТРА:</b>
-    • Тип: {color_palette['type']}
-    • Тональность: {color_palette['tone']}
-    • Насыщенность: {color_palette['saturation']}/255 ({color_palette['saturation_level']})
-    • Яркость: {color_palette['brightness']}/255 ({color_palette['brightness_level']})
-    • Разнообразие: {color_palette.get('color_variety', 'стандартное')}
-
-    💡 <i>Анализ выполнен с помощью компьютерного зрения</i>
-    """
-
-        return response
-
-    async def _fallback_color_analysis(self, image_cv):
-        """Анализ цветов как запасной вариант"""
-        try:
-            import cv2
-            import numpy as np
-
-            # Простой анализ среднего цвета
-            avg_color = np.mean(image_cv, axis=(0, 1)).astype(int)
-
-            return [{
-                'rgb': avg_color.tolist(),
-                'name': self._get_detailed_color_name(avg_color),
-                'percentage': 100.0,
-                'hex': f'#{avg_color[2]:02x}{avg_color[1]:02x}{avg_color[0]:02x}'
-            }]
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка fallback анализа: {e}")
-            return [{
-                'rgb': [128, 128, 128],
-                'name': 'серый',
-                'percentage': 100.0,
-                'hex': '#808080'
-            }]
-
-    def _get_color_emoji(self, color_name):
-        """Возвращает эмодзи для цвета"""
-        color_emojis = {
-            'красный': '🟥', 'оранжевый': '🟧', 'желтый': '🟨',
-            'зеленый': '🟩', 'бирюзовый': '🟦', 'синий': '🟦',
-            'фиолетовый': '🟪', 'розовый': '🩷',
-            'белый': '⬜', 'серый': '⬜', 'черный': '⬛'
-        }
-        return color_emojis.get(color_name.lower(), '🎨')
-
-    def start_vision_analysis(self):
-        """Запускает периодический анализ vision системы - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
-        try:
-            if not VISION_SYSTEM_AVAILABLE:
-                return
-
-            from bot.handlers.vision_feedback import vision_handlers
-
-            # ✅ ИСПРАВЛЕНИЕ: Запускаем асинхронно когда event loop работает
-            async def safe_vision_start():
-                try:
-                    # Ждем полной инициализации бота
-                    await asyncio.sleep(3)
-
-                    # Запускаем анализ с await
-                    success = await vision_handlers.start_periodic_analysis()
-                    if success:
-                        logger.info("✅ Периодический анализ vision системы запущен")
-                    else:
-                        logger.warning("⚠️ Не удалось запустить периодический анализ vision")
-
-                except Exception as e:
-                    logger.error(f"❌ Ошибка запуска анализа vision: {e}")
-
-            # Запускаем безопасно
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # Если loop уже работает, создаем задачу и возвращаем ее
-                    task = loop.create_task(safe_vision_start())
-                    return task  # Возвращаем задачу чтобы она не была уничтожена
-                else:
-                    # Если loop не работает, запускаем его
-                    asyncio.run(safe_vision_start())
-            except RuntimeError:
-                # Если нет event loop, создаем новый
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                task = loop.create_task(safe_vision_start())
-                return task  # Возвращаем задачу
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка инициализации vision анализа: {e}")
-            return None
-
-    def setup_handlers(self):
-        """Настройка обработчиков команд"""
-        # Основные команды
-        self.application.add_handler(CommandHandler("start", self.start_command))
-        self.application.add_handler(CommandHandler("help", self.help_command))
-        self.application.add_handler(CommandHandler("profile", self.profile_command))
-        self.application.add_handler(CommandHandler("balance", self.balance_command))
-        self.application.add_handler(CommandHandler("subscription", self.subscription_command))
-        self.application.add_handler(CommandHandler("status", self.status_command))
-        self.application.add_handler(CommandHandler("items", self.items_command))
-        self.application.add_handler(CommandHandler("id", self.id_command))
-        self.application.add_handler(CommandHandler("stats", self.stats_command))
-        self.application.add_handler(CommandHandler("link", self.link_account_command))
-        self.application.add_handler(CommandHandler("verify", self.verify_code_command))
-        self.application.add_handler(CommandHandler("groupinfo", self.group_info_command))
-        self.application.add_handler(CommandHandler("vision", self.vision_command))
-        self.application.add_handler(CommandHandler("parser", self.parser_command))
-
-        # ✅ НОВЫЕ КОМАНДЫ ДЛЯ БАЛЛОВ
-        self.application.add_handler(CommandHandler("points", self.points_command))
-        self.application.add_handler(CommandHandler("leaderboard", self.leaderboard_command))
-        self.application.add_handler(CommandHandler("learning", self.learning_stats_command))
-
-        # ✅ ДОБАВЛЯЕМ КОМАНДЫ ДЛЯ ЗАДАЧ - ВАЖНО: ДО обработчиков vision!
-        self.application.add_handler(CommandHandler("todo", self.todo_command))
-        self.application.add_handler(CommandHandler("tasks", self.tasks_command))
-
-        # ✅ Обработчик текстовых сообщений для создания задач - ДО других обработчиков текста
-        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_task_message))
-
-        # ✅ Обработчик кнопок для задач
-        self.application.add_handler(CallbackQueryHandler(self.handle_todo_callback, pattern="^todo_"))
-
-        # Обработчик кнопок (общий)
-        self.application.add_handler(CallbackQueryHandler(self.button_handler))
-
-        # Обработчик изображений
-        self.application.add_handler(MessageHandler(filters.PHOTO, self.handle_image_message))
-
-        self.application.add_handler(CallbackQueryHandler(
-            self.handle_copy_code,
-            pattern="^copy_code_"
-        ))
-        self.application.add_handler(CallbackQueryHandler(
-            self.handle_toggle_code,
-            pattern="^toggle_code_"
-        ))
-
-        # ✅ ДОБАВИТЬ ОБРАБОТЧИКИ VISION СИСТЕМЫ - ПОСЛЕ обработчиков задач
-        # if VISION_SYSTEM_AVAILABLE:
-        #    try:
-        #        from bot.handlers.vision_feedback import vision_handlers
-        #        handlers = vision_handlers.get_handlers()
-        #        for handler in handlers:
-        #            self.application.add_handler(handler)
-        #        logger.info("✅ Обработчики vision feedback добавлены")
-        #    except Exception as e:
-        #        logger.error(f"❌ Ошибка добавления обработчиков vision: {e}")
-
-    # ========== НОВЫЕ КОМАНДЫ ДЛЯ БАЛЛОВ ==========
-
-    async def points_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Показывает баллы пользователя"""
-        try:
-            if not VISION_SYSTEM_AVAILABLE:
-                await update.message.reply_text("❌ Система компьютерного зрения недоступна")
-                return
-
-            from bot.handlers.vision_feedback import vision_handlers
-
-            user_id = update.effective_user.id
-            stats = await vision_handlers.get_user_points_stats(user_id)
-
-            if not stats:
-                await update.message.reply_text("❌ Ошибка получения статистики баллов")
-                return
-
-            points_text = f"""
-🎯 <b>ВАШИ БАЛЛЫ И СТАТИСТИКА</b>
-
-💎 <b>Баллы:</b> {stats['points']}
-🏅 <b>Ранг:</b> {stats['rank']}
-
-📊 <b>Активность:</b>
-👍 Подтверждений: {stats['feedback_count']}
-📝 Описаний: {stats['descriptions_count']}
-✏️ Исправлений: {stats['corrections_count']}
-
-💡 <i>Помогайте ИИ учиться и зарабатывайте больше баллов!</i>
-🎁 <i>Скоро появятся награды за баллы!</i>
-"""
-            await update.message.reply_text(points_text, parse_mode='HTML')
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка команды points: {e}")
-            await update.message.reply_text("❌ Ошибка получения баллов")
-
-    async def leaderboard_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Показывает таблицу лидеров"""
-        try:
-            if not VISION_SYSTEM_AVAILABLE:
-                await update.message.reply_text("❌ Система компьютерного зрения недоступна")
-                return
-
-            from bot.handlers.vision_feedback import vision_handlers
-
-            leaders = await vision_handlers.get_leaderboard(10)
-
-            if not leaders:
-                await update.message.reply_text("📊 Пока нет данных для таблицы лидеров")
-                return
-
-            leaderboard_text = "🏆 <b>ТАБЛИЦА ЛИДЕРОВ</b>\n\n"
-
-            for i, leader in enumerate(leaders, 1):
-                medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-                leaderboard_text += f"{medal} {leader['rank']} - {leader['points']} баллов\n"
-
-            leaderboard_text += "\n💡 <i>Помогайте ИИ учиться чтобы подняться в рейтинге!</i>"
-
-            await update.message.reply_text(leaderboard_text, parse_mode='HTML')
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка команды leaderboard: {e}")
-            await update.message.reply_text("❌ Ошибка получения таблицы лидеров")
-
-    async def learning_stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда для просмотра статистики обучения ИИ"""
-        try:
-            if not VISION_SYSTEM_AVAILABLE:
-                await update.message.reply_text("❌ Система компьютерного зрения недоступна")
-                return
-
-            from bot.handlers.vision_feedback import vision_handlers
-
-            await update.message.reply_text("🔄 Анализирую процесс обучения ИИ...")
-
-            stats = await vision_handlers.get_learning_stats()
-
-            if "error" in stats:
-                await update.message.reply_text(f"❌ Ошибка анализа: {stats['error']}")
-                return
-
-            # Форматируем статистику
-            stats_text = await self._format_learning_stats(stats)
-
-            await update.message.reply_text(
-                stats_text,
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True
-            )
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка команды learning_stats: {e}")
-            await update.message.reply_text("❌ Ошибка получения статистики обучения")
-
-    async def _format_learning_stats(self, stats):
-        """Форматирует статистику обучения для Telegram"""
-        try:
-            categories = stats.get('category_patterns', {})
-            colors = stats.get('color_patterns', {})
-            materials = stats.get('material_patterns', {})
-            errors = stats.get('error_patterns', {})
-
-            # Топ категорий
-            top_categories = "\n".join(
-                [f"• {cat}: {count} раз" for cat, count in list(categories.items())[:5]]
-            ) if categories else "• Данных пока недостаточно"
-
-            # Топ цветов
-            top_colors = "\n".join(
-                [f"• {color}: {count} раз" for color, count in list(colors.items())[:5]]
-            ) if colors else "• Данных пока недостаточно"
-
-            # Топ материалов
-            top_materials = "\n".join(
-                [f"• {material}: {count} раз" for material, count in list(materials.items())[:5]]
-            ) if materials else "• Данных пока недостаточно"
-
-            # Статистика ошибок
-            accuracy = errors.get('accuracy', 0)
-            error_rate = errors.get('error_rate', 0)
-            total_feedback = errors.get('total_feedback', 0)
-
-            stats_text = f"""
-🤖 <b>СТАТИСТИКА ОБУЧЕНИЯ ИИ</b>
-
-📊 <b>Общая эффективность:</b>
-🎯 Точность распознавания: <b>{accuracy}%</b>
-❌ Частота ошибок: <b>{error_rate}%</b>
-📝 Всего фидбэков: <b>{total_feedback}</b>
-
-📁 <b>Частые категории:</b>
-{top_categories}
-
-🎨 <b>Частые цвета:</b>
-{top_colors}
-
-⚙️ <b>Частые материалы:</b>
-{top_materials}
-
-💡 <i>Система автоматически обучается на основе ваших описаний</i>
-🕒 <i>Обновляется каждые 6 часов</i>
-"""
-            return stats_text
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка форматирования статистики: {e}")
-            return "❌ Ошибка форматирования статистики обучения"
-
     # ========== СУЩЕСТВУЮЩИЕ КОМАНДЫ ==========
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1337,9 +939,6 @@ class ProfitHubBot:
         logger.info(f"👤 Пользователь {user.id} ({user.username}) запустил бота")
 
         try:
-            # Используем sync_to_async для работы с Django ORM
-            from asgiref.sync import sync_to_async
-
             # Проверяем привязку профиля асинхронно
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -1418,12 +1017,12 @@ class ProfitHubBot:
         """Показать меню статистики парсера"""
         try:
             parser_text = """
-    🤖 **Парсер - Аналитическая панель**
+🤖 **Парсер - Аналитическая панель**
 
-    Система мониторинга производительности парсера Avito.
-    Здесь отображается реальная статистика работы парсера.
+Система мониторинга производительности парсера Avito.
+Здесь отображается реальная статистика работы парсера.
 
-    Выберите действие:
+Выберите действие:
             """
             keyboard = await self.get_parser_keyboard()
 
@@ -1440,10 +1039,6 @@ class ProfitHubBot:
             else:
                 await update.edit_message_text(error_text)
 
-    async def vision_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда /vision - меню машинного зрения"""
-        await self.show_vision_menu(update, context)
-
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Команда /help - справка"""
         help_text = """
@@ -1459,6 +1054,9 @@ class ProfitHubBot:
 /id - Узнать ID этого чата
 /stats - Детальная статистика
 /link - Привязать аккаунт Django
+/todo - Управление задачами
+/tasks - Быстрый список задач
+/parser - Статистика парсера
 
 💡 **Что можно узнать:**
 - Текущий баланс и историю пополнений
@@ -1466,6 +1064,7 @@ class ProfitHubBot:
 - Работает ли парсер прямо сейчас
 - Статистику найденных товаров
 - User ID для привязки аккаунта
+- Создавать и управлять задачами
         """
 
         await update.message.reply_text(help_text, parse_mode='Markdown')
@@ -1478,8 +1077,6 @@ class ProfitHubBot:
         """Команда /balance - информация о балансе"""
         try:
             user = update.effective_user
-            from asgiref.sync import sync_to_async
-
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
             if not user_profile:
@@ -1499,8 +1096,6 @@ class ProfitHubBot:
         """Команда /subscription - информация о подписке"""
         try:
             user = update.effective_user
-            from asgiref.sync import sync_to_async
-
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
             if not user_profile:
@@ -1544,35 +1139,31 @@ class ProfitHubBot:
             await update.message.reply_text(f"🆔 Ваш Telegram ID: {user.id}")
 
     async def stats_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда /stats - статистика с исправленным HTML"""
+        """Команда /stats - статистика"""
         try:
-            # Получаем данные статистики
-            stats_data = await self.get_vision_stats_from_db()
+            user = update.effective_user
+            user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
-            # Форматируем статистику
-            formatted_stats = await self.format_vision_stats(stats_data)
+            if not user_profile:
+                await update.message.reply_text("❌ Профиль не найден.")
+                return
 
-            # ИСПРАВЛЕННАЯ ОТПРАВКА - используем ParseMode.HTML
+            stats_text = await self.format_stats_info(user_profile.user)
+
             await update.message.reply_text(
-                formatted_stats,
-                parse_mode=ParseMode.HTML,
-                disable_web_page_preview=True
+                stats_text,
+                parse_mode='Markdown'
             )
 
         except Exception as e:
             logger.error(f"❌ Ошибка в stats_command: {e}")
-            await update.message.reply_text(
-                "❌ Ошибка загрузки статистики машинного зрения",
-                parse_mode=ParseMode.HTML
-            )
+            await update.message.reply_text("❌ Ошибка загрузки статистики")
 
     async def link_account_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Улучшенная команда для привязки Telegram к Django аккаунту с исправлением асинхронности"""
         user = update.effective_user
 
         try:
-            from asgiref.sync import sync_to_async
-
             # Проверяем, не привязан ли уже профиль асинхронно
             existing_profile_qs = await sync_to_async(UserProfile.objects.filter)(telegram_user_id=user.id)
             existing_profile = await sync_to_async(existing_profile_qs.first)()
@@ -1703,9 +1294,6 @@ class ProfitHubBot:
         code = context.args[0].strip()
 
         try:
-            from asgiref.sync import sync_to_async
-            from django.utils import timezone
-
             # Асинхронно ищем профиль с этим кодом
             profile = await sync_to_async(
                 lambda: UserProfile.objects.filter(
@@ -1766,10 +1354,45 @@ class ProfitHubBot:
                 "Попробуйте позже или обратитесь к администратору.",
                 parse_mode='Markdown'
             )
+
+    async def group_info_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Команда для проверки информации о группе"""
+        try:
+            chat_id = update.effective_chat.id
+
+            if not group_manager:
+                await update.message.reply_text("❌ Менеджер групп недоступен")
+                return
+
+            group_info = await group_manager.get_group_info(chat_id)
+
+            if group_info:
+                status = "✅ Можно отправлять" if not group_info['is_over_limit'] else "🚫 Превышен лимит"
+
+                info_text = f"""
+👥 **Информация о группе**
+
+📝 **Название:** {group_info['title']}
+🆔 **ID:** `{group_info['id']}`
+👤 **Участников:** {group_info['members_count']}
+📊 **Лимит:** {group_manager.max_members}
+🎯 **Статус:** {status}
+
+💡 *Лимит участников: {group_manager.max_members}*
+                """
+            else:
+                info_text = "❌ Не удалось получить информацию о группе"
+
+            await update.message.reply_text(info_text, parse_mode='Markdown')
+
+        except Exception as e:
+            logger.error(f"Ошибка получения информации о группе: {e}")
+            await update.message.reply_text("❌ Ошибка получения информации о группе")
+
     # ========== ОБРАБОТЧИКИ КНОПОК ==========
 
     async def button_handler(self, update, context):
-        """Обработчик нажатий на inline-кнопки - ИСПРАВЛЕННАЯ ВЕРСИЯ"""
+        """Обработчик нажатий на inline-кнопки"""
         query = update.callback_query
         await query.answer()
 
@@ -1812,20 +1435,11 @@ class ProfitHubBot:
             elif callback_data == 'main_menu':
                 await self.show_main_menu_query(query)
 
-            elif callback_data == 'vision_menu':
-                await self.show_vision_menu_query(query)
-
             elif callback_data == 'parser_menu':
                 await self.show_parser_menu_query(query)
 
-            elif callback_data == 'vision_stats':
-                await self.show_vision_stats_query(query)
-
             elif callback_data == 'parser_stats':
                 await self.show_parser_stats_query(query)
-
-            elif callback_data == 'vision_export':
-                await self.export_vision_knowledge_query(query)
 
             elif callback_data == 'parser_export':
                 await self.export_parser_data_query(query)
@@ -1860,7 +1474,6 @@ class ProfitHubBot:
     async def show_parser_stats_query(self, query, refresh=False):
         """Показать статистику парсера"""
         try:
-            from asgiref.sync import sync_to_async
             import requests
 
             def get_parser_stats_from_api():
@@ -1948,27 +1561,27 @@ class ProfitHubBot:
             # Форматируем текст
             stats_text = f"""<b>🤖 ПАРСЕР AVITO - СТАТИСТИКА</b>
 
-    <b>📊 Основные метрики:</b>
-    🔍 Поисков: {total_searches}
-    ✅ Успешных: {successful_searches} ({success_rate}%)
-    🎯 Найдено товаров: {items_found}
-    💰 Хороших сделок: {good_deals} ({good_deals_rate}%)
+<b>📊 Основные метрики:</b>
+🔍 Поисков: {total_searches}
+✅ Успешных: {successful_searches} ({success_rate}%)
+🎯 Найдено товаров: {items_found}
+💰 Хороших сделок: {good_deals} ({good_deals_rate}%)
 
-    <b>⚡ Производительность:</b>
-    ⏱️ Средний цикл: {avg_cycle_time}
-    🕐 Время работы: {uptime}
-    🖥️ Активных запросов: {active_queries}
+<b>⚡ Производительность:</b>
+⏱️ Средний цикл: {avg_cycle_time}
+🕐 Время работы: {uptime}
+🖥️ Активных запросов: {active_queries}
 
-    <b>🛡️ Защита:</b>
-    🚫 Дубликатов заблокировано: {duplicates_blocked}
-    ❌ Ошибок: {error_count}
+<b>🛡️ Защита:</b>
+🚫 Дубликатов заблокировано: {duplicates_blocked}
+❌ Ошибок: {error_count}
 
-    <b>📈 Эффективность:</b>
-    🎯 Успешность: {progress_bar(success_rate)} {success_rate}%
-    ⚡ Эффективность: {progress_bar(efficiency_rate)} {efficiency_rate}%
-    💎 Качество сделок: {progress_bar(good_deals_rate)} {good_deals_rate}%
+<b>📈 Эффективность:</b>
+🎯 Успешность: {progress_bar(success_rate)} {success_rate}%
+⚡ Эффективность: {progress_bar(efficiency_rate)} {efficiency_rate}%
+💎 Качество сделок: {progress_bar(good_deals_rate)} {good_deals_rate}%
 
-    💡 <i>Статистика обновляется в реальном времени</i>"""
+💡 <i>Статистика обновляется в реальном времени</i>"""
 
             return stats_text
 
@@ -1993,7 +1606,6 @@ class ProfitHubBot:
     async def export_parser_data_query(self, query):
         """Экспорт данных парсера"""
         try:
-            from asgiref.sync import sync_to_async
             import requests
 
             def export_parser_data():
@@ -2040,344 +1652,12 @@ class ProfitHubBot:
         else:
             await self.show_main_menu_query(query)
 
-    # ========== МЕТОДЫ МАШИННОГО ЗРЕНИЯ ==========
-
-    async def show_vision_menu(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Показать меню машинного зрения"""
-        try:
-            vision_text = """
-    🧠 **Машинное зрение - Аналитическая панель**
-
-    Система обучения становится умнее с каждым анализом. 
-    Здесь отображается реальная статистика работы машинного зрения.
-
-    Выберите действие:
-            """
-            keyboard = await self.get_vision_keyboard()
-
-            if hasattr(update, 'message'):
-                await update.message.reply_text(vision_text, reply_markup=keyboard, parse_mode='Markdown')
-            else:
-                await update.edit_message_text(vision_text, reply_markup=keyboard, parse_mode='Markdown')
-
-        except Exception as e:
-            logger.error(f"Ошибка в show_vision_menu: {e}")
-            error_text = "❌ Ошибка загрузки меню машинного зрения"
-            if hasattr(update, 'message'):
-                await update.message.reply_text(error_text)
-            else:
-                await update.edit_message_text(error_text)
-
-    async def show_vision_menu_query(self, query, refresh=False):
-        """Показать меню машинного зрения (из кнопки)"""
-        await self.show_vision_menu(query, None)
-
-    async def show_vision_stats_query(self, query, refresh=False):
-        """Показать статистику машинного зрения с исправленным HTML"""
-        try:
-            from asgiref.sync import sync_to_async
-
-            def get_vision_stats_from_db():
-                import sqlite3
-                import os
-
-                # Все возможные пути к базе данных
-                possible_paths = [
-                    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'vision_knowledge.db'),
-                    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'vision_knowledge.db'),
-                    'vision_knowledge.db',
-                    r'C:\Users\pasahdark\PycharmProjects\avito_profit_hub\vision_knowledge.db',
-                ]
-
-                for db_path in possible_paths:
-                    if os.path.exists(db_path):
-                        logger.info(f"🔍 Используем базу данных: {db_path}")
-                        try:
-                            conn = sqlite3.connect(db_path)
-                            cursor = conn.cursor()
-
-                            # Проверяем существование таблиц
-                            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='vision_cache';")
-                            if not cursor.fetchone():
-                                logger.error("❌ Таблица vision_cache не найдена")
-                                conn.close()
-                                continue
-
-                            # Получаем общую статистику
-                            cursor.execute("SELECT COUNT(*) FROM vision_cache")
-                            cache_size = cursor.fetchone()[0]
-
-                            cursor.execute("SELECT COUNT(*) FROM vision_cache WHERE match_result = 1")
-                            positive_matches = cursor.fetchone()[0]
-
-                            cursor.execute("SELECT COUNT(*) FROM vision_cache WHERE match_result = 0")
-                            negative_matches = cursor.fetchone()[0]
-
-                            # Получаем количество уникальных объектов
-                            cursor.execute(
-                                "SELECT COUNT(DISTINCT target_object) FROM vision_cache WHERE target_object IS NOT NULL")
-                            objects_learned = cursor.fetchone()[0]
-
-                            # Получаем среднюю уверенность
-                            cursor.execute("SELECT AVG(confidence) FROM vision_cache WHERE confidence IS NOT NULL")
-                            avg_confidence = cursor.fetchone()[0] or 0
-
-                            # Проверяем существование таблицы quick_lookup
-                            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='quick_lookup';")
-                            if cursor.fetchone():
-                                cursor.execute("SELECT COUNT(*) FROM quick_lookup")
-                                quick_lookups = cursor.fetchone()[0]
-                            else:
-                                quick_lookups = 0
-
-                            conn.close()
-
-                            return {
-                                'learning_stats': {
-                                    'cache_size': cache_size,
-                                    'objects_learned': objects_learned,
-                                    'average_success_rate': positive_matches / (
-                                                positive_matches + negative_matches) if (
-                                                                                                    positive_matches + negative_matches) > 0 else 0,
-                                    'total_analyses': positive_matches + negative_matches,
-                                    'database_size': f"{os.path.getsize(db_path) / 1024:.1f} KB"
-                                },
-                                'cache_stats': {
-                                    'positive_matches': positive_matches,
-                                    'negative_matches': negative_matches,
-                                    'total_analyses': positive_matches + negative_matches
-                                },
-                                'performance_stats': {
-                                    'avg_response_time': max(1, 100 - (quick_lookups * 0.1)),
-                                    'total_quick_lookups': quick_lookups,
-                                    'avg_quick_confidence': avg_confidence
-                                }
-                            }
-
-                        except Exception as e:
-                            print(f"❌ Ошибка чтения из БД {db_path}: {e}")
-                            continue
-
-                # Если ни одна база не найдена
-                print("❌ База данных vision_knowledge.db не найдена ни по одному из путей")
-                return None
-
-            # Пробуем получить данные из базы
-            stats_data = await sync_to_async(get_vision_stats_from_db)()
-
-            if stats_data:
-                # Используем исправленную функцию форматирования
-                stats_text = await self.format_vision_stats(stats_data)
-                # НЕ добавляем дополнительную строку здесь - она уже есть в format_vision_stats
-            else:
-                # Если БД недоступна, используем демо-данные
-                stats_data = self.get_demo_vision_stats()
-                stats_text = await self.format_vision_stats(stats_data)
-                stats_text += "\n\n⚠️ <i>Используются демо-данные (база знаний недоступна)</i>"
-
-            keyboard = await self.get_vision_stats_keyboard()
-
-            # ИСПРАВЛЕННАЯ ОТПРАВКА
-            if refresh:
-                await query.edit_message_text(
-                    stats_text,
-                    reply_markup=keyboard,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True
-                )
-            else:
-                await query.message.reply_text(
-                    stats_text,
-                    reply_markup=keyboard,
-                    parse_mode=ParseMode.HTML,
-                    disable_web_page_preview=True
-                )
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка в show_vision_stats_query: {e}")
-            error_text = f"❌ <b>Ошибка загрузки статистики:</b> {str(e)}"
-            await query.edit_message_text(
-                error_text,
-                parse_mode=ParseMode.HTML
-            )
-
-            async def export_vision_knowledge_query(self, query):
-                """Экспорт знаний машинного зрения с прямым доступом к БД"""
-                try:
-                    from asgiref.sync import sync_to_async
-                    import shutil
-                    import os
-
-                    def export_knowledge_direct():
-                        try:
-                            db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                                                   'vision_knowledge.db')
-                            export_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                                                       'vision_knowledge_export.db')
-
-                            if not os.path.exists(db_path):
-                                return {'status': 'error', 'message': 'База знаний не найдена'}
-
-                            # Копируем базу данных для экспорта
-                            shutil.copy2(db_path, export_path)
-
-                            return {
-                                'status': 'success',
-                                'message': f'База знаний экспортирована: {export_path}',
-                                'file_path': export_path
-                            }
-                        except Exception as e:
-                            return {'status': 'error', 'message': f'Ошибка экспорта: {str(e)}'}
-
-                    result = await sync_to_async(export_knowledge_direct)()
-
-                    if result['status'] == 'success':
-                        message = f"✅ {result['message']}"
-                        # Можно добавить отправку файла пользователю
-                    else:
-                        message = f"❌ {result['message']}"
-
-                    await query.edit_message_text(message)
-                    # Возвращаемся в меню через 2 секунды
-                    await asyncio.sleep(2)
-                    await self.show_vision_menu_query(query)
-
-                except Exception as e:
-                    logger.error(f"Ошибка в export_vision_knowledge_query: {e}")
-                    await query.edit_message_text("❌ Ошибка экспорта")
-
-    async def format_vision_stats(self, stats_data):
-        """Форматирование статистики машинного зрения для Telegram - ИСПРАВЛЕННАЯ версия"""
-        ls = stats_data.get('learning_stats', {})
-        cs = stats_data.get('cache_stats', {})
-        ps = stats_data.get('performance_stats', {})
-
-        # Основные метрики
-        cache_size = ls.get('cache_size', 0)
-        objects_learned = ls.get('objects_learned', 0)
-        avg_accuracy = round((ls.get('average_success_rate', 0) * 100), 1)
-        response_time = ps.get('avg_response_time', 0)
-
-        # Статистика кэша
-        positive_matches = cs.get('positive_matches', 0)
-        negative_matches = cs.get('negative_matches', 0)
-        total_analyses = cs.get('total_analyses', 0)
-
-        # Производительность
-        quick_lookups = ps.get('total_quick_lookups', 0)
-        quick_confidence = round((ps.get('avg_quick_confidence', 0) * 100), 1)
-
-        # Определяем скорость системы
-        if response_time < 10:
-            speed_status = "🐆 Максимальная"
-        elif response_time < 50:
-            speed_status = "🐎 Высокая"
-        elif response_time < 200:
-            speed_status = "🐕 Средняя"
-        else:
-            speed_status = "🐢 Медленная"
-
-        # Рассчитываем эффективность
-        efficiency = round((positive_matches / total_analyses * 100) if total_analyses > 0 else 0, 1)
-
-        # Прогресс-бары (используем Unicode символы)
-        def progress_bar(percentage, width=10):
-            filled = round((percentage / 100) * width)
-            return "█" * filled + "░" * (width - filled)
-
-        # ИСПРАВЛЕННЫЙ ТЕКСТ - убрал дублирование и улучшил форматирование
-        stats_text = f"""<b>👁 МАШИННОЕ ЗРЕНИЕ - СТАТИСТИКА</b>
-
-    <b>📊 Производительность:</b>
-    ⚡️ Скорость: {speed_status}
-    ⏱️ Ответ: {response_time}мс
-
-    <b>🎯 Качество работы:</b>
-    🎯 Точность: {progress_bar(avg_accuracy)} {avg_accuracy}%
-    📈 Эффективность: {progress_bar(efficiency)} {efficiency}%
-    💪 Уверенность: {progress_bar(quick_confidence)} {quick_confidence}%
-
-    <b>🗃️ Данные:</b>
-    🗄 Кэш: {cache_size} записей
-    🧠 Изучено: {objects_learned} объектов
-    ⚡️ Быстрые ответы: {quick_lookups}
-
-    <b>📈 Анализы:</b>
-    ✅ Успешные: {positive_matches}
-    ❌ Неуспешные: {negative_matches}
-    📊 Всего: {total_analyses}
-
-    💡 <i>Система постоянно обучается и улучшается</i>
-
-    ✅ <i>Данные загружены из базы знаний</i>"""
-
-        return stats_text
-
-    def get_demo_vision_stats(self):
-        """Демо-данные для машинного зрения"""
-        return {
-            'learning_stats': {
-                'cache_size': 0,
-                'objects_learned': 0,
-                'average_success_rate': 0,
-                'total_analyses': 0,
-                'database_size': '0 KB'
-            },
-            'cache_stats': {
-                'positive_matches': 0,
-                'negative_matches': 0,
-                'total_analyses': 0
-            },
-            'performance_stats': {
-                'avg_response_time': 0,
-                'total_quick_lookups': 0,
-                'avg_quick_confidence': 0
-            }
-        }
-
-    async def check_vision_database(self):
-        """Проверить наличие и путь к базе данных машинного зрения"""
-        import os
-        import sqlite3
-
-        # Возможные пути к базе данных
-        possible_paths = [
-            # Основной путь
-            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'vision_knowledge.db'),
-            # Альтернативный путь
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'vision_knowledge.db'),
-            # Путь из корня проекта
-            'vision_knowledge.db',
-            # Абсолютный путь
-            r'C:\Users\pasahdark\PycharmProjects\avito_profit_hub\vision_knowledge.db'
-        ]
-
-        found_paths = []
-        for path in possible_paths:
-            if os.path.exists(path):
-                found_paths.append(path)
-                print(f"✅ Найдена база данных: {path}")
-                # Проверим структуру
-                try:
-                    conn = sqlite3.connect(path)
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-                    tables = cursor.fetchall()
-                    print(f"📊 Таблицы в базе: {[table[0] for table in tables]}")
-                    conn.close()
-                except Exception as e:
-                    print(f"❌ Ошибка проверки структуры {path}: {e}")
-            else:
-                print(f"❌ Не найдено: {path}")
-
-        return found_paths
     # ========== МЕТОДЫ ОТОБРАЖЕНИЯ ИНФОРМАЦИИ ==========
 
     async def show_profile(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Показать профиль (из команды)"""
         try:
             user = update.effective_user
-            from asgiref.sync import sync_to_async
 
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -2398,7 +1678,6 @@ class ProfitHubBot:
         """Показать профиль (из кнопки)"""
         try:
             user = query.from_user
-            from asgiref.sync import sync_to_async
 
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -2422,7 +1701,6 @@ class ProfitHubBot:
         """Показать баланс (из кнопки)"""
         try:
             user = query.from_user
-            from asgiref.sync import sync_to_async
 
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -2446,7 +1724,6 @@ class ProfitHubBot:
         """Показать подписку (из кнопки)"""
         try:
             user = query.from_user
-            from asgiref.sync import sync_to_async
 
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -2509,7 +1786,6 @@ class ProfitHubBot:
         """Показать товары (из кнопки)"""
         try:
             user = query.from_user
-            from asgiref.sync import sync_to_async
 
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -2533,7 +1809,6 @@ class ProfitHubBot:
         """Показать статистику (из кнопки)"""
         try:
             user = query.from_user
-            from asgiref.sync import sync_to_async
 
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -2564,7 +1839,6 @@ class ProfitHubBot:
         """Показать товары (из команды)"""
         try:
             user = update.effective_user
-            from asgiref.sync import sync_to_async
 
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -2585,7 +1859,6 @@ class ProfitHubBot:
         """Показать статистику (из команды)"""
         try:
             user = update.effective_user
-            from asgiref.sync import sync_to_async
 
             user_profile = await sync_to_async(self._get_user_profile)(user.id)
 
@@ -2606,35 +1879,32 @@ class ProfitHubBot:
 
     async def format_profile_info(self, user, user_profile):
         """Форматирование информации о профиле"""
-        from asgiref.sync import sync_to_async
-
         subscription_info = await self.get_subscription_info(user_profile.user)
         parser_status = await self.get_parser_status()
         items_stats = await self.get_items_stats(user_profile.user)
 
         profile_text = f"""
-    👤 **Профиль пользователя**
+👤 **Профиль пользователя**
 
-    🆔 **Telegram User ID:** `{user.id}`
-    👤 **Имя в Telegram:** {user.first_name or 'Не указано'}
-    📧 **Username:** @{user.username or 'Не указан'}
+🆔 **Telegram User ID:** `{user.id}`
+👤 **Имя в Telegram:** {user.first_name or 'Не указано'}
+📧 **Username:** @{user.username or 'Не указан'}
 
-    🔗 **Привязан к Django:** ✅ {user_profile.user.username}
-    💰 **Баланс:** {user_profile.balance or 0} ₽
-    🔔 **Уведомления:** {'✅ Включены' if user_profile.telegram_notifications else '❌ Выключены'}
-    {subscription_info}
+🔗 **Привязан к Django:** ✅ {user_profile.user.username}
+💰 **Баланс:** {user_profile.balance or 0} ₽
+🔔 **Уведомления:** {'✅ Включены' if user_profile.telegram_notifications else '❌ Выключены'}
+{subscription_info}
 
-    {parser_status}
+{parser_status}
 
-    📊 **Статистика товаров:**
-    {items_stats}
+📊 **Статистика товаров:**
+{items_stats}
         """
         return profile_text
 
     async def format_balance_info(self, user_profile):
         """Форматирование информации о балансе"""
         try:
-            from asgiref.sync import sync_to_async
             from apps.website.models import Transaction
 
             transactions = await sync_to_async(list)(
@@ -2675,9 +1945,6 @@ class ProfitHubBot:
     async def format_subscription_info(self, user):
         """Форматирование информации о подписке - ИСПРАВЛЕННАЯ версия"""
         try:
-            from asgiref.sync import sync_to_async
-            from django.utils import timezone
-
             logger.info(f"🔍 Получение подписки для пользователя: {user.username}")
 
             # 1. Получаем активную подписку с правильным асинхронным доступом
@@ -2714,16 +1981,16 @@ class ProfitHubBot:
                 status_icon = "✅" if days_left > 7 else "⚠️" if days_left > 0 else "❌"
 
                 subscription_text = f"""
-    🔔 **Информация о подписке**
+🔔 **Информация о подписке**
 
-    {status_icon} **Статус:** Активна
-    📋 **Тариф:** {subscription_data['plan_name']}
-    💳 **Тип:** {subscription_data['plan_type']}
-    💰 **Цена:** {subscription_data['price']} ₽/мес
-    📅 **Осталось дней:** {days_left}
-    ⏰ **Заканчивается:** {subscription_data['end_date'].strftime('%d.%m.%Y')}
+{status_icon} **Статус:** Активна
+📋 **Тариф:** {subscription_data['plan_name']}
+💳 **Тип:** {subscription_data['plan_type']}
+💰 **Цена:** {subscription_data['price']} ₽/мес
+📅 **Осталось дней:** {days_left}
+⏰ **Заканчивается:** {subscription_data['end_date'].strftime('%d.%m.%Y')}
 
-    💡 *Подписка активна и работает в штатном режиме*
+💡 *Подписка активна и работает в штатном режиме*
                 """
 
                 logger.info(f"✅ Подписка найдена: {subscription_data['plan_name']}")
@@ -2752,26 +2019,26 @@ class ProfitHubBot:
 
             if expired_data['exists']:
                 subscription_text = f"""
-    🔔 **Информация о подписке**
+🔔 **Информация о подписке**
 
-    ❌ **Статус:** Истекла
-    📋 **Тариф:** {expired_data['plan_name']}
-    📅 **Истекла:** {expired_data['end_date'].strftime('%d.%m.%Y')}
-    ⏳ **Прошло дней:** {expired_data['days_expired']}
+❌ **Статус:** Истекла
+📋 **Тариф:** {expired_data['plan_name']}
+📅 **Истекла:** {expired_data['end_date'].strftime('%d.%m.%Y')}
+⏳ **Прошло дней:** {expired_data['days_expired']}
 
-    💡 *Для продления подписки обратитесь к администратору*
+💡 *Для продления подписки обратитесь к администратору*
                 """
                 return subscription_text
 
             # 3. Нет подписки вообще
             subscription_text = """
-    🔔 **Информация о подписке**
+🔔 **Информация о подписке**
 
-    ❌ **Статус:** Не активна
-    📋 **Тариф:** Отсутствует
-    📅 **Осталось дней:** 0
+❌ **Статус:** Не активна
+📋 **Тариф:** Отсутствует
+📅 **Осталось дней:** 0
 
-    💡 *Для активации подписки обратитесь к администратору*
+💡 *Для активации подписки обратитесь к администратору*
             """
 
             logger.info("ℹ️ Подписка не найдена")
@@ -2815,8 +2082,6 @@ class ProfitHubBot:
     async def format_items_info(self, user):
         """Форматирование информации о товарах"""
         try:
-            from asgiref.sync import sync_to_async
-
             items = await sync_to_async(list)(
                 FoundItem.objects.filter(
                     search_query__user=user
@@ -2857,7 +2122,6 @@ class ProfitHubBot:
     async def format_stats_info(self, user):
         """Форматирование детальной статистики"""
         try:
-            from asgiref.sync import sync_to_async
             from django.db.models import Count, Avg, Max, Min
 
             # Базовая статистика
@@ -2907,7 +2171,6 @@ class ProfitHubBot:
     async def get_subscription_info(self, user):
         """Получить информацию о подписке - ИСПРАВЛЕННАЯ версия"""
         try:
-            from asgiref.sync import sync_to_async
             from django.utils import timezone
 
             # Правильный асинхронный запрос к базе данных
@@ -2967,7 +2230,6 @@ class ProfitHubBot:
     async def get_items_stats(self, user):
         """Получить статистику товаров"""
         try:
-            from asgiref.sync import sync_to_async
             from django.utils import timezone
 
             total_items = await sync_to_async(FoundItem.objects.filter)(search_query__user=user)
@@ -2997,16 +2259,6 @@ class ProfitHubBot:
             return "• 📦 Статистика недоступна"
 
     # ========== КЛАВИАТУРЫ ==========
-    async def get_vision_keyboard(self):
-        """Клавиатура для машинного зрения"""
-        keyboard = [
-            [InlineKeyboardButton("📝 Статистика", callback_data="vision_stats")],
-            [InlineKeyboardButton("💾 Экспорт", callback_data="vision_export")],  # Убрали кнопку очистки кэша
-            [InlineKeyboardButton("🔄 Обновить", callback_data="refresh"),
-             InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]
-        ]
-        return InlineKeyboardMarkup(keyboard)
-
     async def get_parser_keyboard(self):
         """Клавиатура для парсера"""
         keyboard = [
@@ -3027,16 +2279,6 @@ class ProfitHubBot:
         ]
         return InlineKeyboardMarkup(keyboard)
 
-    async def get_vision_stats_keyboard(self):
-        """Клавиатура для статистики машинного зрения"""
-        keyboard = [
-            [InlineKeyboardButton("🔄 Обновить статистику", callback_data="vision_stats")],
-            [InlineKeyboardButton("💾 Экспорт знаний", callback_data="vision_export")],  # Убрали кнопку очистки кэша
-            [InlineKeyboardButton("🧠 Назад к меню", callback_data="vision_menu"),
-             InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")]
-        ]
-        return InlineKeyboardMarkup(keyboard)
-
     def get_main_keyboard(self):
         """Главная клавиатура для привязанных пользователей"""
         keyboard = [
@@ -3045,10 +2287,9 @@ class ProfitHubBot:
              InlineKeyboardButton("🔔 Подписка", callback_data="subscription")],
             [InlineKeyboardButton("📊 Статус системы", callback_data="status"),
              InlineKeyboardButton("📦 Товары", callback_data="items")],
-            [InlineKeyboardButton("📋 Мои задачи", callback_data="todo_list"),  # ✅ НОВАЯ КНОПКА
-             InlineKeyboardButton("🧠 Машинное зрение", callback_data="vision_menu")],
-            [InlineKeyboardButton("🤖 Парсер", callback_data="parser_menu"),
-             InlineKeyboardButton("🆔 Мой User ID", callback_data="get_id")],
+            [InlineKeyboardButton("📋 Мои задачи", callback_data="todo_list"),
+             InlineKeyboardButton("🤖 Парсер", callback_data="parser_menu")],
+            [InlineKeyboardButton("🆔 Мой User ID", callback_data="get_id")],
             [InlineKeyboardButton("📈 Статистика", callback_data="stats"),
              InlineKeyboardButton("🔄 Обновить", callback_data="refresh")]
         ]
@@ -3146,7 +2387,6 @@ class ProfitHubBot:
         """Показать информацию о привязке аккаунта"""
         user = query.from_user
 
-        from asgiref.sync import sync_to_async
         user_profile = await sync_to_async(UserProfile.objects.filter)(telegram_chat_id=str(user.id))
         user_profile = await sync_to_async(user_profile.first)()
 
@@ -3184,6 +2424,10 @@ class ProfitHubBot:
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await query.edit_message_text(text, reply_markup=reply_markup, parse_mode='Markdown')
+
+    async def handle_help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Обработчик команды help"""
+        await self.help_command(update, context)
 
     # ========== УПРАВЛЕНИЕ БОТОМ ==========
 
@@ -3248,14 +2492,6 @@ class ProfitHubBot:
         """Остановка бота"""
         try:
             if self.is_running and self.application:
-                # Останавливаем vision анализ
-                if hasattr(self, 'vision_task') and self.vision_task:
-                    try:
-                        self.vision_task.cancel()
-                        logger.info("✅ Vision анализ остановлен")
-                    except Exception as e:
-                        logger.error(f"❌ Ошибка остановки vision анализа: {e}")
-
                 self.application.stop()
                 self.is_running = False
                 logger.info("✅ Бот остановлен")
@@ -3351,36 +2587,6 @@ class ProfitHubBot:
                 return False
 
         return False
-
-    async def group_info_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Команда для проверки информации о группе"""
-        try:
-            chat_id = update.effective_chat.id
-
-            group_info = await group_manager.get_group_info(chat_id)
-
-            if group_info:
-                status = "✅ Можно отправлять" if not group_info['is_over_limit'] else "🚫 Превышен лимит"
-
-                info_text = f"""
-    👥 **Информация о группе**
-
-    📝 **Название:** {group_info['title']}
-    🆔 **ID:** `{group_info['id']}`
-    👤 **Участников:** {group_info['members_count']}
-    📊 **Лимит:** {group_manager.max_members}
-    🎯 **Статус:** {status}
-
-    💡 *Лимит участников: {group_manager.max_members}*
-                """
-            else:
-                info_text = "❌ Не удалось получить информацию о группе"
-
-            await update.message.reply_text(info_text, parse_mode='Markdown')
-
-        except Exception as e:
-            logger.error(f"Ошибка получения информации о группе: {e}")
-            await update.message.reply_text("❌ Ошибка получения информации о группе")
 
     def is_valid_image_data(self, image_data):
         """Проверка валидности данных изображения"""

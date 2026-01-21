@@ -12,7 +12,6 @@ from .views import (
     create_subscription_payment, ajax_save_settings, start_parser_with_settings,
     launch_parser_with_params, get_parser_status, debug_parser_settings,
     found_item_detail, ml_stats_api, get_latest_items, vision_statistics,
-    vision_stats_api, clear_vision_cache, export_vision_knowledge,
     favorites_list, toggle_favorite, check_favorite, favorites_count,
     parser_statistics, parser_stats_api, reset_parser_stats, export_parser_data,
     test_subscription_notifications, admin_users, edit_user, delete_user,
@@ -146,9 +145,6 @@ urlpatterns = [
 
     # -------------------- VISION AI --------------------
     path('vision-statistics/', vision_statistics, name='vision_statistics'),
-    path('api/vision-stats/', vision_stats_api, name='vision_stats_api'),
-    path('api/vision-cache/clear/', clear_vision_cache, name='clear_vision_cache'),
-    path('api/vision-knowledge/export/', export_vision_knowledge, name='export_vision_knowledge'),
 
     # -------------------- ИЗБРАННОЕ --------------------
     path('favorites/', favorites_list, name='favorites'),
