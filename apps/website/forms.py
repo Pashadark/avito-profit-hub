@@ -112,6 +112,19 @@ class CustomUserCreationForm(UserCreationForm):
 
 
 class ParserSettingsForm(forms.ModelForm):
+    # 🔥 ДОБАВЛЕНО ПОЛЕ ГОРОДА
+    city = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Начните вводить город...',
+            'id': 'id_city',
+            'autocomplete': 'off'
+        }),
+        label='Город поиска',
+        help_text="Город для поиска товаров. Для Auto.ru оставьте пустым."
+    )
+
     is_default = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -159,7 +172,8 @@ class ParserSettingsForm(forms.ModelForm):
         choices=ParserSettings.SITE_CHOICES,
         widget=forms.Select(attrs={
             'class': 'form-control',
-            'required': 'required'
+            'required': 'required',
+            'id': 'site_select'
         }),
         label='Сайт для поиска',
         help_text="Выберите сайт для парсинга"
@@ -170,7 +184,7 @@ class ParserSettingsForm(forms.ModelForm):
         fields = [
             'name', 'keywords', 'exclude_keywords', 'min_price', 'max_price',
             'min_rating', 'seller_type', 'check_interval', 'max_items_per_hour',
-            'browser_windows', 'is_active', 'is_default', 'site'  # 🔥 ДОБАВЛЕНО 'site'
+            'browser_windows', 'is_active', 'is_default', 'site', 'city'  # 🔥 ДОБАВЛЕНО 'city'!
         ]
         widgets = {
             'name': forms.TextInput(attrs={
@@ -215,7 +229,6 @@ class ParserSettingsForm(forms.ModelForm):
                 'required': 'required'
             }),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            # 🔥 Поле site добавлено выше как ChoiceField с кастомным виджетом
         }
         labels = {
             'name': 'Название настроек',
@@ -229,13 +242,46 @@ class ParserSettingsForm(forms.ModelForm):
             'max_items_per_hour': 'Максимум товаров в час',
             'browser_windows': 'Окон браузера',
             'is_active': 'Автопоиск активен',
-            'site': 'Сайт для поиска',  # 🔥 ДОБАВЛЕН ЛЕЙБЛ
+            'city': 'Город поиска',  # 🔥 ДОБАВЛЕН ЛЕЙБЛ
+            'site': 'Сайт для поиска',
         }
         help_texts = {
             'exclude_keywords': 'Товары содержащие эти слова будут пропущены при поиске',
             'browser_windows': 'Увеличивает скорость поиска за счет параллельной обработки',
-            'site': 'Выберите сайт для парсинга объявлений',  # 🔥 ДОБАВЛЕН HELP_TEXT
+            'city': 'Город для поиска товаров. Для Auto.ru оставьте пустым.',  # 🔥 ДОБАВЛЕНА ПОДСКАЗКА
+            'site': 'Выберите сайт для парсинга объявлений',
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # 🔥 Устанавливаем значение по умолчанию для города
+        if self.instance and self.instance.city:
+            self.fields['city'].initial = self.instance.city
+        else:
+            self.fields['city'].initial = 'Москва'
+
+        # 🔥 Добавляем класс для отключения поля при Auto.ru
+        if self.instance and self.instance.site == 'auto.ru':
+            self.fields['city'].widget.attrs.update({
+                'disabled': 'disabled',
+                'title': 'Для Auto.ru город не используется'
+            })
+
+    def clean_city(self):
+        """Валидация города"""
+        city = self.cleaned_data.get('city', '').strip()
+
+        # Для Auto.ru город должен быть пустым
+        site = self.cleaned_data.get('site', 'avito')
+        if site == 'auto.ru' and city:
+            raise forms.ValidationError('Для Auto.ru город не используется - оставьте поле пустым')
+
+        # Для Avito если город пустой - ставим Москва
+        if site == 'avito' and not city:
+            city = 'Москва'
+
+        return city
 
     def clean_min_price(self):
         min_price = self.cleaned_data.get('min_price')
@@ -294,6 +340,8 @@ class ParserSettingsForm(forms.ModelForm):
         cleaned_data = super().clean()
         keywords = cleaned_data.get('keywords')
         exclude_keywords = cleaned_data.get('exclude_keywords')
+        site = cleaned_data.get('site', 'avito')
+        city = cleaned_data.get('city', '')
 
         # Проверка на конфликтующие слова
         if keywords and exclude_keywords:
@@ -305,5 +353,9 @@ class ParserSettingsForm(forms.ModelForm):
                 raise forms.ValidationError(
                     f'Слова не могут быть одновременно в ключевых и исключаемых: {", ".join(conflicting_words)}'
                 )
+
+        # 🔥 Дополнительная проверка для Auto.ru
+        if site == 'auto.ru' and city and city != 'Москва':
+            raise forms.ValidationError('Для Auto.ru поиск выполняется по всей России, город не используется')
 
         return cleaned_data

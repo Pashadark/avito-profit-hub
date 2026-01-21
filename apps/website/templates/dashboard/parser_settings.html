@@ -23,18 +23,260 @@
                 padding-right: 0.5rem !important;
             }
         }
+
+        /* 🔥 Улучшенные стили для форм */
+        .form-control, .form-select {
+            border-radius: 0.5rem;
+            border: 1px solid #dee2e6;
+            transition: all 0.2s ease;
+            padding: 0.625rem 1rem;
+            font-size: 0.9375rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #666cff;
+            box-shadow: 0 0 0 3px rgba(102, 108, 255, 0.1);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #566a7f;
+            margin-bottom: 0.5rem;
+            font-size: 0.9375rem;
+        }
+
+        .form-text {
+            font-size: 0.8125rem;
+            color: #8592a3;
+            margin-top: 0.375rem;
+        }
+
+        /* 🔥 Карточки и отступы */
+        .card {
+            border-radius: 0.75rem;
+            border: 1px solid #e0e5ed;
+            box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e0e5ed;
+            padding: 1.25rem 1.5rem;
+            border-radius: 0.75rem 0.75rem 0 0 !important;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* 🔥 Кнопки */
+        .btn {
+            border-radius: 0.5rem;
+            font-weight: 500;
+            padding: 0.625rem 1.25rem;
+            transition: all 0.2s ease;
+            font-size: 0.9375rem;
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8125rem;
+        }
+
+        /* 🔥 Списки и элементы */
+        .list-group-item {
+            border: none;
+            border-bottom: 1px solid #f0f0f0;
+            padding: 1rem 1.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+        .list-group-item:hover {
+            background-color: #f8fafc;
+        }
+
+        /* 🔥 Бэйджи */
+        .badge {
+            border-radius: 0.375rem;
+            font-weight: 500;
+            padding: 0.35em 0.65em;
+            font-size: 0.75em;
+        }
+
+        /* 🔥 Switch */
+        .form-check-input {
+            width: 2.5rem;
+            height: 1.25rem;
+            margin-top: 0.1875rem;
+        }
+
+        .form-check-input:checked {
+            background-color: #666cff;
+            border-color: #666cff;
+        }
+
+        /* 🔥 Алерты */
+        .alert {
+            border-radius: 0.5rem;
+            border: 1px solid transparent;
+            padding: 1rem 1.25rem;
+        }
+
+        /* 🔥 Отступы и сетка */
+        .row {
+            margin-bottom: 1.5rem;
+        }
+
+        .row:last-child {
+            margin-bottom: 0;
+        }
+
+        .mb-4 {
+            margin-bottom: 1.5rem !important;
+        }
+
+        .mb-3 {
+            margin-bottom: 1rem !important;
+        }
+
+        .mt-4 {
+            margin-top: 1.5rem !important;
+        }
+
+        .pt-4 {
+            padding-top: 1.5rem !important;
+        }
+
+        /* 🔥 Автокомплит городов */
+        #citySuggestions {
+            position: absolute;
+            z-index: 1050;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+            width: 100%;
+        }
+
+        #citySuggestions .list-group-item {
+            padding: 0.75rem 1rem;
+            border-radius: 0;
+            cursor: pointer;
+        }
+
+        #citySuggestions .list-group-item:hover {
+            background-color: #e7f1ff;
+            color: #0d6efd;
+        }
+
+        /* 🔥 Статусы */
+        .status-running {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .status-stopped {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .status-warning {
+            color: #ffc107;
+            font-weight: 600;
+        }
+
+        /* 🔥 Input group */
+        .input-group .btn {
+            border-radius: 0 0.5rem 0.5rem 0;
+        }
+
+        /* 🔥 Анимации */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* 🔥 Ховер эффекты */
+        .card:hover {
+            box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        /* 🔥 Плейсхолдеры */
+        ::placeholder {
+            color: #9aa3b3 !important;
+            opacity: 0.8;
+        }
+
+        /* 🔥 Иконки */
+        .ri {
+            font-size: 1.125em;
+            vertical-align: middle;
+        }
+
+        /* 🔥 Таймер */
+        .blinking {
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        /* 🔥 Заголовки */
+        .card-title {
+            color: #566a7f;
+            font-weight: 600;
+        }
+
+        h5.card-title {
+            font-size: 1.125rem;
+        }
+
+        h6.fw-semibold {
+            color: #566a7f;
+            font-size: 0.9375rem;
+        }
+
+        /* 🔥 Текст */
+        .text-muted {
+            color: #8592a3 !important;
+        }
+
+        /* 🔥 Блоки статуса */
+        .bg-light {
+            background-color: #f8fafc !important;
+            border-radius: 0.5rem;
+        }
     </style>
 
     <div class="row">
+        <!-- Левая колонка - основная -->
         <div class="col-lg-8">
+            <!-- Статус системы -->
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0"><i class="ri-dashboard-line me-2"></i>Статус системы</h5>
                 </div>
                 <div class="card-body">
                     <div class="row" id="parserStatusInfo">
-                        <div class="col-md-6">
-                            <div class="d-flex align-items-center mb-3 p-3 rounded bg-light">
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-center p-3 rounded bg-light">
                                 <div class="flex-shrink-0">
                                     <i class="ri-cpu-line fs-3 text-primary"></i>
                                 </div>
@@ -43,7 +285,9 @@
                                     <span class="h6 mb-0" id="statusText">Загрузка...</span>
                                 </div>
                             </div>
-                            <div class="d-flex align-items-center mb-3 p-3 rounded bg-light">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-center p-3 rounded bg-light">
                                 <div class="flex-shrink-0">
                                     <i class="ri-window-line fs-3 text-info"></i>
                                 </div>
@@ -53,8 +297,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="d-flex align-items-center mb-3 p-3 rounded bg-light">
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-center p-3 rounded bg-light">
                                 <div class="flex-shrink-0">
                                     <i class="ri-timer-line fs-3 text-warning"></i>
                                 </div>
@@ -63,7 +307,9 @@
                                     <span class="h6 mb-0" id="timerText">Загрузка...</span>
                                 </div>
                             </div>
-                            <div class="d-flex align-items-center mb-3 p-3 rounded bg-light">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-center p-3 rounded bg-light">
                                 <div class="flex-shrink-0">
                                     <i class="ri-global-line fs-3 text-success"></i>
                                 </div>
@@ -82,15 +328,15 @@
                                 <div class="row text-center">
                                     <div class="col-4">
                                         <small class="text-muted d-block">Циклов выполнено</small>
-                                        <strong id="cycleCount">0</strong>
+                                        <strong id="cycleCount" class="fs-5">0</strong>
                                     </div>
                                     <div class="col-4">
                                         <small class="text-muted d-block">Обработано URL</small>
-                                        <strong id="processedUrls">0</strong>
+                                        <strong id="processedUrls" class="fs-5">0</strong>
                                     </div>
                                     <div class="col-4">
                                         <small class="text-muted d-block">Активные запросы</small>
-                                        <strong id="activeQueries">0</strong>
+                                        <strong id="activeQueries" class="fs-5">0</strong>
                                     </div>
                                 </div>
                             </div>
@@ -115,107 +361,160 @@
                         <input type="hidden" name="settings_id" value="">
                         {% endif %}
 
-                        <!-- Основные настройки -->
+                        <!-- 🔥 Основные настройки - УЛУЧШЕННАЯ ВЕРСТКА -->
                         <div class="row mb-4">
                             <div class="col-md-8">
-                                <label class="form-label fw-semibold">Название настроек</label>
+                                <label class="form-label">Название настроек</label>
                                 {{ form.name }}
+                                <div class="form-text">Укажите понятное название для этих настроек</div>
                             </div>
                             <div class="col-md-4">
-                                <div class="form-check form-switch mt-4 pt-1">
-                                    <input type="checkbox" name="is_default" class="form-check-input" id="id_is_default"
-                                           {% if form.instance.is_default %}checked{% endif %}>
-                                    <label class="form-check-label fw-semibold" for="id_is_default">
+                                <div class="form-check form-switch mt-4 pt-3">
+                                    {{ form.is_default }}
+                                    <label class="form-check-label fw-semibold" for="{{ form.is_default.id_for_label }}">
                                         Использовать по умолчанию
                                     </label>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Ключевые слова -->
+                        <!-- 🔥 ГОРОД И САЙТ - ВЫРОВНЕННЫЕ ПОЛЯ -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Город для поиска</label>
+                                <div class="input-group">
+                                    <input type="text"
+                                           name="city"
+                                           class="form-control"
+                                           id="id_city"
+                                           value="{{ form.city.value|default:'Москва' }}"
+                                           placeholder="Начните вводить город..."
+                                           autocomplete="off"
+                                           oninput="searchCities(this.value)">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="showCityList()">
+                                        <i class="ri-map-pin-line"></i>
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    Введите город на русском. Для поиска по всей России оставьте пустым
+                                </div>
+
+                                <!-- 🔥 Список подсказок (автокомплит) -->
+                                <div class="list-group mt-1" id="citySuggestions" style="display: none;">
+                                    <!-- Подсказки будут появляться здесь динамически -->
+                                </div>
+
+                                <!-- 🔥 Скрытый список популярных городов -->
+                                <div class="mt-2" id="popularCities" style="display: none;">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Москва')">Москва</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Санкт-Петербург')">СПб</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Новосибирск')">Новосибирск</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Екатеринбург')">Екатеринбург</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Казань')">Казань</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Нижний Новгород')">НН</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Краснодар')">Краснодар</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Сочи')">Сочи</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Пенза')">Пенза</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Воронеж')">Воронеж</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('Ростов-на-Дону')">Ростов</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="setCity('')">Вся Россия</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Сайт для поиска</label>
+                                <select class="form-select" id="site_select" name="site">
+                                    <option value="avito" {% if current_site == 'avito' %}selected{% endif %}>Avito</option>
+                                    <option value="auto.ru" {% if current_site == 'auto.ru' %}selected{% endif %}>Auto.ru</option>
+                                </select>
+                                <div class="form-text">Выберите сайт для парсинга</div>
+
+                                <!-- ПОДСКАЗКИ ДЛЯ AUTO.RU -->
+                                <div class="alert alert-info py-2 mt-2" id="auto_ru_tips" style="display: none;">
+                                    <small>
+                                        <i class="ri-information-line me-1"></i>
+                                        <strong>Для Auto.ru рекомендуются запросы:</strong>
+                                        "ford focus", "toyota camry", "bmw x5 2018", "volkswagen golf"
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 🔥 КЛЮЧЕВЫЕ СЛОВА - УЛУЧШЕННЫЙ ВНЕШНИЙ ВИД -->
                         <div class="row mb-4">
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Ключевые слова для поиска</label>
+                                <label class="form-label">Ключевые слова для поиска</label>
                                 {{ form.keywords }}
                                 <div class="form-text">Введите товары для поиска через запятую (например: iPhone, MacBook, видеокарта)</div>
                             </div>
                         </div>
 
-                        <!-- Исключения -->
+                        <!-- 🔥 ИСКЛЮЧЕНИЯ -->
                         <div class="row mb-4">
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Исключить слова</label>
+                                <label class="form-label">Исключить слова</label>
                                 {{ form.exclude_keywords }}
                                 <div class="form-text">Товары содержащие эти слова будут пропущены</div>
                             </div>
                         </div>
 
-                        <!-- Фильтры цены -->
+                        <!-- 🔥 ФИЛЬТРЫ ЦЕНЫ - ВЫРОВНЕННЫЕ ПОЛЯ -->
                         <div class="row mb-4">
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Цена от (₽)</label>
+                                <label class="form-label">Цена от (₽)</label>
                                 {{ form.min_price }}
                                 <div class="form-text">Оставьте пустым для любого значения</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Цена до (₽)</label>
+                                <label class="form-label">Цена до (₽)</label>
                                 {{ form.max_price }}
                                 <div class="form-text">Оставьте пустым для любого значения</div>
                             </div>
                         </div>
 
-                        <!-- Дополнительные фильтры -->
+                        <!-- 🔥 ДОПОЛНИТЕЛЬНЫЕ ФИЛЬТРЫ -->
                         <div class="row mb-4">
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Минимальный рейтинг продавца</label>
+                                <label class="form-label">Минимальный рейтинг продавца</label>
                                 {{ form.min_rating }}
                                 <div class="form-text">от 0 до 5 звезд, оставьте пустым для любого</div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-semibold">Тип продавца</label>
+                                <label class="form-label">Тип продавца</label>
                                 {{ form.seller_type }}
                                 <div class="form-text">Выберите тип продавца</div>
                             </div>
                         </div>
 
-                        <!-- Настройки парсера -->
+                        <!-- 🔥 НАСТРОЙКИ ПАРСЕРА - ВЫРОВНЕННЫЕ ПОЛЯ -->
                         <div class="row mb-4">
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold">Интервал проверки</label>
+                                <label class="form-label">Интервал проверки</label>
                                 {{ form.check_interval }}
                                 <div class="form-text">минут, оставьте пустым для значения по умолчанию</div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold">Лимит объявлений в час</label>
+                                <label class="form-label">Лимит объявлений в час</label>
                                 {{ form.max_items_per_hour }}
                                 <div class="form-text">оставьте пустым для значения по умолчанию</div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold">Окон браузера</label>
+                                <label class="form-label">Окон браузера</label>
                                 {{ form.browser_windows }}
                                 <div class="form-text">оставьте пустым для значения по умолчанию</div>
                             </div>
                         </div>
 
-                        <!-- Параметры запуска -->
+                        <!-- 🔥 ПАРАМЕТРЫ ЗАПУСКА - СТИЛИЗОВАННАЯ КАРТОЧКА -->
                         <div class="card border-warning mb-4">
-                            <div class="card-header bg-warning bg-opacity-10">
+                            <div class="card-header bg-warning bg-opacity-10 border-warning">
                                 <h6 class="card-title mb-0 text-warning"><i class="ri-play-circle-line me-2"></i>Параметры запуска</h6>
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <!-- ВЫБОР САЙТА -->
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-semibold">Сайт для поиска</label>
-                                        <select class="form-select" id="site_select" name="site">
-                                            <option value="avito" {% if current_site == 'avito' %}selected{% endif %}>Avito</option>
-                                            <option value="auto.ru" {% if current_site == 'auto.ru' %}selected{% endif %}>Auto.ru</option>
-                                        </select>
-                                        <div class="form-text">Выберите сайт для парсинга</div>
-                                    </div>
-
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-semibold">Таймер работы</label>
+                                        <label class="form-label">Таймер работы</label>
                                         <select class="form-select" id="timer_hours" name="timer_hours">
                                             <option value="">Бесконечно</option>
                                             <option value="1">1 час</option>
@@ -228,7 +527,7 @@
                                         <div class="form-text">Парсер автоматически остановится</div>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-semibold">Количество окон</label>
+                                        <label class="form-label">Количество окон</label>
                                         <select class="form-select" id="launch_browser_windows" name="launch_browser_windows">
                                             <option value="1">1 окно</option>
                                             <option value="2">2 окна</option>
@@ -238,22 +537,11 @@
                                         </select>
                                         <div class="form-text">Больше окон = быстрее поиск</div>
                                     </div>
-
-                                    <!-- ПОДСКАЗКИ ДЛЯ AUTO.RU -->
-                                    <div class="col-12 mt-2">
-                                        <div class="alert alert-info py-2" id="auto_ru_tips" style="display: none;">
-                                            <small>
-                                                <i class="ri-information-line me-1"></i>
-                                                <strong>Для Auto.ru рекомендуются запросы:</strong>
-                                                "ford focus", "toyota camry", "bmw x5 2018", "volkswagen golf"
-                                            </small>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Автопоиск -->
+                        <!-- 🔥 АВТОПОИСК -->
                         <div class="mb-4">
                             <div class="form-check form-switch">
                                 {{ form.is_active }}
@@ -264,7 +552,7 @@
                             <div class="form-text">При включении парсер будет автоматически искать товары по расписанию</div>
                         </div>
 
-                        <!-- Кнопки управления -->
+                        <!-- 🔥 КНОПКИ УПРАВЛЕНИЯ - ВЫРОВНЕННЫЕ И СТИЛИЗОВАННЫЕ -->
                         <div class="d-flex gap-3 flex-wrap border-top pt-4">
                             <div class="d-flex gap-2 flex-wrap">
                                 <button type="submit" name="save_settings" class="btn btn-primary" onclick="saveSettings(event)">
@@ -303,9 +591,9 @@
             </div>
         </div>
 
-        <!-- Right Column - History and List -->
+        <!-- 🔥 Правая колонка - ИСТОРИЯ И СПИСКИ -->
         <div class="col-lg-4">
-            <!-- Saved Settings List -->
+            <!-- Сохраненные настройки -->
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0"><i class="ri-list-check me-2"></i>Сохраненные настройки</h5>
@@ -370,7 +658,7 @@
                 </div>
             </div>
 
-            <!-- Current Settings -->
+            <!-- Текущие настройки -->
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="card-title mb-0"><i class="ri-information-line me-2"></i>Текущие настройки</h5>
@@ -464,7 +752,7 @@
                 </div>
             </div>
 
-            <!-- Recent Activities -->
+            <!-- Последние находки -->
             <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0"><i class="ri-history-line me-2"></i>Последние находки</h5>
@@ -502,78 +790,6 @@
             </div>
         </div>
     </div>
-
-<style>
-.list-group-item {
-    transition: all 0.2s ease;
-    border: none;
-}
-
-.list-group-item:hover {
-    background-color: #f8f9fa;
-}
-
-.btn-group .btn-sm {
-    padding: 0.25rem 0.5rem;
-}
-
-.badge {
-    font-size: 0.7em;
-    padding: 0.35em 0.65em;
-}
-
-.form-check-input:checked {
-    background-color: #666cff;
-    border-color: #666cff;
-}
-
-.card {
-    transition: box-shadow 0.2s ease;
-}
-
-.card:hover {
-    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1);
-}
-
-#toggleParserBtn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.status-running {
-    color: #28a745;
-    font-weight: 600;
-}
-
-.status-stopped {
-    color: #dc3545;
-    font-weight: 600;
-}
-
-.status-warning {
-    color: #ffc107;
-    font-weight: 600;
-}
-
-.bg-light {
-    background-color: #f8f9fa !important;
-}
-
-.form-label.fw-semibold {
-    font-weight: 600;
-}
-
-/* Анимация для таймера */
-.blinking {
-    animation: blink 1s infinite;
-}
-
-@keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.7; }
-    100% { opacity: 1; }
-}
-</style>
 
 <script>
 // Глобальная переменная для интервала обновления
@@ -841,9 +1057,10 @@ function launchParserWithSettings() {
     const timerHours = document.getElementById('timer_hours').value;
     const browserWindows = document.getElementById('launch_browser_windows').value;
     const site = document.getElementById('site_select').value;
+    const city = document.getElementById('id_city').value; // 🔥 ДОБАВЛЯЕМ ГОРОД
 
     console.log('🚀 Запуск парсера с параметрами:', {
-        timerHours, browserWindows, site
+        timerHours, browserWindows, site, city // 🔥 ДОБАВЛЯЕМ ЛОГ
     });
 
     if (!timerHours) {
@@ -851,7 +1068,7 @@ function launchParserWithSettings() {
         return;
     }
 
-    showAlert(`Запускаю парсер для сайта ${site === 'auto.ru' ? 'Auto.ru' : 'Avito'}...`, 'info');
+    showAlert(`Запускаю парсер для сайта ${site === 'auto.ru' ? 'Auto.ru' : 'Avito'} в городе ${city || 'Москва'}...`, 'info');
 
     fetch('/launch-parser-with-params/', {
         method: 'POST',
@@ -862,7 +1079,8 @@ function launchParserWithSettings() {
         body: JSON.stringify({
             timer_hours: timerHours,
             browser_windows: parseInt(browserWindows),
-            site: site
+            site: site,
+            city: city || 'Москва' // 🔥 ПЕРЕДАЕМ ГОРОД
         })
     })
     .then(response => {
@@ -1171,7 +1389,456 @@ function addDiagnosticsButton() {
     }
 }
 
-// 🔥 ИСПРАВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
+// =============== АВТОКОМПЛИТ ГОРОДОВ ===============
+
+let allCities = [];
+let citySearchTimeout = null;
+
+// Загрузка списка городов при инициализации
+function loadCities() {
+    console.log('🏙️ Загрузка списка городов...');
+
+    fetch('/api/get-cities/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                allCities = data.cities.sort((a, b) => a.localeCompare(b));
+                console.log(`✅ Загружено ${allCities.length} городов из ${data.source}`);
+                console.log('Первые 10 городов:', allCities.slice(0, 10));
+            } else {
+                console.warn('⚠️ Ошибка загрузки городов:', data.message);
+                loadFallbackCities();
+            }
+        })
+        .catch(error => {
+            console.error('❌ Ошибка загрузки городов через API:', error);
+            loadFallbackCities();
+        });
+}
+
+// Запасные города, если API не работает
+function loadFallbackCities() {
+    allCities = [
+        'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
+        'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
+        'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград', 'Краснодар',
+        'Сочи', 'Пенза', 'Тюмень', 'Ижевск', 'Иркутск', 'Ульяновск',
+        'Хабаровск', 'Владивосток', 'Ярославль', 'Махачкала', 'Томск',
+        'Оренбург', 'Кемерово', 'Астрахань', 'Рязань', 'Набережные Челны',
+        'Липецк', 'Тула', 'Киров', 'Чебоксары', 'Калининград', 'Курск',
+        'Улан-Удэ', 'Ставрополь', 'Магнитогорск', 'Тверь', 'Севастополь',
+        'Сургут', 'Брянск', 'Иваново', 'Белгород', 'Симферополь',
+        'Анапа', 'Армавир', 'Геленджик', 'Ейск', 'Новороссийск', 'Туапсе',
+        'Апшеронск', 'Белореченск', 'Горячий Ключ', 'Кропоткин', 'Крымск',
+        'Лабинск', 'Славянск-на-Кубани', 'Тимашёвск', 'Тихорецк', 'Абинск'
+    ].sort((a, b) => a.localeCompare(b));
+
+    console.log(`✅ Загружено ${allCities.length} резервных городов`);
+}
+
+// 🔥 ПОИСК ГОРОДОВ ПРИ ВВОДЕ
+function searchCities(searchText) {
+    // Очищаем предыдущий таймер
+    if (citySearchTimeout) {
+        clearTimeout(citySearchTimeout);
+    }
+
+    // Устанавливаем новый таймер для задержки поиска
+    citySearchTimeout = setTimeout(() => {
+        performCitySearch(searchText);
+    }, 300); // Задержка 300мс для оптимизации
+}
+
+// 🔥 ВЫПОЛНЕНИЕ ПОИСКА
+function performCitySearch(searchText) {
+    const suggestionsContainer = document.getElementById('citySuggestions');
+    if (!suggestionsContainer) return;
+
+    if (!searchText || searchText.trim().length < 1) {
+        // Если ввод пустой, показываем популярные города
+        showPopularCities();
+        return;
+    }
+
+    const searchLower = searchText.toLowerCase().trim();
+
+    // Ищем совпадения
+    const matches = allCities.filter(city =>
+        city.toLowerCase().includes(searchLower)
+    ).slice(0, 15); // Ограничиваем 15 подсказками
+
+    // Очищаем контейнер
+    suggestionsContainer.innerHTML = '';
+    suggestionsContainer.style.display = 'none';
+
+    if (matches.length > 0) {
+        // Добавляем заголовок
+        const header = document.createElement('div');
+        header.className = 'list-group-item bg-light fw-bold py-2';
+        header.textContent = `Найдено ${matches.length} городов:`;
+        suggestionsContainer.appendChild(header);
+
+        // Добавляем подсказки
+        matches.forEach(city => {
+            const suggestion = document.createElement('button');
+            suggestion.type = 'button';
+            suggestion.className = 'list-group-item list-group-item-action text-start';
+
+            // Подсветка совпадения
+            const highlightedCity = highlightMatch(city, searchText);
+            suggestion.innerHTML = `<i class="ri-map-pin-line me-2 text-primary"></i> ${highlightedCity}`;
+
+            suggestion.onclick = () => {
+                setCity(city);
+                hideCitySuggestions();
+            };
+
+            suggestion.onmouseenter = () => {
+                suggestion.classList.add('active');
+            };
+
+            suggestion.onmouseleave = () => {
+                suggestion.classList.remove('active');
+            };
+
+            suggestionsContainer.appendChild(suggestion);
+        });
+
+        // Показываем контейнер
+        suggestionsContainer.style.display = 'block';
+
+        // Позиционируем подсказки
+        const cityInput = document.getElementById('id_city');
+        if (cityInput) {
+            suggestionsContainer.style.width = cityInput.offsetWidth + 'px';
+            suggestionsContainer.style.top = (cityInput.offsetTop + cityInput.offsetHeight) + 'px';
+            suggestionsContainer.style.left = cityInput.offsetLeft + 'px';
+        }
+    } else {
+        // Если ничего не найдено
+        const noResults = document.createElement('div');
+        noResults.className = 'list-group-item text-muted text-center py-3';
+        noResults.innerHTML = '<i class="ri-search-line me-2"></i>Город не найден';
+        suggestionsContainer.appendChild(noResults);
+        suggestionsContainer.style.display = 'block';
+    }
+}
+
+// 🔥 ПОКАЗАТЬ ПОПУЛЯРНЫЕ ГОРОДА
+function showPopularCities() {
+    const suggestionsContainer = document.getElementById('citySuggestions');
+    if (!suggestionsContainer) return;
+
+    const popularCities = [
+        'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
+        'Нижний Новгород', 'Краснодар', 'Сочи', 'Ростов-на-Дону', 'Воронеж',
+        'Самара', 'Уфа', 'Красноярск', 'Пермь', 'Тюмень'
+    ];
+
+    // Очищаем контейнер
+    suggestionsContainer.innerHTML = '';
+    suggestionsContainer.style.display = 'none';
+
+    // Добавляем заголовок
+    const header = document.createElement('div');
+    header.className = 'list-group-item bg-light fw-bold py-2';
+    header.textContent = 'Популярные города:';
+    suggestionsContainer.appendChild(header);
+
+    // Добавляем популярные города
+    popularCities.forEach(city => {
+        const suggestion = document.createElement('button');
+        suggestion.type = 'button';
+        suggestion.className = 'list-group-item list-group-item-action text-start';
+        suggestion.innerHTML = `<i class="ri-star-line me-2 text-warning"></i> ${city}`;
+
+        suggestion.onclick = () => {
+            setCity(city);
+            hideCitySuggestions();
+        };
+
+        suggestionsContainer.appendChild(suggestion);
+    });
+
+    // Кнопка "вся Россия"
+    const allRussiaBtn = document.createElement('button');
+    allRussiaBtn.type = 'button';
+    allRussiaBtn.className = 'list-group-item list-group-item-action text-center text-primary';
+    allRussiaBtn.innerHTML = '<i class="ri-global-line me-2"></i> Вся Россия';
+    allRussiaBtn.onclick = () => {
+        setCity('');
+        hideCitySuggestions();
+    };
+    suggestionsContainer.appendChild(allRussiaBtn);
+
+    // Показываем контейнер
+    suggestionsContainer.style.display = 'block';
+}
+
+// 🔥 ПОДСВЕТКА СОВПАДЕНИЙ В РЕЗУЛЬТАТАХ ПОИСКА
+function highlightMatch(text, search) {
+    if (!search || search.trim() === '') return text;
+
+    const searchLower = search.toLowerCase();
+    const textLower = text.toLowerCase();
+    const startIndex = textLower.indexOf(searchLower);
+
+    if (startIndex >= 0) {
+        const before = text.substring(0, startIndex);
+        const match = text.substring(startIndex, startIndex + search.length);
+        const after = text.substring(startIndex + search.length);
+
+        return `${before}<span class="bg-warning text-dark">${match}</span>${after}`;
+    }
+
+    return text;
+}
+
+// 🔥 УСТАНОВИТЬ ГОРОД
+function setCity(cityName) {
+    const cityInput = document.getElementById('id_city');
+    const siteSelect = document.getElementById('site_select');
+
+    if (cityInput) {
+        cityInput.value = cityName;
+
+        // Если выбран Auto.ru и введен город - показываем предупреждение
+        if (siteSelect && siteSelect.value === 'auto.ru' && cityName.trim() !== '') {
+            showAlert('Для Auto.ru город не используется - поиск по всей России', 'warning');
+        }
+
+        // Валидация
+        validateCityField();
+
+        // Скрываем все списки
+        hideCitySuggestions();
+        const popularCities = document.getElementById('popularCities');
+        if (popularCities) {
+            popularCities.style.display = 'none';
+        }
+    }
+}
+
+// 🔥 СКРЫТЬ ПОДСКАЗКИ
+function hideCitySuggestions() {
+    const suggestionsContainer = document.getElementById('citySuggestions');
+    if (suggestionsContainer) {
+        suggestionsContainer.style.display = 'none';
+    }
+}
+
+// 🔥 ВАЛИДАЦИЯ ПОЛЯ ГОРОДА
+function validateCityField() {
+    const cityInput = document.getElementById('id_city');
+    const siteSelect = document.getElementById('site_select');
+    const cityValue = cityInput ? cityInput.value.trim() : '';
+
+    if (cityInput) {
+        // Для Auto.ru поле должно быть пустым
+        if (siteSelect && siteSelect.value === 'auto.ru') {
+            if (cityValue !== '') {
+                cityInput.classList.add('is-invalid');
+                cityInput.classList.remove('is-valid');
+                cityInput.title = 'Для Auto.ru город не используется';
+                return false;
+            }
+        }
+
+        // Для Avito - проверяем валидность города
+        if (siteSelect && siteSelect.value === 'avito') {
+            if (cityValue === '' || cityValue === 'Вся Россия') {
+                cityInput.classList.remove('is-invalid', 'is-valid');
+                return true;
+            }
+
+            // Проверяем, есть ли город в списке
+            const isValid = allCities.some(city =>
+                city.toLowerCase() === cityValue.toLowerCase()
+            );
+
+            if (isValid) {
+                cityInput.classList.add('is-valid');
+                cityInput.classList.remove('is-invalid');
+            } else {
+                cityInput.classList.add('is-invalid');
+                cityInput.classList.remove('is-valid');
+                cityInput.title = 'Город не найден в базе. Используйте автокомплит.';
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+// 🔥 ПОКАЗАТЬ ВСЕ ГОРОДА
+function showCityList() {
+    const popularCities = document.getElementById('popularCities');
+    if (popularCities) {
+        if (popularCities.style.display === 'none' || !popularCities.style.display) {
+            popularCities.style.display = 'block';
+            hideCitySuggestions();
+        } else {
+            popularCities.style.display = 'none';
+        }
+    }
+}
+
+// 🔥 ОБРАБОТЧИК ИЗМЕНЕНИЯ САЙТА
+function handleSiteChange() {
+    const siteSelect = document.getElementById('site_select');
+    const cityInput = document.getElementById('id_city');
+    const cityFieldWrapper = document.querySelector('.city-field');
+
+    if (!siteSelect || !cityInput) return;
+
+    if (siteSelect.value === 'auto.ru') {
+        // Для Auto.ru отключаем город
+        cityInput.disabled = true;
+        cityInput.placeholder = 'Для Auto.ru город не используется';
+        cityInput.value = '';
+        cityInput.title = 'Для Auto.ru поиск выполняется по всей России';
+
+        if (cityFieldWrapper) {
+            cityFieldWrapper.style.opacity = '0.6';
+        }
+
+        // Показываем подсказку
+        const tip = document.getElementById('auto_ru_tips');
+        if (tip) {
+            tip.style.display = 'block';
+        }
+
+        hideCitySuggestions();
+
+    } else if (siteSelect.value === 'avito') {
+        // Для Avito включаем город
+        cityInput.disabled = false;
+        cityInput.placeholder = 'Начните вводить город...';
+        cityInput.value = cityInput.value || 'Москва';
+        cityInput.title = 'Введите город для поиска на Avito';
+
+        if (cityFieldWrapper) {
+            cityFieldWrapper.style.opacity = '1';
+        }
+
+        // Скрываем подсказку Auto.ru
+        const tip = document.getElementById('auto_ru_tips');
+        if (tip) {
+            tip.style.display = 'none';
+        }
+
+        validateCityField();
+    }
+}
+
+// 🔥 ИНИЦИАЛИЗАЦИЯ АВТОКОМПЛИТА ГОРОДОВ
+function initializeCityAutocomplete() {
+    console.log('🌍 Инициализация автокомплита городов...');
+
+    // Загружаем города
+    loadCities();
+
+    // Настраиваем обработчик изменения сайта
+    const siteSelect = document.getElementById('site_select');
+    if (siteSelect) {
+        siteSelect.addEventListener('change', handleSiteChange);
+
+        // Инициализируем состояние
+        setTimeout(() => {
+            handleSiteChange();
+        }, 100);
+    }
+
+    // Обработчик фокуса на поле города
+    const cityInput = document.getElementById('id_city');
+    if (cityInput) {
+        cityInput.addEventListener('focus', function() {
+            const siteSelect = document.getElementById('site_select');
+            if (siteSelect && siteSelect.value === 'avito') {
+                if (!this.value || this.value.trim() === '') {
+                    showPopularCities();
+                }
+            }
+        });
+
+        // Валидация при потере фокуса
+        cityInput.addEventListener('blur', function() {
+            setTimeout(() => {
+                validateCityField();
+            }, 200);
+        });
+    }
+
+    // Скрыть подсказки при клике вне поля
+    document.addEventListener('click', function(event) {
+        const cityInput = document.getElementById('id_city');
+        const suggestionsContainer = document.getElementById('citySuggestions');
+        const popularCities = document.getElementById('popularCities');
+
+        if (cityInput && !cityInput.contains(event.target) &&
+            suggestionsContainer && !suggestionsContainer.contains(event.target) &&
+            popularCities && !popularCities.contains(event.target)) {
+            hideCitySuggestions();
+            if (popularCities) {
+                popularCities.style.display = 'none';
+            }
+        }
+    });
+
+    // Клавиатурная навигация
+    document.addEventListener('keydown', function(event) {
+        const suggestionsContainer = document.getElementById('citySuggestions');
+        if (!suggestionsContainer || suggestionsContainer.style.display === 'none') {
+            return;
+        }
+
+        const items = suggestionsContainer.querySelectorAll('.list-group-item-action');
+        let currentIndex = -1;
+
+        items.forEach((item, index) => {
+            if (item.classList.contains('active')) {
+                currentIndex = index;
+            }
+        });
+
+        switch(event.key) {
+            case 'ArrowDown':
+                event.preventDefault();
+                if (currentIndex < items.length - 1) {
+                    items[currentIndex + 1].click();
+                }
+                break;
+
+            case 'ArrowUp':
+                event.preventDefault();
+                if (currentIndex > 0) {
+                    items[currentIndex - 1].click();
+                }
+                break;
+
+            case 'Escape':
+                hideCitySuggestions();
+                break;
+
+            case 'Enter':
+                if (currentIndex >= 0) {
+                    event.preventDefault();
+                    items[currentIndex].click();
+                }
+                break;
+        }
+    });
+
+    console.log('✅ Автокомплит городов инициализирован');
+}
+
+// 🔥 ОБНОВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ СТРАНИЦЫ
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Инициализация парсера...');
 
@@ -1200,29 +1867,24 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('✅ Кнопка быстрого запуска подключена');
     }
 
+    // Инициализируем автокомплит городов
+    initializeCityAutocomplete();
+
     // Обработчик выбора сайта
     const siteSelect = document.getElementById('site_select');
     const autoRuTips = document.getElementById('auto_ru_tips');
 
     if (siteSelect && autoRuTips) {
-        siteSelect.addEventListener('change', function() {
-            if (this.value === 'auto.ru') {
-                autoRuTips.style.display = 'block';
-
-                // Автозаполнение примерами для авто
-                const keywordsInput = document.querySelector('textarea[name="keywords"]');
-                if (keywordsInput && !keywordsInput.value.trim()) {
-                    keywordsInput.value = 'ford focus, toyota camry, bmw x5';
-                    showAlert('Добавлены примеры запросов для Auto.ru', 'info');
-                }
-            } else {
-                autoRuTips.style.display = 'none';
-            }
-        });
-
-        // Инициализация при загрузке
+        // Уже есть обработчик в initializeCityAutocomplete, но оставляем логику
         if (siteSelect.value === 'auto.ru') {
             autoRuTips.style.display = 'block';
+
+            // Автозаполнение примерами для авто
+            const keywordsInput = document.querySelector('textarea[name="keywords"]');
+            if (keywordsInput && !keywordsInput.value.trim()) {
+                keywordsInput.value = 'ford focus, toyota camry, bmw x5';
+                showAlert('Добавлены примеры запросов для Auto.ru', 'info');
+            }
         }
     }
 

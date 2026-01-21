@@ -802,6 +802,7 @@ class ParserSettings(models.Model):
     site = models.CharField('Сайт для поиска', max_length=20, choices=SITE_CHOICES, default='avito')
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
+    city = models.CharField(max_length=100, default='Москва', verbose_name='Город поиска', help_text='Город для поиска товаров (например: Москва, Санкт-Петербург, Краснодар)', blank=True)
 
     def save(self, *args, **kwargs):
         if self.is_default:

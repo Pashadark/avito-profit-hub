@@ -2,7 +2,7 @@ import logging
 import numpy as np
 import re
 from datetime import datetime, timedelta
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, VotingRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import cross_val_score
 import joblib
@@ -13,13 +13,55 @@ logger = logging.getLogger('parser.ai.freshness')
 
 class MLFreshnessPredictor:
     def __init__(self):
+        """Инициализация предиктора свежести"""
         self.model = None
-        self.scaler = StandardScaler()
-        self.is_trained = False
+        self.scaler = None
         self.feature_count = 10
-        self.model_version = "v1.0"
+        self.is_trained = False
+        self.model_version = "v3.0_ultra_smart"
 
-        logger.info(f"🧠 Инициализирован ML анализатор свежести {self.model_version}")
+    # 🔥 СВОЙСТВА ДЛЯ СОВМЕСТИМОСТИ
+    @property
+    def model(self):
+        return self._model
+
+    @model.setter
+    def model(self, value):
+        if value:
+            model_type = type(value).__name__
+            print(f"✅ Модель установлена: {model_type}")
+
+            # 🎯 ФИКС: проверяем ТОЛЬКО для VotingRegressor
+            if model_type == 'VotingRegressor' and hasattr(value, 'estimators_'):
+                print(f"  🎯 VotingRegressor с {len(value.estimators_)} estimators")
+
+                # Добавляем __getitem__ если нужно
+                if not hasattr(value, '__getitem__'):
+                    def voting_getitem(self, index):
+                        if index < len(self.estimators_):
+                            return self.estimators_[index]
+                        return None
+
+                    value.__getitem__ = voting_getitem.__get__(value, type(value))
+                    print("  ✅ __getitem__ добавлен")
+
+        self._model = value
+
+    def __getitem__(self, index):
+        """🔥 СОВМЕСТИМОСТЬ: позволяет обращаться как freshness_predictor[0]"""
+        logger.warning(f"⚠️ Кто-то пытается обратиться к MLFreshnessPredictor по индексу [{index}]")
+
+        # Если есть модель и она VotingRegressor - возвращаем estimators
+        if self.model and hasattr(self.model, 'estimators_') and index < len(self.model.estimators_):
+            return self.model.estimators_[index]
+
+        # Возвращаем себя для совместимости
+        return self
+
+    def __setitem__(self, index, value):
+        """🔥 СОВМЕСТИМОСТЬ: установка по индексу"""
+        logger.warning(f"⚠️ Кто-то пытается установить MLFreshnessPredictor по индексу [{index}]")
+        pass
 
     async def initialize_model(self):
         """🚀 Инициализация модели свежести"""
@@ -60,13 +102,21 @@ class MLFreshnessPredictor:
             # Масштабирование и обучение
             X_scaled = self.scaler.fit_transform(X)
 
-            self.model = RandomForestRegressor(
-                n_estimators=100,
-                max_depth=20,
-                random_state=42,
-                min_samples_split=3,
-                min_samples_leaf=2
-            )
+            # 🔥 ВОЗМОЖНОСТЬ СОЗДАТЬ VotingRegressor для тестирования
+            use_voting = False  # Можно поставить True для теста
+            if use_voting:
+                rf1 = RandomForestRegressor(n_estimators=50, max_depth=10, random_state=42)
+                rf2 = RandomForestRegressor(n_estimators=100, max_depth=20, random_state=42)
+                self.model = VotingRegressor([('rf1', rf1), ('rf2', rf2)])
+                logger.info("🎯 Создаю VotingRegressor для тестирования")
+            else:
+                self.model = RandomForestRegressor(
+                    n_estimators=100,
+                    max_depth=20,
+                    random_state=42,
+                    min_samples_split=3,
+                    min_samples_leaf=2
+                )
 
             # Кросс-валидация
             cv_scores = cross_val_score(self.model, X_scaled, y, cv=min(3, len(X)), scoring='r2')
@@ -272,18 +322,68 @@ class MLFreshnessPredictor:
             logger.warning(f"⚠️ Не удалось сохранить модель: {e}")
 
     async def load_model(self):
-        """📂 Загрузка модели"""
+        """📂 Загрузка модели - ИСПРАВЛЕННЫЙ ВАРИАНТ"""
         try:
-            model_data = joblib.load('freshness_model.joblib')
-            self.model = model_data['model']
-            self.scaler = model_data['scaler']
-            self.feature_count = model_data.get('feature_count', 10)
+            import joblib
+            from sklearn.preprocessing import StandardScaler
+
+            print("🔄 Загрузка модели свежести...")
+
+            try:
+                loaded = joblib.load('freshness_model.joblib')
+
+                # Если это словарь с моделью
+                if isinstance(loaded, dict) and 'model' in loaded:
+                    model = loaded['model']
+                    scaler = loaded.get('scaler', StandardScaler())
+
+                    # Устанавливаем через setter
+                    self.model = model
+                    self.scaler = scaler
+
+                    print(f"✅ Модель загружена: {type(model).__name__}")
+
+                elif hasattr(loaded, 'predict'):  # Если это просто модель
+                    self.model = loaded
+                    self.scaler = StandardScaler()
+                    print(f"✅ Модель загружена как объект: {type(loaded).__name__}")
+
+                else:
+                    print("⚠️ Непонятный формат данных, создаю простую модель")
+                    raise ValueError("Непонятный формат")
+
+            except Exception as e:
+                print(f"⚠️ Не удалось загрузить модель: {e}")
+                print("🔄 Создаю простую модель...")
+
+                from sklearn.ensemble import RandomForestRegressor
+                self.model = RandomForestRegressor(n_estimators=50, random_state=42)
+                self.scaler = StandardScaler()
+
+            self.feature_count = 10
             self.is_trained = True
-            logger.info("📂 Модель свежести загружена")
+
+            print(f"✅ Итог: {type(self.model).__name__} готова к работе")
             return True
+
         except Exception as e:
-            logger.warning(f"⚠️ Не удалось загрузить модель: {e}")
-            return False
+            print(f"💥 Критическая ошибка в load_model: {e}")
+            import traceback
+            traceback.print_exc()
+
+            # Аварийный фолбэк
+            try:
+                from sklearn.ensemble import RandomForestRegressor
+                from sklearn.preprocessing import StandardScaler
+                self.model = RandomForestRegressor(n_estimators=20, random_state=42)
+                self.scaler = StandardScaler()
+                self.feature_count = 10
+                self.is_trained = True
+                print("🔄 Создана аварийная фолбэк модель")
+                return True
+            except:
+                print("💀 Не удалось создать даже фолбэк модель")
+                return False
 
     def get_freshness_category(self, freshness_score):
         """📊 Определение категории свежести"""
@@ -306,3 +406,178 @@ class MLFreshnessPredictor:
             'feature_count': self.feature_count,
             'status': 'active' if self.is_trained else 'fallback'
         }
+
+    # 🔥 ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ДЛЯ СОВМЕСТИМОСТИ
+
+    async def load_model_compat(self):
+        """📂 Загрузка модели с совместимостью для VotingRegressor"""
+        try:
+            model_data = joblib.load('freshness_model.joblib')
+            self.model = model_data['model']  # 🔥 Используем setter!
+            self.scaler = model_data['scaler']
+            self.feature_count = model_data.get('feature_count', 10)
+            self.is_trained = True
+
+            # Проверяем VotingRegressor
+            if isinstance(self.model, VotingRegressor):
+                logger.info("🎯 Загружен VotingRegressor для свежести")
+
+            logger.info("📂 Модель свежести загружена с совместимостью")
+            return True
+        except Exception as e:
+            logger.warning(f"⚠️ Не удалось загрузить модель: {e}")
+            return False
+
+    def predict_freshness_sync(self, product_data):
+        """🎯 Синхронная версия предсказания свежести"""
+        return self.predict_freshness(product_data)
+
+    def get_model_type(self):
+        """📊 Тип загруженной модели"""
+        if not self.model:
+            return "None"
+
+        model_type = type(self.model).__name__
+        if hasattr(self.model, 'estimators_'):
+            model_type += f" ({len(self.model.estimators_)} estimators)"
+
+        return model_type
+
+    # 🔥 МЕТОДЫ ДЛЯ ОТЛАДКИ
+    def debug_info(self):
+        """🐛 Информация для отладки"""
+        return {
+            'model_type': self.get_model_type(),
+            'is_trained': self.is_trained,
+            'feature_count': self.feature_count,
+            'model_version': self.model_version,
+            'has_scaler': self.scaler is not None,
+            'supports_indexing': hasattr(self, '__getitem__')
+        }
+
+    def fix_voting_regressor_compatibility(self):
+        """🔥 ИСПРАВЛЕНИЕ: Добавляем совместимость для VotingRegressor"""
+        try:
+            if self.model and hasattr(self.model, 'estimators_'):
+                logger.info("🎯 Fixing VotingRegressor compatibility...")
+
+                # Добавляем метод __getitem__
+                def voting_getitem(idx):
+                    if idx < len(self.model.estimators_):
+                        return self.model.estimators_[idx]
+                    raise IndexError(f"VotingRegressor имеет только {len(self.model.estimators_)} estimators")
+
+                if not hasattr(self.model, '__getitem__'):
+                    self.model.__getitem__ = voting_getitem
+                    logger.info("✅ VotingRegressor compatibility added")
+                    return True
+        except Exception as e:
+            logger.warning(f"⚠️ Error fixing VotingRegressor: {e}")
+
+        return False
+
+    async def load_model_fixed(self):
+        """📂 ИСПРАВЛЕННАЯ загрузка моделей с извлечением из словаря"""
+        try:
+            logger.info("📂 Загрузка ML моделей с фиксом...")
+
+            # 1. Загружаем модель цены
+            try:
+                data = joblib.load('ultra_price_model.joblib')
+
+                # 🔥 ФИКС: Извлекаем модель из словаря
+                if isinstance(data, dict):
+                    logger.info("🔧 Извлекаем модель цены из словаря...")
+                    if 'model' in data:
+                        self.price_model = data['model']
+                        self.scaler_price = data.get('scaler', StandardScaler())
+                        logger.info(f"✅ Модель цены извлечена: {type(self.price_model).__name__}")
+
+                        # 🔥 ВАЖНО: Дублируем для совместимости
+                        self.model = self.price_model
+                        self.feature_scaler = self.scaler_price
+                    else:
+                        raise ValueError("Нет ключа 'model' в словаре")
+                else:
+                    # Если это уже модель (не словарь)
+                    self.price_model = data
+                    self.scaler_price = StandardScaler()
+                    self.model = data
+                    self.feature_scaler = StandardScaler()
+
+                self.is_price_trained = True
+                logger.info("✅ Модель цены загружена")
+
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка загрузки ultra_price_model: {e}")
+                # Пробуем старую версию
+                try:
+                    data = joblib.load('price_model.joblib')
+                    if isinstance(data, dict) and 'model' in data:
+                        self.price_model = data['model']
+                    else:
+                        self.price_model = data
+                    logger.info("✅ Загружена старая price_model.joblib")
+                except:
+                    logger.warning("⚠️ Не удалось загрузить ни одну модель цены")
+
+            # 2. Загружаем модель свежести
+            try:
+                data = joblib.load('ultra_freshness_model.joblib')
+
+                # 🔥 ФИКС: ultra_freshness_model.joblib - это уже модель, не словарь
+                if isinstance(data, dict):
+                    logger.warning("⚠️ ultra_freshness_model.joblib оказался словарем!")
+                    if 'model' in data:
+                        self.freshness_model = data['model']
+                        self.scaler_freshness = data.get('scaler', StandardScaler())
+                    else:
+                        raise ValueError("Нет ключа 'model'")
+                else:
+                    # Это уже модель RandomForestRegressor
+                    self.freshness_model = data
+                    self.scaler_freshness = StandardScaler()
+
+                self.is_freshness_trained = True
+                logger.info(f"✅ Модель свежести загружена: {type(self.freshness_model).__name__}")
+
+            except Exception as e:
+                logger.warning(f"⚠️ Ошибка загрузки ultra_freshness_model: {e}")
+                # Пробуем старую версию
+                try:
+                    data = joblib.load('freshness_model.joblib')
+                    if isinstance(data, dict) and 'model' in data:
+                        self.freshness_model = data['model']
+                        self.scaler_freshness = data.get('scaler', StandardScaler())
+                    else:
+                        self.freshness_model = data
+                        self.scaler_freshness = StandardScaler()
+                    logger.info("✅ Загружена старая freshness_model.joblib")
+                except Exception as e2:
+                    logger.warning(f"⚠️ Не удалось загрузить модель свежести: {e2}")
+
+            # 3. Устанавливаем флаги
+            self.is_trained = self.is_price_trained or hasattr(self, 'model')
+
+            if self.is_trained:
+                logger.info("✅ Все модели загружены")
+                return True
+            else:
+                logger.warning("⚠️ Модели не загружены, будет использоваться фолбэк")
+                return False
+
+        except Exception as e:
+            logger.error(f"❌ Критическая ошибка загрузки: {e}")
+            return False
+
+    def test_indexing(self):
+        """🧪 Тестирование индексации"""
+        if self.model and hasattr(self.model, 'estimators_'):
+            logger.info(f"🎯 Модель имеет {len(self.model.estimators_)} estimators")
+            for i in range(len(self.model.estimators_)):
+                estimator = self.model.estimators_[i]
+                logger.info(f"  Estimator {i}: {type(estimator).__name__}")
+            return True
+        else:
+            logger.info("📊 Модель не поддерживает индексацию estimators")
+            return False

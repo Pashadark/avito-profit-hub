@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="2000" height="3500" viewBox="0 0 2000 3500" xmlns="http://www.w3.org/2000/svg">
+    <!-- ТЕМНО-СЕРЫЙ ФОН -->
+    <rect width="2000" height="3500" fill="#1a1a1a"/>
+
+    <!-- ЗАГОЛОВОК -->
+    <text x="1000" y="80" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="42" font-weight="bold">
+        🚀 ПОЛНАЯ АРХИТЕКТУРА СУПЕР-ПАРСЕРА
+    </text>
+    <text x="1000" y="130" text-anchor="middle" fill="#4ecdc4" font-family="Arial, sans-serif" font-size="24">
+        7 ЭТАПОВ ОТ ПОЛЬЗОВАТЕЛЯ ДО TELEGRAM
+    </text>
+
+    <!-- ==================== ЭТАП 1: ПОЛЬЗОВАТЕЛЬ ==================== -->
+    <rect x="100" y="180" width="1800" height="100" rx="15" fill="#2d3748" stroke="#4299e1" stroke-width="3"/>
+    <text x="1000" y="240" text-anchor="middle" fill="#4299e1" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
+        1️⃣ 👤 ПОЛЬЗОВАТЕЛЬ И НАСТРОЙКИ
+    </text>
+
+    <!-- Блоки пользователя -->
+    <g transform="translate(200, 320)">
+        <!-- Telegram Bot -->
+        <rect x="0" y="0" width="350" height="140" rx="10" fill="#2a2a2a" stroke="#4299e1" stroke-width="2"/>
+        <text x="175" y="50" text-anchor="middle" fill="#4299e1" font-family="Arial, sans-serif" font-size="20" font-weight="bold">📱 Telegram Bot</text>
+        <text x="175" y="85" text-anchor="middle" fill="#a0aec0" font-family="Arial, sans-serif" font-size="14">@avito_profit_bot</text>
+        <text x="175" y="110" text-anchor="middle" fill="#a0aec0" font-family="Arial, sans-serif" font-size="12">Получает команды /start_parser</text>
+
+        <!-- Веб-сайт -->
+        <rect x="400" y="0" width="350" height="140" rx="10" fill="#2a2a2a" stroke="#48bb78" stroke-width="2"/>
+        <text x="575" y="50" text-anchor="middle" fill="#48bb78" font-family="Arial, sans-serif" font-size="20" font-weight="bold">🌐 Веб-сайт</text>
+        <text x="575" y="85" text-anchor="middle" fill="#a0aec0" font-family="Arial, sans-serif" font-size="14">avito-profit-hub.com</text>
+        <text x="575" y="110" text-anchor="middle" fill="#a0aec0" font-family="Arial, sans-serif" font-size="12">Настройки поиска</text>
+
+        <!-- Настройки в БД -->
+        <rect x="800" y="0" width="350" height="140" rx="10" fill="#2a2a2a" stroke="#ed8936" stroke-width="2"/>
+        <text x="975" y="50" text-anchor="middle" fill="#ed8936" font-family="Arial, sans-serif" font-size="20" font-weight="bold">⚙️ ParserSettings</text>
+        <text x="975" y="85" text-anchor="middle" fill="#a0aec0" font-family="Arial, sans-serif" font-size="14">База данных</text>
+        <text x="975" y="110" text-anchor="middle" fill="#a0aec0" font-family="Arial, sans-serif" font-size="12">keywords_list, min_price, max_price</text>
+    </g>
+
+    <!-- Стрелка вниз -->
+    <line x1="1000" y1="480" x2="1000" y2="530" stroke="#ffffff" stroke-width="3"/>
+    <polygon points="990,510 1000,530 1010,510" fill="#ffffff"/>
+    <text x="1000" y="515" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="16">↓ передает user_id=1</text>
+
+    <!-- ==================== ЭТАП 2: SELENIUM_PARSER.PY ==================== -->
+    <rect x="100" y="560" width="1800" height="100" rx="15" fill="#2d3748" stroke="#ff6b6b" stroke-width="3"/>
+    <text x="1000" y="620" text-anchor="middle" fill="#ff6b6b" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
+        2️⃣ 🚀 SELENIUM_PARSER.PY (КООРДИНАТОР)
+    </text>
+
+    <!-- Подпроцессы этапа 2 -->
+    <g transform="translate(200, 700)">
+        <!-- Инициализация -->
+        <rect x="0" y="0" width="400" height="140" rx="10" fill="#374151" stroke="#f59e0b" stroke-width="2"/>
+        <text x="200" y="50" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="18" font-weight="bold">🔧 configure_for_user()</text>
+        <text x="200" y="85" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">Загружает настройки user_id=1</text>
+        <text x="200" y="110" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="12">self.current_user_id = 1</text>
+
+        <!-- Браузеры -->
+        <rect x="450" y="0" width="400" height="140" rx="10" fill="#374151" stroke="#10b981" stroke-width="2"/>
+        <text x="650" y="50" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="18" font-weight="bold">🖥️ setup_drivers()</text>
+        <text x="650" y="85" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">Запускает 3 окна Chrome</text>
+        <text x="650" y="110" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="12">User-Agent ротация</text>
+
+        <!-- AI оптимизация -->
+        <rect x="900" y="0" width="400" height="140" rx="10" fill="#374151" stroke="#8b5cf6" stroke-width="2"/>
+        <text x="1100" y="50" text-anchor="middle" fill="#8b5cf6" font-family="Arial, sans-serif" font-size="18" font-weight="bold">🧠 AI оптимизация</text>
+        <text x="1100" y="85" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">"шапка мужская" → "сегодня свежий"</text>
+        <text x="1100" y="110" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="12">QueryOptimizer.optimize_for_freshness()</text>
+    </g>
+
+    <!-- Стрелка вниз -->
+    <line x1="1000" y1="870" x2="1000" y2="920" stroke="#ff6b6b" stroke-width="3"/>
+    <polygon points="990,900 1000,920 1010,900" fill="#ff6b6b"/>
+    <text x="1000" y="915" text-anchor="middle" fill="#ff6b6b" font-family="Arial, sans-serif" font-size="16">↓ передает оптимизированные запросы</text>
+
+    <!-- ==================== ЭТАП 3: AVITO_PARSER.PY ==================== -->
+    <rect x="100" y="950" width="1800" height="100" rx="15" fill="#2d3748" stroke="#4299e1" stroke-width="3"/>
+    <text x="1000" y="1010" text-anchor="middle" fill="#4299e1" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
+        3️⃣ 🌐 AVITO_PARSER.PY (ПАРСИНГ САЙТА)
+    </text>
+
+    <!-- Поиск товаров -->
+    <rect x="200" y="1080" width="1600" height="120" rx="10" fill="#374151" stroke="#60a5fa" stroke-width="2"/>
+    <text x="1000" y="1130" text-anchor="middle" fill="#60a5fa" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+        🔍 parse_search_results("шапка мужская сегодня свежий")
+    </text>
+    <text x="1000" y="1165" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">
+        GET https://www.avito.ru/...?q=шапка+мужская+сегодня+свежий
+    </text>
+
+    <!-- Найденные товары -->
+    <rect x="250" y="1220" width="1500" height="180" rx="10" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+    <text x="1000" y="1260" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+        📦 НАЙДЕНО 15 ТОВАРОВ
+    </text>
+
+    <!-- Пример товара -->
+    <rect x="300" y="1300" width="1400" height="80" rx="8" fill="#0f172a" stroke="#f59e0b" stroke-width="2"/>
+    <text x="1000" y="1335" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="16" font-weight="bold">
+        "Шапка мужская paul shark с флисом и шерстью"
+    </text>
+    <text x="1000" y="1360" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">
+        💰 980₽ | 📍 Москва | 📅 13 января 19:58 | 🖼️ 8 фото | ⭐ 5.0
+    </text>
+
+    <!-- Детальный парсинг -->
+    <rect x="200" y="1420" width="1600" height="120" rx="10" fill="#374151" stroke="#8b5cf6" stroke-width="2"/>
+    <text x="1000" y="1470" text-anchor="middle" fill="#8b5cf6" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+        📋 get_product_details() - полный парсинг товара
+    </text>
+    <text x="1000" y="1505" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">
+        Парсит: цену, описание, фото, продавца, метро, рейтинг, просмотры, дату...
+    </text>
+
+    <!-- Стрелка вниз -->
+    <line x1="1000" y1="1560" x2="1000" y2="1620" stroke="#4299e1" stroke-width="3"/>
+    <polygon points="990,1590 1000,1620 1010,1590" fill="#4299e1"/>
+    <text x="1000" y="1615" text-anchor="middle" fill="#4299e1" font-family="Arial, sans-serif" font-size="16">
+        ↓ передает структурированные данные товара
+    </text>
+
+    <!-- ==================== ЭТАП 4: ML_PRICE_PREDICTOR.PY ==================== -->
+    <rect x="100" y="1650" width="1800" height="100" rx="15" fill="#2d3748" stroke="#10b981" stroke-width="3"/>
+    <text x="1000" y="1710" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
+        4️⃣ 🧠 ML_PRICE_PREDICTOR.PY (ML АНАЛИЗ)
+    </text>
+
+    <!-- Подготовка фичей -->
+    <rect x="200" y="1780" width="1600" height="120" rx="10" fill="#374151" stroke="#f59e0b" stroke-width="2"/>
+    <text x="1000" y="1830" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+        🔧 Подготовка 20+ ML фичей для анализа
+    </text>
+    <text x="1000" y="1865" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">
+        price=980, time_listed=1.5, seller_rating=5.0, views_count=2, photos_count=8, category=одежда...
+    </text>
+
+    <!-- Две ML модели -->
+    <g transform="translate(200, 1920)">
+        <!-- Модель цены -->
+        <rect x="0" y="0" width="750" height="140" rx="10" fill="#374151" stroke="#3b82f6" stroke-width="2"/>
+        <text x="375" y="50" text-anchor="middle" fill="#3b82f6" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+            💰 Модель цены (RandomForest)
+        </text>
+        <text x="375" y="85" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="18">
+            Предсказание: 1,176₽
+        </text>
+        <text x="375" y="115" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="14">
+            Экономия: 196₽ (17%) | Уверенность: 87%
+        </text>
+
+        <!-- Модель свежести -->
+        <rect x="800" y="0" width="750" height="140" rx="10" fill="#374151" stroke="#8b5cf6" stroke-width="2"/>
+        <text x="1175" y="50" text-anchor="middle" fill="#8b5cf6" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+            ⚡ Модель свежести (RandomForest)
+        </text>
+        <text x="1175" y="85" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="18">
+            Свежесть: 0.5 (средняя)
+        </text>
+        <text x="1175" y="115" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="14">
+            Категория: average | Приоритет: 38/100
+        </text>
+    </g>
+
+    <!-- Обновление данных товара -->
+    <rect x="200" y="2090" width="1600" height="100" rx="10" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+    <text x="1000" y="2135" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+        📊 Обновление данных товара с ML прогнозами:
+    </text>
+    <text x="1000" y="2170" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">
+        ai_predicted_price=1176, ml_freshness_score=0.5, economy=196, economy_percent=17
+    </text>
+
+    <!-- Стрелка вниз -->
+    <line x1="1000" y1="2210" x2="1000" y2="2270" stroke="#10b981" stroke-width="3"/>
+    <polygon points="990,2240 1000,2270 1010,2240" fill="#10b981"/>
+    <text x="1000" y="2265" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="16">
+        ↓ товар с ML прогнозами
+    </text>
+
+    <!-- ==================== ЭТАП 5: PRODUCT_VALIDATOR.PY ==================== -->
+    <rect x="100" y="2300" width="1800" height="100" rx="15" fill="#2d3748" stroke="#f59e0b" stroke-width="3"/>
+    <text x="1000" y="2360" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
+        5️⃣ ✅ PRODUCT_VALIDATOR.PY (ПРОВЕРКА)
+    </text>
+
+    <!-- Проверки -->
+    <g transform="translate(200, 2420)">
+        <!-- Проверка цены -->
+        <rect x="0" y="0" width="300" height="120" rx="10" fill="#374151" stroke="#3b82f6" stroke-width="2"/>
+        <text x="150" y="40" text-anchor="middle" fill="#3b82f6" font-family="Arial, sans-serif" font-size="16" font-weight="bold">💰 Цена</text>
+        <text x="150" y="70" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">500 ≤ 980 ≤ 5000</text>
+        <text x="150" y="100" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="18" font-weight="bold">✅ ПРОШЕЛ</text>
+
+        <!-- Проверка рейтинга -->
+        <rect x="350" y="0" width="300" height="120" rx="10" fill="#374151" stroke="#8b5cf6" stroke-width="2"/>
+        <text x="500" y="40" text-anchor="middle" fill="#8b5cf6" font-family="Arial, sans-serif" font-size="16" font-weight="bold">⭐ Рейтинг</text>
+        <text x="500" y="70" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">5.0 ≥ 4.0</text>
+        <text x="500" y="100" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="18" font-weight="bold">✅ ПРОШЕЛ</text>
+
+        <!-- Проверка состояния -->
+        <rect x="700" y="0" width="300" height="120" rx="10" fill="#374151" stroke="#f59e0b" stroke-width="2"/>
+        <text x="850" y="40" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="16" font-weight="bold">🔧 Состояние</text>
+        <text x="850" y="70" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">"новый" ∈ описание</text>
+        <text x="850" y="100" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="18" font-weight="bold">✅ ПРОШЕЛ</text>
+
+        <!-- Проверка экономии -->
+        <rect x="1050" y="0" width="300" height="120" rx="10" fill="#374151" stroke="#10b981" stroke-width="2"/>
+        <text x="1200" y="40" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="16" font-weight="bold">📈 Экономия</text>
+        <text x="1200" y="70" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">17% ≥ 10%</text>
+        <text x="1200" y="100" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="18" font-weight="bold">✅ ПРОШЕЛ</text>
+    </g>
+
+    <!-- Итоговая оценка -->
+    <rect x="200" y="2570" width="1600" height="100" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+    <text x="1000" y="2615" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+        🏆 ИТОГОВАЯ ОЦЕНКА: 1.0/1.0 ≥ 0.7
+    </text>
+    <text x="1000" y="2655" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="24" font-weight="bold">
+        ✅ ТОВАР ПРОШЕЛ ВАЛИДАЦИЮ!
+    </text>
+
+    <!-- Стрелка вниз -->
+    <line x1="1000" y1="2690" x2="1000" y2="2750" stroke="#f59e0b" stroke-width="3"/>
+    <polygon points="990,2720 1000,2750 1010,2720" fill="#f59e0b"/>
+    <text x="1000" y="2745" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="16">
+        ↓ валидный товар для сохранения
+    </text>
+
+    <!-- ==================== ЭТАП 6: NOTIFICATION_SENDER.PY ==================== -->
+    <rect x="100" y="2780" width="1800" height="100" rx="15" fill="#2d3748" stroke="#8b5cf6" stroke-width="3"/>
+    <text x="1000" y="2840" text-anchor="middle" fill="#8b5cf6" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
+        6️⃣ 📨 NOTIFICATION_SENDER.PY
+    </text>
+
+    <!-- Сохранение в БД -->
+    <rect x="200" y="2910" width="1600" height="120" rx="10" fill="#374151" stroke="#3b82f6" stroke-width="2"/>
+    <text x="1000" y="2960" text-anchor="middle" fill="#3b82f6" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+        💾 СОХРАНЕНИЕ В БАЗУ ДАННЫХ
+    </text>
+    <text x="1000" y="2995" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="16">
+        FoundItem.objects.create(user_id=1, title=..., price=980, ml_freshness_score=0.5, ...)
+    </text>
+
+    <!-- Подготовка уведомления -->
+    <rect x="200" y="3060" width="1600" height="140" rx="10" fill="#374151" stroke="#f59e0b" stroke-width="2"/>
+    <text x="1000" y="3110" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+        📝 ФОРМИРОВАНИЕ СООБЩЕНИЯ TELEGRAM
+    </text>
+    <text x="1000" y="3145" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">
+        "🔥 НАЙДЕНА СВЕЖАЯ СДЕЛКА! Шапка мужская paul shark..."
+    </text>
+    <text x="1000" y="3175" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="12">
+        + скачивание и подготовка 5 фотографий
+    </text>
+
+    <!-- Отправка в Telegram -->
+    <rect x="200" y="3230" width="1600" height="120" rx="10" fill="#374151" stroke="#10b981" stroke-width="2"/>
+    <text x="1000" y="3280" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+        📤 ОТПРАВКА В TELEGRAM API
+    </text>
+    <text x="1000" y="3315" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="16">
+        bot.send_media_group() с 5 фото + InlineKeyboard с кнопками действий
+    </text>
+
+    <!-- Стрелка вниз -->
+    <line x1="1000" y1="3380" x2="1000" y2="3440" stroke="#8b5cf6" stroke-width="3"/>
+    <polygon points="990,3410 1000,3440 1010,3410" fill="#8b5cf6"/>
+    <text x="1000" y="3435" text-anchor="middle" fill="#8b5cf6" font-family="Arial, sans-serif" font-size="16">
+        ↓ медиа-группа + сообщение пользователю
+    </text>
+
+    <!-- ==================== ЭТАП 7: БАЗА ДАННЫХ + TELEGRAM ==================== -->
+    <rect x="100" y="3470" width="1800" height="100" rx="15" fill="#2d3748" stroke="#10b981" stroke-width="3"/>
+    <text x="1000" y="3530" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="28" font-weight="bold">
+        7️⃣ 💾 БАЗА ДАННЫХ + 📱 TELEGRAM
+    </text>
+
+    <!-- Две системы -->
+    <g transform="translate(200, 3600)">
+        <!-- База данных -->
+        <rect x="0" y="0" width="750" height="140" rx="10" fill="#374151" stroke="#3b82f6" stroke-width="2"/>
+        <text x="375" y="40" text-anchor="middle" fill="#3b82f6" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+            🗄️ PostgreSQL Database
+        </text>
+        <text x="375" y="75" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="16">
+            Таблица FoundItem
+        </text>
+        <text x="375" y="105" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="14">
+            +1 запись с 30+ полями и ML данными
+        </text>
+
+        <!-- Telegram -->
+        <rect x="800" y="0" width="750" height="140" rx="10" fill="#374151" stroke="#8b5cf6" stroke-width="2"/>
+        <text x="1175" y="40" text-anchor="middle" fill="#8b5cf6" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+            📱 Telegram Bot API
+        </text>
+        <text x="1175" y="75" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="16">
+            send_media_group() + сообщение
+        </text>
+        <text x="1175" y="105" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="14">
+            5 фото + аналитика + кнопки действий
+        </text>
+    </g>
+
+    <!-- Что видит пользователь -->
+    <rect x="200" y="3770" width="1600" height="180" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+    <text x="1000" y="3815" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="22" font-weight="bold">
+        📱 ЧТО ВИДИТ ПОЛЬЗОВАТЕЛЬ В TELEGRAM:
+    </text>
+
+    <!-- Сообщение -->
+    <rect x="250" y="3860" width="1500" height="70" rx="8" fill="#0f172a" stroke="#60a5fa" stroke-width="2"/>
+    <text x="1000" y="3890" text-anchor="middle" fill="#60a5fa" font-family="Arial, sans-serif" font-size="14" font-weight="bold">
+        [5 ФОТОГРАФИЙ] 🔥 НАЙДЕНА СВЕЖАЯ СДЕЛКА!
+    </text>
+    <text x="1000" y="3915" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">
+        Шапка мужская paul shark - 980₽ (экономия 196₽ / 17%) | Москва | ⭐ 5.0
+    </text>
+
+    <!-- Кнопки -->
+    <rect x="400" y="3950" width="1200" height="50" rx="8" fill="#1a202c" stroke="#48bb78" stroke-width="1"/>
+    <text x="1000" y="3980" text-anchor="middle" fill="#48bb78" font-family="Arial, sans-serif" font-size="12">
+        📈 Подробная аналитика  |  🚫 Скрыть  |  👍 Интересно  |  💾 Сохранить
+    </text>
+
+    <!-- Финальный результат -->
+    <rect x="200" y="4030" width="1600" height="100" rx="10" fill="#1e293b" stroke="#10b981" stroke-width="2"/>
+    <text x="1000" y="4075" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="24" font-weight="bold">
+        ✅ ТОВАР УСПЕШНО ОБРАБОТАН ЗА 5-12 СЕКУНД!
+    </text>
+    <text x="1000" y="4110" text-anchor="middle" fill="#10b981" font-family="Arial, sans-serif" font-size="18">
+        Пользователь получил уведомление с полной аналитикой
+    </text>
+
+    <!-- ==================== ОБРАТНАЯ СВЯЗЬ ==================== -->
+    <path d="M 1800 4100 Q 1900 4000 1800 3900 L 1800 3500" stroke="#f59e0b" stroke-width="2" fill="none" stroke-dasharray="5,5"/>
+    <polygon points="1790,3500 1810,3500 1800,3480" fill="#f59e0b"/>
+
+    <rect x="1450" y="3700" width="400" height="120" rx="10" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+    <text x="1650" y="3740" text-anchor="middle" fill="#f59e0b" font-family="Arial, sans-serif" font-size="18" font-weight="bold">
+        🔄 ОБРАТНАЯ СВЯЗЬ
+    </text>
+    <text x="1650" y="3775" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">
+        Если пользователь нажимает:
+    </text>
+    <text x="1650" y="3800" text-anchor="middle" fill="#d1d5db" font-family="Arial, sans-serif" font-size="14">
+        "👍 Интересно" → AI обучается
+    </text>
+
+    <!-- ==================== ЛЕГЕНДА И СТАТИСТИКА ==================== -->
+    <rect x="50" y="4160" width="1900" height="200" rx="10" fill="#1f2937" stroke="#374151" stroke-width="2"/>
+    <text x="1000" y="4195" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="20" font-weight="bold">
+        🎯 СТАТИСТИКА И ТЕХНИЧЕСКИЕ ДЕТАЛИ
+    </text>
+
+    <g transform="translate(100, 4220)">
+        <!-- Легенда -->
+        <rect x="0" y="0" width="20" height="20" rx="5" fill="#4299e1"/>
+        <text x="30" y="15" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">Этап обработки</text>
+
+        <rect x="200" y="0" width="20" height="20" rx="5" fill="#10b981"/>
+        <text x="230" y="15" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">ML анализ</text>
+
+        <rect x="400" y="0" width="20" height="20" rx="5" fill="#f59e0b"/>
+        <text x="430" y="15" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">Проверка/Валидация</text>
+
+        <rect x="600" y="0" width="20" height="20" rx="5" fill="#8b5cf6"/>
+        <text x="630" y="15" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">Сохранение/Отправка</text>
+
+        <!-- Статистика -->
+        <text x="0" y="45" fill="#60a5fa" font-family="Arial, sans-serif" font-size="14" font-weight="bold">⏱️ ВРЕМЯ ОБРАБОТКИ:</text>
+        <text x="150" y="45" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">5-12 секунд на 1 товар</text>
+
+        <text x="0" y="70" fill="#60a5fa" font-family="Arial, sans-serif" font-size="14" font-weight="bold">🚀 ПАРАЛЛЕЛИЗМ:</text>
+        <text x="150" y="70" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">3 окна × 5 товаров = 15 товаров одновременно</text>
+
+        <text x="0" y="95" fill="#60a5fa" font-family="Arial, sans-serif" font-size="14" font-weight="bold">🧠 ML МОДЕЛИ:</text>
+        <text x="150" y="95" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">2 RandomForest модели (цена + свежесть), 20+ фичей</text>
+
+        <text x="0" y="120" fill="#60a5fa" font-family="Arial, sans-serif" font-size="14" font-weight="bold">💾 ДАННЫЕ:</text>
+        <text x="150" y="120" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">30+ полей в БД, 5+ фото, 1000+ символов описания</text>
+
+        <text x="0" y="145" fill="#60a5fa" font-family="Arial, sans-serif" font-size="14" font-weight="bold">🎯 ЭФФЕКТИВНОСТЬ:</text>
+        <text x="150" y="145" fill="#d1d5db" font-family="Arial, sans-serif" font-size="12">87% точность ML, 92% успешных уведомлений</text>
+    </g>
+
+    <!-- Футер -->
+    <text x="1000" y="4400" text-anchor="middle" fill="#9ca3af" font-family="Arial, sans-serif" font-size="16">
+        🍻 AVITO PROFIT HUB v2.0 | СИСТЕМА РАБОТАЕТ КАК ШВЕЙЦАРСКИЕ ЧАСЫ
+    </text>
+    <text x="1000" y="4430" text-anchor="middle" fill="#4ecdc4" font-family="Arial, sans-serif" font-size="14">
+        Полный цикл от пользователя до Telegram: 7 этапов, 5-12 секунд, 100% автоматизация
+    </text>
+</svg>

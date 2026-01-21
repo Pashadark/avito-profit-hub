@@ -13,6 +13,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import models, connection, IntegrityError
 from django.db.models import Avg, Sum, Q
+from django.db import transaction
 from django.core.cache import cache
 from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, throttle_classes
@@ -1658,6 +1659,7 @@ def launch_parser_with_params(request):
         timer_hours = data.get('timer_hours')
         browser_windows = data.get('browser_windows', 3)
         site = data.get('site', 'avito')
+        city = data.get('city', 'Москва')  # 🔥 ДОБАВЛЯЕМ ПОЛУЧЕНИЕ ГОРОДА
 
         if not selenium_parser:
             # Показываем toast об ошибке
@@ -1689,6 +1691,16 @@ def launch_parser_with_params(request):
         selenium_parser.browser_windows = browser_windows
         selenium_parser.current_site = site
 
+        # 🔥 УСТАНАВЛИВАЕМ ГОРОД В ПАРСЕРЕ
+        if hasattr(selenium_parser, 'settings_manager'):
+            selenium_parser.settings_manager.city = city
+            logger.info(f"🏙️ Установлен город для парсера: {city}")
+
+        # 🔥 Также устанавливаем город в текущих настройках
+        from apps.parsing.core.settings_manager import SettingsManager
+        settings_manager = SettingsManager.get_instance()
+        settings_manager.city = city
+
         if timer_hours:
             try:
                 timer_hours = int(timer_hours)
@@ -1706,9 +1718,13 @@ def launch_parser_with_params(request):
         site_display = "Auto.ru" if site == "auto.ru" else "Avito"
         timer_text = f"{timer_hours} часов" if timer_hours else "не установлен"
 
+        # 🔥 ДОБАВЛЯЕМ ГОРОД В УВЕДОМЛЕНИЕ
+        city_display = "всей России" if city in ['', 'Вся Россия'] else f"города {city}"
+        notification_text = f'Парсер запускается для {site_display} {city_display}!'
+
         notification_cache.notify_parser_status(request, {
             'status': 'success',
-            'message': f'Парсер запускается для {site_display}!',
+            'message': notification_text,
             'items_found': 0,
             'duration': '0 минут'
         })
@@ -1716,6 +1732,7 @@ def launch_parser_with_params(request):
         logger.info(f"🎯 Запуск парсера с параметрами:")
         logger.info(f"   • Сайт: {site}")
         logger.info(f"   • Окна: {browser_windows}")
+        logger.info(f"   • Город: {city}")  # 🔥 ДОБАВЛЯЕМ ГОРОД В ЛОГИ
         logger.info(f"   • Таймер: {timer_hours} часов" if timer_hours else "   • Таймер: не установлен")
 
         def run_parser():
@@ -1725,12 +1742,14 @@ def launch_parser_with_params(request):
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
+                # 🔥 ПЕРЕДАЕМ ГОРОД В START_SYSTEM
                 loop.run_until_complete(
                     selenium_parser.start_system(
                         timer_hours=timer_hours,
                         browser_windows=browser_windows,
                         site=site,
-                        search_queries=None
+                        search_queries=None,
+                        city=city  # 🔥 ПЕРЕДАЕМ ГОРОД
                     )
                 )
 
@@ -1774,10 +1793,11 @@ def launch_parser_with_params(request):
 
         return JsonResponse({
             'status': 'success',
-            'message': f'Парсер запускается для {site_display}! Окна: {browser_windows}, Таймер: {timer_text}',
+            'message': f'Парсер запускается для {site_display} {city_display}! Окна: {browser_windows}, Таймер: {timer_text}',
             'browser_windows': browser_windows,
             'timer_hours': timer_hours,
-            'site': site
+            'site': site,
+            'city': city  # 🔥 ВОЗВРАЩАЕМ ГОРОД В ОТВЕТЕ
         })
 
     except Exception as e:
@@ -6529,6 +6549,72 @@ def debug_subscription_info(request):
         return JsonResponse({'status': 'error', 'message': str(e)})
 
 
+def get_cities_list(request):
+    """
+    API endpoint для получения списка всех городов из city_translator.py
+    URL: /api/get-cities/
+    Метод: GET
+    """
+    try:
+        # 🔥 Пробуем импортировать из city_translator.py
+        try:
+            from apps.parsing.utils.city_translator import CITY_MAPPING
+            cities = sorted(list(CITY_MAPPING.keys()))  # Сортируем по алфавиту
+
+            return JsonResponse({
+                'status': 'success',
+                'cities': cities,
+                'total': len(cities),
+                'source': 'city_translator.py'
+            })
+        except ImportError as e:
+            # 🔥 Если нет city_translator, используем backup файл
+            json_path = os.path.join(settings.BASE_DIR, 'apps', 'parsing', 'utils', 'cities_backup.json')
+
+            if os.path.exists(json_path):
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    cities_data = json.load(f)
+                    cities = sorted(list(cities_data.keys()))
+
+                    return JsonResponse({
+                        'status': 'success',
+                        'cities': cities,
+                        'total': len(cities),
+                        'source': 'cities_backup.json'
+                    })
+            else:
+                # 🔥 Если и backup нет, возвращаем основные города
+                basic_cities = sorted([
+                    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
+                    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
+                    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград', 'Краснодар',
+                    'Сочи', 'Пенза', 'Тюмень', 'Ижевск', 'Иркутск', 'Ульяновск',
+                    'Хабаровск', 'Владивосток', 'Ярославль', 'Махачкала', 'Томск',
+                    'Оренбург', 'Кемерово', 'Астрахань', 'Рязань', 'Набережные Челны',
+                    'Липецк', 'Тула', 'Киров', 'Чебоксары', 'Калининград', 'Курск',
+                    'Улан-Удэ', 'Ставрополь', 'Магнитогорск', 'Тверь', 'Севастополь',
+                    'Сургут', 'Брянск', 'Иваново', 'Белгород', 'Симферополь',
+                    # Краснодарский край
+                    'Анапа', 'Армавир', 'Геленджик', 'Ейск', 'Новороссийск', 'Туапсе',
+                    'Апшеронск', 'Белореченск', 'Горячий Ключ', 'Кропоткин', 'Крымск',
+                    'Лабинск', 'Славянск-на-Кубани', 'Тимашёвск', 'Тихорецк', 'Абинск',
+                ])
+
+                return JsonResponse({
+                    'status': 'success',
+                    'cities': basic_cities,
+                    'total': len(basic_cities),
+                    'source': 'basic_list'
+                })
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e),
+            'cities': [],
+            'total': 0
+        })
+
 @require_GET
 @login_required
 def debug_subscription_detailed(request):
@@ -6989,52 +7075,79 @@ def get_performance_stats():
 @require_http_methods(["POST"])
 @login_required
 def start_parser_with_settings(request):
-    """🚀 Запуск парсера с конкретными настройками и ПРИВЯЗКОЙ К ПОЛЬЗОВАТЕЛЮ"""
+    """🚀 Запуск парсера с конкретными настройками"""
     try:
         settings_id = request.POST.get('settings_id')
         site = request.POST.get('site', 'avito')
 
         logger.info(f"🔍 Получен сайт из запроса: {site}")
 
-        # 🔥 ВАЖНО: Убедитесь, что модель ParserSettings импортирована из правильного места!
-        # Если модель находится в dashboard.models, используйте:
-        # from apps.website.models import ParserSettings
-        # Если в другом месте, исправьте импорт.
+        # Получаем выбранные настройки
         settings = get_object_or_404(ParserSettings, id=settings_id, user=request.user)
         logger.info(f"✅ Настройки получены: {settings.name} для пользователя {request.user.username}")
+        logger.info(f"🏙️ Город в настройках: '{settings.city}'")
+
+        # 🔥 **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ 1: Активируем ВЫБРАННЫЕ настройки**
+        try:
+            with transaction.atomic():
+                # Деактивируем ВСЕ настройки пользователя
+                ParserSettings.objects.filter(user_id=request.user.id).update(is_active=False)
+
+                # Активируем ВЫБРАННЫЕ настройки
+                settings.is_active = True
+                settings.save()
+
+                logger.info(f"🔥 Настройки '{settings.name}' АКТИВИРОВАНЫ (город: {settings.city})")
+        except Exception as e:
+            logger.error(f"❌ Ошибка активации настроек: {e}")
 
         from apps.parsing.utils.selenium_parser import selenium_parser
-        # 🔥 ИМПОРТИРУЕМ ДАТА-КЛАСС ДЛЯ НАСТРОЕК ПАРСЕРА
+
+        # 🔥 **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ 2: ОЧИЩАЕМ КЭШ ПАРСЕРОВ ПЕРЕД НАСТРОЙКОЙ!**
+        logger.info(f"🧹 Очищаем кэш парсеров перед настройкой...")
+        if hasattr(selenium_parser, 'site_parsers'):
+            old_cache_size = len(selenium_parser.site_parsers)
+            selenium_parser.site_parsers.clear()  # ← ОЧИСТКА КЭША!
+            logger.info(f"🧹 Удалено {old_cache_size} парсеров из кэша")
+
+        # 🔥 **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ 3: ПРИНУДИТЕЛЬНО устанавливаем город**
+        city = settings.city.strip() if settings.city else "Москва"
+
+        # ЖЕСТКО устанавливаем город ДО вызова configure_for_user
+        selenium_parser.current_city = city
+        selenium_parser.current_user_id = request.user.id
+        selenium_parser.current_user_username = request.user.username
+
+        logger.info(f"🔥 ПРИНУДИТЕЛЬНО УСТАНОВЛЕНО:")
+        logger.info(f"   - Город: '{selenium_parser.current_city}'")
+        logger.info(f"   - User ID: {selenium_parser.current_user_id}")
+
+        # Вызываем configure_for_user
+        if hasattr(selenium_parser, 'configure_for_user'):
+            success_config = selenium_parser.configure_for_user(
+                user_id=request.user.id,
+                username=request.user.username
+            )
+            logger.info(f"✅ configure_for_user вызван: {success_config}")
+
+        logger.info(f"✅ Парсер настроен")
+        logger.info(f"🏙️ ФИНАЛЬНЫЙ ГОРОД ПАРСЕРА: '{selenium_parser.current_city}'")
+
+        # 🔥 **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ 3: Создаем объект настроек парсера**
         from apps.parsing.utils.parser_settings import ParserSettings as ParserDataclass
 
-        # 🔥 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 1: Настраиваем парсер для пользователя
-        user_id = request.user.id
-        username = request.user.username
-
-        logger.info(f"👤 Настройка парсера для пользователя: {username} (ID: {user_id})")
-
-        # Проверяем, есть ли метод configure_for_user
-        if hasattr(selenium_parser, 'configure_for_user'):
-            success_config = selenium_parser.configure_for_user(user_id, username)
-            if not success_config:
-                logger.error(f"❌ Не удалось настроить парсер для {username}")
+        try:
+            # Преобразуем строку ключевых слов в список
+            keywords_str = getattr(settings, 'keywords', '')
+            if not keywords_str:
+                logger.error(f"❌ В настройках нет ключевых слов!")
                 return JsonResponse({
                     'status': 'error',
-                    'message': 'Ошибка настройки парсера для пользователя'
-                })
-        else:
-            # Простая настройка, если метода нет
-            selenium_parser.current_user_id = user_id
-            selenium_parser.current_user_username = username
-            logger.info(f"⚠️ Используем прямое назначение user_id: {user_id}")
+                    'message': 'В настройках не указаны ключевые слова для поиска'
+                }, status=400)
 
-        logger.info(f"✅ Парсер настроен для пользователя {username}")
-
-        # 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ 2: Создаем НАСТОЯЩИЙ объект настроек парсера (дата-класс)
-        # Используем поля из вашей Django-модели 'ParserSettings'
-        try:
             parser_settings_obj = ParserDataclass(
-                keywords=getattr(settings, 'keywords', ''),  # Это должна быть строка с запросами через запятую
+                keywords=keywords_str,
                 exclude_keywords=getattr(settings, 'exclude_keywords', ''),
                 min_price=float(getattr(settings, 'min_price', 0)),
                 max_price=float(getattr(settings, 'max_price', 100000)),
@@ -7043,82 +7156,85 @@ def start_parser_with_settings(request):
                 browser_windows=int(getattr(settings, 'browser_windows', 1)),
                 check_interval=int(getattr(settings, 'check_interval', 30)),
                 max_items_per_hour=int(getattr(settings, 'max_items_per_hour', 10)),
-                is_active=bool(getattr(settings, 'is_active', True))
+                is_active=True
             )
-            logger.info(f"📊 Создан объект настроек парсера из дата-класса")
-            logger.info(f"   Ключевые слова: '{parser_settings_obj.keywords}'")
+
+            logger.info(f"📊 Создан объект настроек парсера")
+            logger.info(f"   Ключевые слова: '{keywords_str}'")
             logger.info(f"   Список ключевых слов: {parser_settings_obj.get_keywords_list()}")
+
         except Exception as e:
-            logger.error(f"❌ Ошибка создания объекта настроек парсера: {e}")
-            import traceback
-            logger.error(f"🔍 Детали: {traceback.format_exc()}")
+            logger.error(f"❌ Ошибка создания объекта настроек: {e}")
             return JsonResponse({
                 'status': 'error',
                 'message': f'Ошибка в настройках парсера: {str(e)}'
             }, status=500)
 
-        # 🔥 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ 3: Запускаем парсер в отдельном потоке
+        # 🔥 **КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ 4: Запускаем парсер в отдельном потоке**
         import threading
+        import asyncio
 
         def run_parser_in_thread():
             """Запускает парсер в отдельном потоке"""
             try:
-                import asyncio
-
                 # Создаем новую event loop для этого потока
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
 
-                # Запускаем парсер
-                logger.info(f"🧵 Запуск парсера в отдельном потоке для {username}")
+                logger.info(f"🧵 Запуск парсера в отдельном потоке для {request.user.username}")
+                logger.info(f"🏙️ Город для поиска: '{selenium_parser.current_city}'")
+                logger.info(f"🌐 Сайт: {site}")
 
-                # 🔥 ИСПРАВЛЕННАЯ ПРОВЕРКА: корректно определяем асинхронный метод
+                # Запускаем парсер
                 if asyncio.iscoroutinefunction(selenium_parser.start_with_settings):
-                    # Если метод асинхронный
-                    logger.info(f"⚡ Используем асинхронный запуск парсера")
+                    logger.info(f"⚡ Используем асинхронный запуск")
                     loop.run_until_complete(
                         selenium_parser.start_with_settings(
-                            settings=parser_settings_obj,  # ← ПЕРЕДАЕМ ДАТА-КЛАСС!
+                            settings=parser_settings_obj,
                             site=site
                         )
                     )
                 else:
-                    # Если метод синхронный
-                    logger.info(f"🔄 Используем синхронный запуск парсера")
+                    logger.info(f"🔄 Используем синхронный запуск")
                     selenium_parser.start_with_settings(
-                        settings=parser_settings_obj,  # ← ПЕРЕДАЕМ ДАТА-КЛАСС!
+                        settings=parser_settings_obj,
                         site=site
                     )
 
-                logger.info(f"✅ Парсер завершил работу для {username}")
+                logger.info(f"✅ Парсер завершил работу для {request.user.username}")
                 loop.close()
 
             except Exception as e:
-                logger.error(f"❌ Ошибка в потоке парсера для {username}: {e}")
+                logger.error(f"❌ Ошибка в потоке парсера: {e}")
                 import traceback
                 logger.error(f"🔍 Детали ошибки в потоке: {traceback.format_exc()}")
 
         # Создаем и запускаем поток
         parser_thread = threading.Thread(
             target=run_parser_in_thread,
-            name=f"ParserThread-{username}",
+            name=f"ParserThread-{request.user.username}",
             daemon=True
         )
         parser_thread.start()
 
-        logger.info(f"🚀 Парсер запущен в отдельном потоке для {username}")
+        logger.info(f"🚀 Парсер запущен в отдельном потоке для {request.user.username}")
 
         return JsonResponse({
             'status': 'success',
-            'message': f'Парсер запущен для {username} с настройками "{settings.name}" на сайте {site}',
+            'message': f'Парсер запущен для {request.user.username}',
             'user': {
-                'id': user_id,
-                'username': username
+                'id': request.user.id,
+                'username': request.user.username
             },
             'settings': {
                 'id': settings.id,
                 'name': settings.name,
+                'city': settings.city,
                 'site': site
+            },
+            'parser_info': {
+                'current_city': selenium_parser.current_city,
+                'current_user_id': selenium_parser.current_user_id
             }
         })
 
@@ -7137,7 +7253,6 @@ def start_parser_with_settings(request):
             'status': 'error',
             'message': f'Ошибка запуска: {str(e)}'
         }, status=500)
-
 
 @user_passes_test(is_admin)
 def toggle_user_status(request, user_id):

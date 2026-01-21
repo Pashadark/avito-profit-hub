@@ -21,10 +21,12 @@ class SettingsManager:
         self.max_price = 100000
         self.min_rating = 4.0
         self.seller_type = 'all'
+        self.city = "Москва"  # ← ДОБАВЬТЕ ЭТУ СТРОКУ!
 
         # Не загружаем настройки автоматически - будет загружено позже
         logger.info("✅ Менеджер настроек инициализирован (настройки загрузятся позже)")
 
+    # В методе load_initial_settings добавь город:
     def load_initial_settings(self):
         """Загружает начальные настройки после инициализации Django (СИНХРОННАЯ ВЕРСИЯ)"""
         try:
@@ -33,10 +35,8 @@ class SettingsManager:
 
             user = User.objects.first()
             if user:
-                # ИСПРАВЛЕНИЕ: Используем first() вместо filter().first() для default
                 parser_settings = ParserSettings.objects.filter(user=user, is_default=True).first()
                 if not parser_settings:
-                    # Если нет default, берем первый найденный
                     parser_settings = ParserSettings.objects.filter(user=user).first()
 
                 if parser_settings:
@@ -49,18 +49,24 @@ class SettingsManager:
                     self.max_price = parser_settings.max_price
                     self.min_rating = parser_settings.min_rating
                     self.seller_type = parser_settings.seller_type
+                    # 🔥 ДОБАВИЛ ГОРОД
+                    self.city = parser_settings.city or 'Москва'
 
                     logger.info(f"✅ ЗАГРУЖЕНЫ НАСТРОЙКИ: {self.search_queries}")
+                    logger.info(f"✅ Город: {self.city}")
                     logger.info(f"✅ Исключаемые слова: {self.exclude_keywords}")
                 else:
                     self.search_queries = self.get_default_queries()
+                    self.city = 'Москва'  # 🔥 Значение по умолчанию
                     logger.warning(f"⚠️ НАСТРОЙКИ НЕ НАЙДЕНЫ, ИСПОЛЬЗУЮТСЯ: {self.search_queries}")
             else:
                 self.search_queries = self.get_default_queries()
+                self.city = 'Москва'  # 🔥 Значение по умолчанию
                 logger.warning(f"⚠️ ПОЛЬЗОВАТЕЛЬ НЕ НАЙДЕН: {self.search_queries}")
         except Exception as e:
             logger.error(f"❌ Ошибка загрузки начальных настроек: {e}")
             self.search_queries = self.get_default_queries()
+            self.city = 'Москва'
 
     def get_default_queries(self):
         """Возвращает default запросы"""
@@ -130,7 +136,6 @@ class SettingsManager:
             user = User.objects.first()
             if user:
                 try:
-                    # ИСПРАВЛЕНИЕ: Используем first() вместо get() чтобы избежать MultipleObjectsReturned
                     parser_settings = ParserSettings.objects.filter(user=user).first()
                     if not parser_settings:
                         logger.info("❌ Настройки не найдены, создаем новые...")
@@ -145,35 +150,28 @@ class SettingsManager:
                             check_interval=settings_data.get('check_interval', 30),
                             max_items_per_hour=settings_data.get('max_items_per_hour', 10),
                             browser_windows=settings_data.get('browser_windows', 1),
+                            # 🔥 ДОБАВИЛ ГОРОД
+                            city=settings_data.get('city', 'Москва'),
                             is_active=settings_data.get('is_active', True)
                         )
                         logger.info(f"✅ Созданы новые настройки в базе: {parser_settings.keywords}")
                     else:
                         logger.info(f"🔧 Найдены существующие настройки: {parser_settings.keywords}")
 
-                        if 'keywords' in settings_data:
-                            parser_settings.keywords = settings_data['keywords']
-                        if 'exclude_keywords' in settings_data:
-                            parser_settings.exclude_keywords = settings_data['exclude_keywords']
-                        if 'min_price' in settings_data:
-                            parser_settings.min_price = settings_data['min_price']
-                        if 'max_price' in settings_data:
-                            parser_settings.max_price = settings_data['max_price']
-                        if 'min_rating' in settings_data:
-                            parser_settings.min_rating = settings_data['min_rating']
-                        if 'seller_type' in settings_data:
-                            parser_settings.seller_type = settings_data['seller_type']
-                        if 'check_interval' in settings_data:
-                            parser_settings.check_interval = settings_data['check_interval']
-                        if 'max_items_per_hour' in settings_data:
-                            parser_settings.max_items_per_hour = settings_data['max_items_per_hour']
-                        if 'browser_windows' in settings_data:
-                            parser_settings.browser_windows = settings_data['browser_windows']
-                        if 'is_active' in settings_data:
-                            parser_settings.is_active = settings_data['is_active']
+                    # 🔥 ОБНОВЛЕНИЕ ВСЕХ ПОЛЕЙ (включая город)
+                    update_fields = [
+                        'keywords', 'exclude_keywords', 'min_price', 'max_price',
+                        'min_rating', 'seller_type', 'check_interval',
+                        'max_items_per_hour', 'browser_windows', 'city', 'is_active'
+                    ]
 
-                        parser_settings.save()
-                        logger.info(f"✅ Настройки сохранены в базу: {parser_settings.keywords}")
+                    for field in update_fields:
+                        if field in settings_data:
+                            setattr(parser_settings, field, settings_data[field])
+                            logger.info(f"   Обновлено поле {field}: {settings_data[field]}")
+
+                    parser_settings.save()
+                    logger.info(f"✅ Настройки сохранены в базу: {parser_settings.keywords}")
 
                 except Exception as e:
                     logger.error(f"❌ Ошибка работы с настройками: {e}")
@@ -194,6 +192,11 @@ class SettingsManager:
             if 'browser_windows' in settings_data:
                 self.browser_windows = settings_data['browser_windows']
                 logger.info(f"✅ Количество окон браузера: {self.browser_windows}")
+
+            # 🔥 ОБНОВЛЯЕМ ГОРОД
+            if 'city' in settings_data:
+                self.city = settings_data['city'] or 'Москва'
+                logger.info(f"🌆 Город обновлен: {self.city}")
 
             if 'min_price' in settings_data:
                 self.min_price = settings_data['min_price']

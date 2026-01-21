@@ -117,8 +117,8 @@ class NotificationSender:
             logger.error(f"❌ Ошибка получения статистики кэша: {e}")
             return {'error': str(e)}
 
-    def clear_duplicate_cache(self):
-        """Очищает кэш дубликатов - ИЗ БАЗЫ"""
+    async def clear_duplicate_cache(self):
+        """Очищает кэш дубликатов - ИЗ БАЗЫ (АСИНХРОННАЯ ВЕРСИЯ)"""
         try:
             from apps.website.models import NotificationCache
 
@@ -127,17 +127,40 @@ class NotificationSender:
                 deleted_count = NotificationCache.objects.all().delete()[0]
                 return deleted_count
 
-            import asyncio
-            if asyncio.get_event_loop().is_running():
-                task = asyncio.create_task(clear_database_cache())
-                deleted_count = asyncio.run(task)
-            else:
-                deleted_count = asyncio.run(clear_database_cache())
-
+            deleted_count = await clear_database_cache()
             logger.info(f"🧹 Очищен кэш уведомлений из базы: {deleted_count} записей")
+            return deleted_count
 
         except Exception as e:
             logger.error(f"❌ Ошибка очистки кэша из базы: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
+
+    def clear_duplicate_cache_sync(self):
+        """Синхронная обертка для clear_duplicate_cache"""
+        try:
+            import asyncio
+
+            # Проверяем, есть ли запущенный event loop
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # Если loop уже работает, создаем новую задачу
+                    # Но это синхронный метод, поэтому запускаем новый loop
+                    logger.warning("⚠️ Event loop уже запущен, создаем новый для синхронного вызова")
+                    return asyncio.run(self.clear_duplicate_cache())
+            except RuntimeError:
+                pass  # Нет текущего loop
+
+            # Запускаем асинхронную функцию
+            return asyncio.run(self.clear_duplicate_cache())
+
+        except Exception as e:
+            logger.error(f"❌ Ошибка в синхронной очистке кэша: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
 
     async def _save_to_cache(self, product_id, normalized_url, product_name):
         """Сохранение в кэш"""
@@ -1143,13 +1166,6 @@ class NotificationSender:
             views_count = product.get('views_count', 0)
             views_today_value = product.get('views_today', 0)
 
-            # 🔥 ДЕБАГ ПРОСМОТРОВ ПЕРЕД СОХРАНЕНИЕМ
-            logger.info(f"🔍 ДЕБАГ ПРОСМОТРОВ ПЕРЕД СОХРАНЕНИЕМ:")
-            logger.info(f"├── views_count из product: {views_count}")
-            logger.info(f"├── views_today из product: {views_today_value}")
-            logger.info(f"├── тип views_count: {type(views_count)}")
-            logger.info(f"├── тип views_today: {type(views_today_value)}")
-
             # 🔥 ПРИВОДИМ К INT НА ВСЯКИЙ СЛУЧАЙ
             try:
                 # Если views_count пришел как словарь (старая версия)
@@ -1163,8 +1179,6 @@ class NotificationSender:
                 logger.warning(f"⚠️ Ошибка конвертации просмотров: {e}")
                 views_count = 0
                 views_today_value = 0
-
-            logger.info(f"🔍 ДЕБАГ ПОСЛЕ КОНВЕРТАЦИИ: views_count={views_count}, views_today={views_today_value}")
 
             address = product.get('address')
             metro_stations = product.get('metro_stations', [])

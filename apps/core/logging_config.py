@@ -552,15 +552,6 @@ def setup_logging():
     logger = logging.getLogger('system.run')
     logger.info("🎨 Система логирования инициализирована (консоль + файлы)")
 
-    # Информация о файлах логов
-    logger = logging.getLogger('apps.core')
-    logger.info("📁 Логи сохраняются в папку logs/")
-    logger.info("📄 Система: logs/system/system.log")
-    logger.info("🤖 Бот: logs/bot/bot.log")
-    logger.info("🔍 Парсер: logs/parsing/parsing.log")
-    logger.info("🌐 Django: logs/django/django.log")
-
-
 # Простые функции для красивого вывода (для run.py)
 def print_success(text):
     """Красивые успешные сообщения"""

@@ -156,3 +156,6 @@ vision_data/         # Данные для vision системы
 *.backup
 *.bak
 EOF
+
+# Auto Claude data directory
+.auto-claude/

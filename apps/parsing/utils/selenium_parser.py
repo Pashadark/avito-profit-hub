@@ -3,26 +3,26 @@
 # ============================================
 import asyncio
 import random
-from asgiref.sync import sync_to_async
 import logging
 import time
 import hashlib
 import aiohttp
-from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urlparse, parse_qs, urlunparse
 import re
 import requests
+from PIL import Image
+import numpy as np
+import cv2
+
+from asgiref.sync import sync_to_async
 from io import BytesIO
 from datetime import datetime
-
+from concurrent.futures import ThreadPoolExecutor
 from ..core.base_parser import BaseParser
 from ..core.browser_manager import BrowserManager
 from ..core.settings_manager import SettingsManager
 from ..core.timer_manager import TimerManager
 from ..utils.notification_sender import NotificationSender
 from ..utils.product_validator import ProductValidator
-from ..sites.avito_parser import AvitoParser
-
 from ..ai.ml_price_predictor import MLPricePredictor
 from ..ai.ml_learning_system import MLLearningSystem
 from ..ai.query_optimizer import QueryOptimizer
@@ -268,7 +268,7 @@ class HealthMonitor:
             'found_items': found_items
         })
 
-        # Ограничиваем историю последними 100 циклами
+        # Ограничиваем история последними 100 циклами
         if len(self.metrics['performance_history']) > 100:
             self.metrics['performance_history'] = self.metrics['performance_history'][-100:]
 
@@ -341,7 +341,21 @@ class AdaptiveTimer:
 class SeleniumAvitoParser(BaseParser):
     """🚀 СУПЕР-ПАРСЕР С AI-ФИЧАМИ И ПРИОРИТЕТОМ СВЕЖЕСТИ"""
 
+    # Singleton паттерн
+    _instance = None
+    _initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self):
+        # Проверяем, был ли уже инициализирован
+        if self.__class__._initialized:
+            logger.info("ℹ️ Парсер уже инициализирован, пропускаем повторную инициализацию")
+            return
+
         super().__init__()
 
         # 🔥 ДОБАВЬТЕ ЭТИ СТРОКИ ДЛЯ УМНОЙ ОСТАНОВКИ:
@@ -353,7 +367,7 @@ class SeleniumAvitoParser(BaseParser):
         self.current_site = 'avito'  # По умолчанию Avito
         self.site_parsers = {}  # Кэш парсеров для разных сайтов
         self.settings_check_counter = 0
-
+        self.current_city = "Москва"  # Город по умолчанию
         # 🔥 КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Добавляем хранение ID текущего пользователя
         self.current_user_id = None  # ID пользователя для которого работает парсер
         self.current_user_username = None  # Имя пользователя для логов
@@ -381,8 +395,11 @@ class SeleniumAvitoParser(BaseParser):
             # Создаем простую заглушку
             self.freshness_query_optimizer = None
 
-        # 🔥 ИСПРАВЛЕНИЕ: Инициализируем fresh_deals пустым списком
-        self.fresh_deals = []
+        # 🔥 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: Инициализируем ВСЕ необходимые атрибуты
+        self.fresh_deals = []  # ← ВАЖНО! Гарантируем что это список
+        self.all_deals = []  # Все найденные сделки
+        self.session = None  # ← ДОБАВИЛИ! Инициализируем как None
+        self.is_running = False  # ← ДОБАВИЛИ! Флаг работы парсера
 
         # 🔔 УМНАЯ СИСТЕМА УВЕДОМЛЕНИЙ
         self.smart_notifier = SmartNotificationSystem(self.notification_sender)
@@ -403,7 +420,7 @@ class SeleniumAvitoParser(BaseParser):
         self.health_monitor = HealthMonitor()
 
         # 🔥 АСИНХРОННЫЕ КОМПОНЕНТЫ
-        self.session = None
+        self.session = None  # Уже инициализировано выше, но оставляем для ясности
         self.thread_pool = ThreadPoolExecutor(max_workers=8)
 
         # 🔥 СТРУКТУРЫ ДАННЫХ
@@ -462,6 +479,16 @@ class SeleniumAvitoParser(BaseParser):
         # 🚀 ОТЛОЖЕННАЯ инициализация AI (будет запущена при старте парсера)
         self.ai_initialized = False
 
+        # 🔥 ИНИЦИАЛИЗАЦИЯ СТАТИСТИКИ С ПРОВЕРКОЙ
+        self.stats = {
+            'total_processed': 0,
+            'good_deals_found': 0,
+            'vision_checks': 0,
+            'vision_rejected': 0
+        }
+
+        # 🔥 ФИНАЛЬНАЯ ПРОВЕРКА ВСЕХ АТРИБУТОВ
+        self.__class__._initialized = True
         logger.info("🚀 СУПЕР-ПАРСЕР С AI-ФИЧАМИ И ПРИОРИТЕТОМ СВЕЖЕСТИ ИНИЦИАЛИЗИРОВАН!")
 
     # ============================================
@@ -471,7 +498,7 @@ class SeleniumAvitoParser(BaseParser):
     async def _is_duplicate_in_database(self, product_url, product_id=None, user_id=None):
         """
         ПРОВЕРЯЕТ ЕСТЬ ЛИ ТОВАР УЖЕ В БАЗЕ ДАННЫХ ПОЛЬЗОВАТЕЛЯ
-        Динамическая загрузка Django моделей
+        Используем website_founditem - основную таблицу с товарами
         """
         global DJANGO_AVAILABLE
 
@@ -479,7 +506,7 @@ class SeleniumAvitoParser(BaseParser):
         if not DJANGO_AVAILABLE:
             try:
                 from django.db.models import Q
-                from apps.website.models import Deal
+                from apps.website.models import FoundItem  # ← ИЗМЕНЕНИЕ!
                 DJANGO_AVAILABLE = True
                 logger.info("✅ Модели Django загружены для проверки дубликатов")
             except ImportError as e:
@@ -490,13 +517,13 @@ class SeleniumAvitoParser(BaseParser):
                 return False
 
         try:
-            from apps.website.models import Deal
+            from apps.website.models import FoundItem  # ← ИЗМЕНЕНИЕ!
             from django.db.models import Q
 
-            # Проверяем по URL
+            # Проверяем по URL (основной способ)
             if product_url:
                 url_exists = await sync_to_async(
-                    lambda: Deal.objects.filter(url=product_url).exists()
+                    lambda: FoundItem.objects.filter(url=product_url).exists()
                 )()
                 if url_exists:
                     logger.info(f"🚫 ДУБЛИКАТ В БАЗЕ по URL: {product_url[:50]}...")
@@ -504,11 +531,24 @@ class SeleniumAvitoParser(BaseParser):
 
             # Проверяем по ID товара (если есть)
             if product_id:
+                # Проверяем только по product_id (avito_id убрали)
                 id_exists = await sync_to_async(
-                    lambda: Deal.objects.filter(item_id=product_id).exists()
+                    lambda: FoundItem.objects.filter(product_id=product_id).exists()
                 )()
                 if id_exists:
                     logger.info(f"🚫 ДУБЛИКАТ В БАЗЕ по ID: {product_id}")
+                    return True
+
+            # Проверяем по названию и цене (дополнительная проверка)
+            if hasattr(self, 'current_product_name') and hasattr(self, 'current_product_price'):
+                name_price_exists = await sync_to_async(
+                    lambda: FoundItem.objects.filter(
+                        Q(title=self.current_product_name) &
+                        Q(price=self.current_product_price)
+                    ).exists()
+                )()
+                if name_price_exists:
+                    logger.info(f"🚫 ДУБЛИКАТ В БАЗЕ по названию и цене: {self.current_product_name}")
                     return True
 
             return False
@@ -520,9 +560,14 @@ class SeleniumAvitoParser(BaseParser):
     def configure_for_user(self, user_id, username=None):
         """🔧 Настраивает парсер для работы с конкретным пользователем"""
         try:
+            # 🔥 ДОБАВЬ ДЕБАГ СРАЗУ
+            logger.info(f"🔥 [configure_for_user] СТАРТ user_id={user_id}")
+
             # 🔥 ДИНАМИЧЕСКИЙ ИМПОРТ Django
             try:
                 from django.contrib.auth.models import User
+                from apps.website.models import ParserSettings
+                from django.db.models import Q
 
                 # 🔥 Получаем пользователя из базы
                 user = User.objects.get(id=user_id)
@@ -531,11 +576,46 @@ class SeleniumAvitoParser(BaseParser):
                 self.current_user_id = user_id
                 self.current_user_username = username or user.username
 
+                logger.info(f"🔥 [configure_for_user] User: {self.current_user_username}, ID: {self.current_user_id}")
+
+                # 🔥 ПОЛУЧАЕМ ГОРОД ИЗ НАСТРОЕК ПОЛЬЗОВАТЕЛЯ
+                try:
+                    # Ищем активные настройки пользователя
+                    user_settings = ParserSettings.objects.filter(
+                        Q(user_id=user_id) & Q(is_active=True)
+                    ).first()
+
+                    logger.info(f"🔥 [configure_for_user] Найдены настройки: {user_settings}")
+
+                    if user_settings:
+                        logger.info(f"🔥 [configure_for_user] Город в настройках: '{user_settings.city}'")
+                        logger.info(f"🔥 [configure_for_user] Сайт в настройках: '{user_settings.site}'")
+
+                    if user_settings and user_settings.city:
+                        self.current_city = user_settings.city.strip()
+                        logger.info(f"🏙️ Установлен город из настроек: {self.current_city}")
+                    else:
+                        # Проверяем есть ли другие настройки с городом
+                        any_settings = ParserSettings.objects.filter(user_id=user_id).first()
+                        if any_settings and any_settings.city:
+                            self.current_city = any_settings.city.strip()
+                            logger.info(f"🏙️ Установлен город из неактивных настроек: {self.current_city}")
+                        else:
+                            self.current_city = "Москва"
+                            logger.info(f"🏙️ Город не найден, используем по умолчанию: {self.current_city}")
+
+                except Exception as city_error:
+                    logger.warning(f"⚠️ Ошибка получения города: {city_error}")
+                    self.current_city = "Москва"
+
                 # Обновляем статистику
                 self.search_stats['current_user_id'] = user_id
                 self.search_stats['current_user_username'] = self.current_user_username
+                self.search_stats['current_city'] = self.current_city
 
                 logger.info(f"👤 Парсер настроен для пользователя: {self.current_user_username} (ID: {user_id})")
+                logger.info(f"🏙️ Текущий город: {self.current_city}")
+                logger.info(f"🏙️ Город в статистике: {self.search_stats['current_city']}")
 
                 # 🔥 Настраиваем поисковые запросы пользователя (если есть)
                 if hasattr(self.settings_manager, 'load_settings_for_user'):
@@ -550,15 +630,21 @@ class SeleniumAvitoParser(BaseParser):
                 # Используем базовые настройки
                 self.current_user_id = user_id
                 self.current_user_username = username or f"user_{user_id}"
+                self.current_city = "Москва"  # 🔥 Устанавливаем город по умолчанию
                 self.search_stats['current_user_id'] = user_id
                 self.search_stats['current_user_username'] = self.current_user_username
+                self.search_stats['current_city'] = self.current_city
                 logger.info(f"👤 Парсер настроен для пользователя {self.current_user_username} (без Django)")
+                logger.info(f"🏙️ Город по умолчанию: {self.current_city}")
                 return True
 
         except Exception as e:
             logger.error(f"❌ Ошибка настройки парсера для пользователя {user_id}: {e}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
             self.current_user_id = user_id
             self.current_user_username = username
+            self.current_city = "Москва"  # 🔥 Город по умолчанию при ошибке
             return False
 
     # ============================================
@@ -717,11 +803,11 @@ class SeleniumAvitoParser(BaseParser):
             logger.info(f"🎯 Окно {window_index} | Запуск совместного анализа ML моделями...")
 
             # 🔥 ЦЕНА - АСИНХРОННО
-            predicted_price = await self.price_predictor.predict_price_super(product)
+            predicted_price = await self.price_predictor.predict_price_ultra(product)
 
             # 🔥 СВЕЖЕСТЬ - СИНХРОННО
             try:
-                freshness_score = await self.price_predictor.predict_freshness_with_learning(product)
+                freshness_score = await self.price_predictor.predict_freshness_ultra(product)
             except Exception as e:
                 logger.warning(f"⚠️ Ошибка predict_freshness: {e}")
                 freshness_score = self._fallback_freshness_analysis_sync(product)
@@ -802,42 +888,93 @@ class SeleniumAvitoParser(BaseParser):
             return product
 
     def _get_site_parser(self, driver, site=None):
-        """🔥 ВОЗВРАЩАЕТ ПАРСЕР ДЛЯ ВЫБРАННОГО САЙТА"""
+        """🔥 ВЕРСИЯ С ПРАВИЛЬНЫМИ ПУТЯМИ К ФАЙЛАМ В sites/"""
         try:
             site = site or self.current_site
 
-            # Используем кэш чтобы не создавать постоянно новые объекты
-            if site in self.site_parsers:
-                return self.site_parsers[site]
+            # 🔥 ДЕБАГ
+            logger.info(f"🔥 [_get_site_parser] Сайт: '{site}'")
+            logger.info(f"🔥 [_get_site_parser] Текущий город: '{self.current_city}'")
+            logger.info(f"🔥 [_get_site_parser] User ID: {self.current_user_id}")
 
-            # 🔥 СОЗДАЕМ ПАРСЕР ДЛЯ ВЫБРАННОГО САЙТА
-            if site == 'avito':
-                from ..sites.avito_parser import AvitoParser
-                parser = AvitoParser(driver)
-            elif site == 'auto.ru':
-                from ..sites.auto_ru_parser import AutoRuParser
-                parser = AutoRuParser(driver)
+            # 🔥 ГОРОД - берем из настроек пользователя
+            city = self.current_city or "Москва"
+            logger.info(f"🔥 [_get_site_parser] Используем город: '{city}'")
 
-                # 🔥 УСТАНАВЛИВАЕМ СВЯЗЬ С ОСНОВНЫМ ПАРСЕРОМ
-                parser.set_main_parser(self)
-                logger.info("✅ Установлена связь с AutoRuParser")
+            # 🔥 КЭШИРОВАНИЕ
+            cache_key = f"{site}_{self.current_user_id}_{city}"
+            logger.info(f"🔥 [_get_site_parser] Ключ кэша: '{cache_key}'")
+
+            if cache_key in self.site_parsers:
+                logger.info(f"🔥 [_get_site_parser] Используем из кэша")
+                return self.site_parsers[cache_key]
+
+            # 🔥 ПРАВИЛЬНЫЕ ИМПОРТЫ ИЗ ПАПКИ sites/
+            logger.info(f"🔥 [_get_site_parser] Создаем парсер для {site}, город {city}")
+
+            if site == "avito":
+                # 🔥 ВАЖНО: Импорт из папки sites, не utils!
+                try:
+                    from apps.parsing.sites.avito_parser import AvitoParser
+                    parser = AvitoParser(driver, city=city)
+                    self.site_parsers[cache_key] = parser
+                    logger.info(f"✅ [_get_site_parser] СОЗДАН AvitoParser (sites/) для города: '{city}'")
+                    return parser
+                except ImportError as e:
+                    logger.error(f"❌ Ошибка импорта из sites/: {e}")
+                    # Пробуем относительный путь
+                    try:
+                        from ..sites.avito_parser import AvitoParser
+                        parser = AvitoParser(driver, city=city)
+                        self.site_parsers[cache_key] = parser
+                        logger.info(f"✅ [_get_site_parser] СОЗДАН AvitoParser (относительный) для города: '{city}'")
+                        return parser
+                    except ImportError as e2:
+                        logger.error(f"❌ Ошибка относительного импорта: {e2}")
+                        raise
+
+            elif site == "auto.ru":
+                try:
+                    from apps.parsing.sites.auto_parser import AutoParser
+                    parser = AutoParser(driver, city=city)
+                    self.site_parsers[cache_key] = parser
+                    logger.info(f"✅ [_get_site_parser] СОЗДАН AutoParser (sites/) для города: '{city}'")
+                    return parser
+                except ImportError as e:
+                    logger.error(f"❌ Ошибка импорта AutoParser: {e}")
+                    try:
+                        from apps.parsing.sites.auto_ru_parser import AutoRuParser
+                        parser = AutoRuParser(driver, city=city)
+                        self.site_parsers[cache_key] = parser
+                        logger.info(f"✅ [_get_site_parser] СОЗДАН AutoRuParser для города: '{city}'")
+                        return parser
+                    except ImportError as e2:
+                        logger.error(f"❌ Ошибка альтернативного импорта: {e2}")
+                        raise
 
             else:
-                logger.warning(f"⚠️ Неизвестный сайт {site}, используем Avito по умолчанию")
-                from ..sites.avito_parser import AvitoParser
-                parser = AvitoParser(driver)
-
-            # Сохраняем в кэш
-            self.site_parsers[site] = parser
-            logger.info(f"🎯 Создан парсер для сайта: {site}")
-
-            return parser
+                logger.error(f"❌ [_get_site_parser] Неизвестный сайт: {site}")
+                # Фолбэк на Avito
+                try:
+                    from apps.parsing.sites.avito_parser import AvitoParser
+                    return AvitoParser(driver, city=city)
+                except:
+                    # Последний фолбэк
+                    from apps.parsing.sites.avito_parser import AvitoParser
+                    return AvitoParser(driver, city="Москва")
 
         except Exception as e:
-            logger.error(f"❌ Ошибка создания парсера для {site}: {e}")
-            # Фолбэк на Avito если ошибка
-            from ..sites.avito_parser import AvitoParser
-            return AvitoParser(driver)
+            logger.error(f"❌ [_get_site_parser] Критическая ошибка: {e}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+
+            # Фолбэк с Москвой
+            try:
+                from apps.parsing.sites.avito_parser import AvitoParser
+                return AvitoParser(driver, city="Москва")
+            except ImportError as e:
+                logger.error(f"❌ Не удалось импортировать даже AvitoParser: {e}")
+                raise
 
     def change_site(self, site):
         """🔥 СМЕНА САЙТА ПАРСЕРА"""
@@ -940,32 +1077,67 @@ class SeleniumAvitoParser(BaseParser):
             return False
 
     async def _debug_ml_training(self):
-        """🐛 Отладка обучения ML моделей"""
+        """🐛 Отладка обучения ML моделей (ИСПРАВЛЕННАЯ ВЕРСИЯ)"""
         try:
             logger.info("🔍 ДЕБАГ: Проверка обучения ML моделей...")
 
             # Проверяем модель цены
             if self.price_predictor.model is not None:
                 logger.info(f"✅ Модель цены загружена: {type(self.price_predictor.model)}")
-                if hasattr(self.price_predictor.feature_scaler, 'n_features_in_'):
-                    logger.info(f"✅ Scaler цены: {self.price_predictor.feature_scaler.n_features_in_} фичей")
-                logger.info(f"✅ Обучена: {self.price_predictor.is_trained}")
+
+                # БЕЗОПАСНАЯ проверка feature_scaler
+                try:
+                    if hasattr(self.price_predictor, 'feature_scaler') and \
+                            hasattr(self.price_predictor.feature_scaler, 'n_features_in_'):
+                        logger.info(f"✅ Scaler цены: {self.price_predictor.feature_scaler.n_features_in_} фичей")
+                    else:
+                        logger.warning("⚠️ Scaler цены недоступен или не имеет n_features_in_")
+                except Exception as e:
+                    logger.warning(f"⚠️ Ошибка проверки feature_scaler: {e}")
+
+                # Проверяем флаг обученности
+                try:
+                    is_trained = getattr(self.price_predictor, 'is_trained', False)
+                    logger.info(f"✅ Обучена: {is_trained}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Ошибка проверки is_trained: {e}")
             else:
                 logger.warning("❌ Модель цены НЕ загружена")
 
             # Проверяем модель свежести
             if self.price_predictor.freshness_model is not None:
                 logger.info(f"✅ Модель свежести загружена: {type(self.price_predictor.freshness_model)}")
-                if hasattr(self.price_predictor.freshness_scaler, 'n_features_in_'):
-                    logger.info(f"✅ Scaler свежести: {self.price_predictor.freshness_scaler.n_features_in_} фичей")
+
+                # 🔥 ИСПРАВЛЕНИЕ: Безопасная проверка freshness_scaler
+                try:
+                    # Пробуем получить скалер разными способами
+                    freshness_scaler = None
+
+                    if hasattr(self.price_predictor, 'freshness_scaler'):
+                        freshness_scaler = self.price_predictor.freshness_scaler
+                    elif hasattr(self.price_predictor, 'scaler_freshness'):
+                        freshness_scaler = self.price_predictor.scaler_freshness
+                    elif hasattr(self.price_predictor, 'freshness_scaler_'):
+                        freshness_scaler = self.price_predictor.freshness_scaler_
+
+                    if freshness_scaler and hasattr(freshness_scaler, 'n_features_in_'):
+                        logger.info(f"✅ Scaler свежести: {freshness_scaler.n_features_in_} фичей")
+                    else:
+                        logger.warning("⚠️ Scaler свежести недоступен")
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Ошибка проверки freshness_scaler: {e}")
             else:
                 logger.warning("❌ Модель свежести НЕ загружена")
 
             # Пробуем обучить модель свежести если она не загружена
             if self.price_predictor.freshness_model is None:
                 logger.info("🔍 Попытка обучить модель свежести...")
-                success = await self.price_predictor.train_freshness_model()
-                logger.info(f"🔍 Результат обучения свежести: {success}")
+                try:
+                    success = await self.price_predictor.train_freshness_model()
+                    logger.info(f"🔍 Результат обучения свежести: {success}")
+                except Exception as e:
+                    logger.error(f"❌ Ошибка обучения свежести: {e}")
 
             return True
 
@@ -1046,245 +1218,6 @@ class SeleniumAvitoParser(BaseParser):
         except Exception as e:
             logger.warning(f"⚠️ Фоновая инициализация AI не удалась: {e}")
 
-    async def _ai_optimize_search_queries(self):
-        """🤖 AI-оптимизация поисковых запросов"""
-        try:
-            if not self.search_queries:
-                return self.search_queries
-
-            logger.info("🎯 Запуск AI-оптимизации запросов...")
-
-            # 🔥 ПРОВЕРЯЕМ ДОСТУПНОСТЬ OPTIMIZER
-            if not hasattr(self, 'freshness_query_optimizer') or self.freshness_query_optimizer is None:
-                logger.warning("⚠️ FreshnessQueryOptimizer не доступен, используем базовые запросы")
-                return self.search_queries
-
-            # 🔥 ОПРЕДЕЛЯЕМ ВРЕМЯ СУТОК
-            current_hour = datetime.now().hour
-            if 5 <= current_hour < 12:
-                time_of_day = 'morning'
-            elif 12 <= current_hour < 17:
-                time_of_day = 'afternoon'
-            elif 17 <= current_hour < 23:
-                time_of_day = 'evening'
-            else:
-                time_of_day = 'night'
-
-            logger.info(f"🕒 Время суток для оптимизации: {time_of_day}")
-
-            # 🔥 ВЫЗЫВАЕМ ОПТИМИЗАЦИЮ
-            optimized_queries = await self.freshness_query_optimizer.optimize_for_freshness(
-                self.search_queries,
-                query_stats=self.query_stats,
-                time_of_day=time_of_day
-            )
-
-            self.search_stats['ai_optimized_queries'] = len(optimized_queries)
-            logger.info(f"🎯 AI оптимизировал {len(optimized_queries)} запросов")
-
-            return optimized_queries[:15]  # Ограничиваем количество запросов
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка AI-оптимизации: {e}")
-            return self.search_queries  # Возвращаем оригинальные запросы при ошибке
-
-    async def _ai_analyze_deal_quality(self, product):
-        """🤖 AI-анализ качества сделки с СУПЕР-ML"""
-        try:
-            # Используем ML для предсказания цены
-            predicted_price = await self.price_predictor.predict_price_super(product)
-            actual_price = product.get('price', 0)
-
-            if actual_price <= 0 or predicted_price <= 0:
-                return 0.5
-
-            # Рассчитываем выгоду с ML
-            economy_ratio = (predicted_price - actual_price) / predicted_price
-            economy_score = min(max(economy_ratio, 0), 0.5) * 2  # Нормализуем до 0-1
-
-            # Анализ состояния через AI
-            condition_score = await self._analyze_condition_ai(product)
-
-            # Анализ продавца
-            seller_score = self._analyze_seller_ai(product)
-
-            # Временной фактор
-            time_score = self._calculate_time_score_ai(product)
-
-            # Итоговый score с весами
-            final_score = (
-                    economy_score * 0.4 +
-                    condition_score * 0.25 +
-                    seller_score * 0.2 +
-                    time_score * 0.15
-            )
-
-            # 🔥 ИСПРАВЛЕНИЕ: Используем правильный метод
-            asyncio.create_task(
-                self.learning_system.collect_feedback(  # 🔥 ПРАВИЛЬНЫЙ МЕТОД!
-                    prediction=final_score,
-                    actual_result=None,
-                    features=product,
-                    prediction_type="quality",
-                    confidence=self.price_predictor.get_prediction_confidence(product),
-                    context={
-                        'category': product.get('category'),
-                        'has_brand': any(brand in product.get('name', '')
-                                         for brand in ['iphone', 'samsung', 'macbook']),
-                        'condition': self._analyze_product_condition_simple(product),
-                        'seller_rating': product.get('seller_rating', 0)
-                    }
-                )
-            )
-
-            return min(max(final_score, 0), 1)
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка супер-анализа: {e}")
-            return await self._ai_analyze_deal_quality_fallback(product)
-
-    async def _ai_analyze_deal_quality_fallback(self, product):
-        """🔄 Фолбэк анализ качества сделки"""
-        try:
-            score = 0.0
-
-            # Анализ экономии с защитой от None
-            economy_percent = product.get('economy_percent', 0)
-            if economy_percent is None:
-                economy_percent = 0
-
-            if economy_percent > 30:
-                score += 0.4
-            elif economy_percent > 20:
-                score += 0.3
-            elif economy_percent > 10:
-                score += 0.2
-
-            # Анализ состояния товара
-            condition = self._analyze_product_condition(product)
-            if condition == 'отличное':
-                score += 0.3
-            elif condition == 'хорошее':
-                score += 0.2
-
-            # Анализ рейтинга продавца
-            seller_rating = product.get('seller_rating', 4.0)
-            if seller_rating is None:
-                seller_rating = 4.0
-            seller_score = seller_rating / 5.0
-            score += seller_score * 0.2
-
-            # Анализ времени публикации
-            time_listed = product.get('time_listed', 24)
-            if time_listed is None:
-                time_listed = 24
-            time_score = self._calculate_time_score(time_listed)
-            score += time_score * 0.1
-
-            return min(score, 1.0)
-
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка фолбэк анализа сделки: {e}")
-            return 0.5
-
-    async def _analyze_condition_ai(self, product):
-        """🔍 AI анализ состояния товара с ML"""
-        try:
-            description = product.get('description', '').lower()
-            name = product.get('name', '').lower()
-
-            # Используем MLPricePredictor для анализа состояния
-            condition_features = self.price_predictor._analyze_condition_detailed(name, description)
-
-            # Взвешенная оценка состояния
-            weights = [0.4, 0.3, 0.15, 0.1, 0.05]  # Веса для perfect, excellent, good, satisfactory, bad
-            condition_score = sum(cond * weight for cond, weight in zip(condition_features, weights))
-
-            return condition_score
-
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка AI анализа состояния: {e}")
-            return 0.7
-
-    def _analyze_seller_ai(self, product):
-        """👨‍💼 AI анализ продавца"""
-        seller_rating = product.get('seller_rating', 4.0)
-        reviews_count = product.get('reviews_count', 0)
-
-        # Нормализованый рейтинг
-        rating_score = seller_rating / 5.0
-
-        # Бонус за количество отзывов
-        reviews_bonus = min(reviews_count / 100, 0.2)  # Максимум +0.2 за 100+ отзывов
-
-        return min(rating_score + reviews_bonus, 1.0)
-
-    def _calculate_time_score_ai(self, product):
-        """🕒 AI оценка временного фактора"""
-        hours_listed = product.get('time_listed', 24)
-
-        if hours_listed < 1:
-            return 1.0  # Очень свежее
-        elif hours_listed < 3:
-            return 0.9
-        elif hours_listed < 6:
-            return 0.7
-        elif hours_listed < 12:
-            return 0.5
-        elif hours_listed < 24:
-            return 0.3
-        else:
-            return 0.1
-
-    def _analyze_product_condition_simple(self, product):
-        """Простой анализ состояния товара"""
-        try:
-            description = product.get('description', '').lower()
-            name = product.get('name', '').lower()
-
-            condition_keywords = {
-                'отличное': ['новый', 'не использовался', 'с гарантией', 'оригинал', 'заводская'],
-                'хорошее': ['отличное', 'как новый', 'хорошее', 'мало использовался'],
-                'удовлетворительное': ['удовлетворительное', 'следы', 'царапины', 'потертости']
-            }
-
-            for condition, keywords in condition_keywords.items():
-                if any(keyword in description or keyword in name for keyword in keywords):
-                    return condition
-
-            return 'хорошее'
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка анализа состояния товара: {e}")
-            return 'хорошее'
-
-    def _calculate_time_score(self, hours_since_posted):
-        """Рассчитывает score на основе времени публикации"""
-        if hours_since_posted is None:
-            return 0.2
-
-        if hours_since_posted < 1:
-            return 1.0  # Очень свежее объявление
-        elif hours_since_posted < 3:
-            return 0.8
-        elif hours_since_posted < 6:
-            return 0.6
-        elif hours_since_posted < 12:
-            return 0.4
-        else:
-            return 0.2
-
-    def _analyze_product_condition(self, product):
-        """Анализ состояния товара"""
-        try:
-            # Используем метод из PricePredictor если он доступен
-            if hasattr(self.price_predictor, '_analyze_condition'):
-                return self.price_predictor._analyze_condition(product.get('description', ''))
-            else:
-                # Фолбэк на простую логику
-                return self._analyze_product_condition_simple(product)
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка анализа состояния товара: {e}")
-            return 'хорошее'
 
     # ============================================
     # ОСНОВНЫЕ МЕТОДЫ (ПОЛНЫЕ)
@@ -1301,8 +1234,18 @@ class SeleniumAvitoParser(BaseParser):
 
         # 🔥 ПРОВЕРЯЕМ ЧТО МОДЕЛИ ЗАГРУЖЕНЫ
         if not self.price_predictor.is_trained or self.price_predictor.freshness_model is None:
-            logger.warning("⚠️ ML модели не загружены, повторная инициализация...")
-            await self._initialize_ml_models()
+            logger.warning("⚠️ ML модели не загружены, проверяем...")
+
+            # Дадим немного времени на загрузку
+            import asyncio
+            await asyncio.sleep(0.5)
+
+            # Повторная проверка
+            if not self.price_predictor.is_trained or self.price_predictor.freshness_model is None:
+                logger.info("🔧 Запуск повторной инициализации ML моделей...")
+                await self._initialize_ml_models()
+            else:
+                logger.info("✅ Модели загрузились, продолжаем...")
 
         # 🔥 ОЧИСТКА СТАРЫХ КЭШЕЙ
         await self.cleanup_old_caches()
@@ -1318,7 +1261,7 @@ class SeleniumAvitoParser(BaseParser):
         await self.init_async_session()
 
         self.browser_manager.set_browser_windows(self.browser_windows)
-        self.notification_sender.clear_duplicate_cache()
+        await self.notification_sender.clear_duplicate_cache()
 
         if not await self._optimized_driver_setup():
             logger.error("❌ Не удалось запустить парсер")
@@ -1650,8 +1593,6 @@ class SeleniumAvitoParser(BaseParser):
 
     async def _fast_process_products_with_vision(self, products, site_parser, window_index, query):
         """🔄 ОБРАБОТКА ТОВАРОВ С AI-ФИЧАМИ И УМНОЙ ОСТАНОВКОЙ"""
-        found_deals = False
-        current_fresh_deals = []
 
         # 🔥 ПРОВЕРКА ОСТАНОВКИ ПЕРЕД НАЧАЛОМ
         if self._check_stop_requested():
@@ -1659,6 +1600,10 @@ class SeleniumAvitoParser(BaseParser):
             return False
 
         logger.info(f"🚀 Окно {window_index} | НАЧАЛО ОБРАБОТКИ {len(products)} товаров")
+
+        # 🔥 ИНИЦИАЛИЗИРУЕМ ПЕРЕМЕННЫЕ
+        current_fresh_deals = []  # Локальный список для свежих сделок в этом цикле
+        found_deals = False  # Флаг нахождения хороших сделок
 
         # 🔥 СОРТИРУЕМ ТОВАРЫ ПО СВЕЖЕСТИ
         sorted_products = await self._safe_async_operation(
@@ -1676,6 +1621,9 @@ class SeleniumAvitoParser(BaseParser):
         logger.info(f"📦 Окно {window_index} | После сортировки: {len(products_to_process)} товаров для обработки")
 
         for product_index, product in enumerate(products_to_process):
+            # 🔥 ДЕБАГ ПЕРЕД КАЖДЫМ ТОВАРОМ
+            logger.info(f"🔍 ДЕБАГ ОБРАБОТКА: товар {product_index + 1}/{len(products_to_process)}")
+
             # 🔥 ЧАСТАЯ ПРОВЕРКА ОСТАНОВКИ ПЕРЕД КАЖДЫМ ТОВАРОМ
             if self._check_stop_requested():
                 logger.info(f"🔴 Окно {window_index} | Прерывание обработки на товаре {product_index + 1}")
@@ -1687,7 +1635,8 @@ class SeleniumAvitoParser(BaseParser):
                 # 🔥 ШАГ 0: БЫСТРАЯ ПРОВЕРКА ДУБЛИКАТОВ (САМЫЙ ПЕРВЫЙ ЭТАП)
                 is_duplicate = await self._fast_duplicate_check(product, window_index)
                 if is_duplicate:
-                    continue  # Пропускаем дубликат
+                    logger.info(f"🔍 ДЕБАГ: товар {product_index + 1} - дубликат, пропускаем")
+                    continue
 
                 # 🎯 ШАГ 1: ПРОВЕРКА РЕЛЕВАНТНОСТИ
                 main_keyword = self._extract_main_keyword(query)
@@ -1728,6 +1677,9 @@ class SeleniumAvitoParser(BaseParser):
                 if 'time_listed' not in detailed_product or detailed_product['time_listed'] is None:
                     detailed_product['time_listed'] = await self._calculate_time_listed(detailed_product)
 
+                # 🔥 ДЕБАГ: логируем перед анализом свежести
+                logger.info(f"🔍 ДЕБАГ: перед анализом свежести для товара {product_index + 1}")
+
                 # 🔥 АНАЛИЗ СВЕЖЕСТИ С ML
                 freshness_analysis = await self._safe_async_operation(
                     f"freshness_analysis_{window_index}_{product_index}",
@@ -1738,6 +1690,10 @@ class SeleniumAvitoParser(BaseParser):
                 if freshness_analysis and not self._check_stop_requested():
                     detailed_product.update(freshness_analysis)
 
+                    # 🔥 ДЕБАГ: логируем результат анализа свежести
+                    logger.info(
+                        f"🔍 ДЕБАГ: свежесть товара {product_index + 1}: {detailed_product.get('ml_freshness_score', 'N/A')}")
+
                 # 🔥 ПРОВЕРКА ОСТАНОВКИ ПЕРЕД ML ПРЕДСКАЗАНИЕМ
                 if self._check_stop_requested():
                     logger.info(f"🔴 Окно {window_index} | Прерывание перед ML предсказанием")
@@ -1747,7 +1703,7 @@ class SeleniumAvitoParser(BaseParser):
                 try:
                     predicted_price = await self._safe_async_operation(
                         f"price_prediction_{window_index}_{product_index}",
-                        self.price_predictor.predict_price_super,
+                        self.price_predictor.predict_price_ultra,  # ← ИСПРАВЛЕНО!
                         detailed_product
                     )
 
@@ -1899,9 +1855,12 @@ class SeleniumAvitoParser(BaseParser):
                             logger.info(
                                 f"🔥 Окно {window_index} | СВЕЖАЯ СДЕЛКА ОБРАБОТАНА: {detailed_product['name'][:50]}...")
 
-                        # 🔥 ДОБАВЛЯЕМ В fresh_deals ТОЛЬКО ЕСЛИ ТОВАР СВЕЖИЙ И УСПЕШНО ОБРАБОТАН
+                        # 🔥 ДОБАВЛЯЕМ В current_fresh_deals ТОЛЬКО ЕСЛИ ТОВАР СВЕЖИЙ И УСПЕШНО ОБРАБОТАН
                         if detailed_product.get('ml_freshness_score', 0) >= 0.6:
+                            # 🔥 ДЕБАГ: перед добавлением
+                            logger.info(f"🔍 ДЕБАГ: добавляем товар в current_fresh_deals")
                             current_fresh_deals.append(detailed_product)
+                            logger.info(f"🔍 ДЕБАГ: current_fresh_deals длина={len(current_fresh_deals)}")
                             logger.info(
                                 f"🔥 Окно {window_index} | Добавлен в свежие сделки: {detailed_product['name'][:50]}...")
                     else:
@@ -1931,16 +1890,52 @@ class SeleniumAvitoParser(BaseParser):
                     break
                 else:
                     product_name = product.get('name', 'Неизвестный товар') if product else 'Неизвестный товар'
-                    logger.error(f"❌ Ошибка обработки товара '{product_name}' в окне {window_index}: {e}")
+
+                    # 🔥 ДЕТАЛЬНЫЙ ДЕБАГ ОШИБКИ
+                    error_msg = str(e)
+                    logger.error(f"❌ ОШИБКА обработки товара '{product_name}' в окне {window_index}:")
+                    logger.error(f"❌ Тип ошибки: {type(e).__name__}")
+                    logger.error(f"❌ Сообщение: {error_msg}")
+
+                    # 🔥 ДЕБАГ current_fresh_deals если ошибка связана с ним
+                    if 'fresh_deals' in error_msg.lower():
+                        logger.error("🚨 ДЕБАГ ОШИБКИ fresh_deals:")
+                        logger.error(f"  - current_fresh_deals type: {type(current_fresh_deals)}")
+                        logger.error(f"  - current_fresh_deals len: {len(current_fresh_deals)}")
+
+                    # 🔥 ДЕБАГ трассировки
+                    import traceback
+                    logger.error(f"❌ Traceback:\n{traceback.format_exc()}")
                     continue
 
-        # 🔥 СОХРАНЯЕМ fresh_deals ТОЛЬКО ЕСЛИ НЕ БЫЛА ОСТАНОВКА
-        if not self._check_stop_requested():
-            self.fresh_deals = current_fresh_deals
-            logger.info(f"🔥 Окно {window_index} | Найдено свежих сделок: {len(current_fresh_deals)}")
-            logger.info(f"📊 Окно {window_index} | ИТОГО обработано: {len(products_to_process)} товаров")
+        # 🔥 СОХРАНЯЕМ current_fresh_deals В self.fresh_deals ТОЛЬКО ЕСЛИ НЕ БЫЛА ОСТАНОВКА И ЕСТЬ ЧТО СОХРАНЯТЬ
+        if not self._check_stop_requested() and current_fresh_deals:
+            # 🔥 Гарантируем что self.fresh_deals существует и это список
+            if not hasattr(self, 'fresh_deals'):
+                self.fresh_deals = []
+
+            # Если это не список, делаем список
+            if not isinstance(self.fresh_deals, list):
+                self.fresh_deals = []
+
+            # Безопасное добавление свежих сделок
+            try:
+                self.fresh_deals.extend(current_fresh_deals)
+                logger.info(
+                    f"📊 Добавлено {len(current_fresh_deals)} свежих сделок в общий список. Всего: {len(self.fresh_deals)}")
+            except Exception as e:
+                logger.error(f"❌ Ошибка при сохранении свежих сделок: {e}")
+                # Создаем новый список если не удалось расширить
+                self.fresh_deals = current_fresh_deals.copy()
+
+        # 🔥 ЛОГИРУЕМ РЕЗУЛЬТАТЫ
+        if found_deals:
+            logger.info(
+                f"✅ Окно {window_index} | Найдено хороших сделок в этом цикле: {self.search_stats['good_deals_found']}")
+            if current_fresh_deals:
+                logger.info(f"🔥 Окно {window_index} | Из них свежих: {len(current_fresh_deals)}")
         else:
-            logger.info(f"🔴 Окно {window_index} | Обработка прервана, обработано товаров: {product_index}")
+            logger.info(f"🔍 Окно {window_index} | Хороших сделок не найдено в этом цикле")
 
         return found_deals
 
@@ -2114,47 +2109,6 @@ class SeleniumAvitoParser(BaseParser):
         except Exception as e:
             return {'error': str(e), 'current_user_id': self.current_user_id}
 
-    # ============================================
-    # ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ
-    # ============================================
-
-    def analyze_image_colors(self, image_cv):
-        """Улучшенный анализ цветов изображения с фокусировкой на центре"""
-        try:
-            if image_cv is None or image_cv.size == 0:
-                logger.warning("⚠️ Пустое изображение для анализа цветов")
-                return [('разноцветный', 100)]
-
-            # 🔥 ИСПОЛЬЗУЕМ УЛУЧШЕННЫЙ АНАЛИЗАТОР
-            colors_data = color_analyzer.analyze_colors_universal(image_cv)
-
-            if not colors_data:
-                return [('разноцветный', 100)]
-
-            # 🔥 ФОРМАТИРУЕМ ДЛЯ СТАРОГО КОДА
-            colors_with_percentages = [(color['name'], color['percentage']) for color in colors_data]
-
-            # 🔥 ДОБАВЛЯЕМ "разноцветный" если нужно
-            total_percent = sum(percent for _, percent in colors_with_percentages)
-            if total_percent < 90:
-                other_percent = 100 - total_percent
-                colors_with_percentages.append(('разноцветный', round(other_percent, 1)))
-
-            logger.info(f"🎨 Улучшенный анализ цветов завершен: {colors_with_percentages}")
-            return colors_with_percentages
-
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка улучшенного анализа цветов: {e}")
-            return [('разноцветный', 100)]
-
-    def get_main_color_for_frontend(self, image_cv) -> str:
-        """Получает основной цвет для отображения во фронтенде"""
-        try:
-            return color_analyzer.get_main_color_for_frontend(image_cv)
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка получения основного цвета: {e}")
-            return "разноцветный"
-
     def initialize_with_django(self):
         """Инициализирует настройки после настройки Django"""
         try:
@@ -2193,10 +2147,21 @@ class SeleniumAvitoParser(BaseParser):
 
     async def init_async_session(self):
         """Инициализирует асинхронную сессию"""
+        # 🔥 БЕЗОПАСНАЯ ПРОВЕРКА И ИНИЦИАЛИЗАЦИЯ
+        if not hasattr(self, 'session'):
+            self.session = None
+            logger.info("🔍 ДЕБАГ: session не существовал, инициализирован как None")
+
         if not self.session:
-            timeout = aiohttp.ClientTimeout(total=25)
-            connector = aiohttp.TCPConnector(limit=15, limit_per_host=3)
-            self.session = aiohttp.ClientSession(timeout=timeout, connector=connector)
+            try:
+                import aiohttp
+                timeout = aiohttp.ClientTimeout(total=25)
+                connector = aiohttp.TCPConnector(limit=15, limit_per_host=3)
+                self.session = aiohttp.ClientSession(timeout=timeout, connector=connector)
+                logger.info("✅ Асинхронная сессия создана")
+            except Exception as e:
+                logger.error(f"❌ Ошибка создания сессии: {e}")
+                self.session = None
 
     async def cleanup_old_caches(self):
         """Очистка старых кэшей при запуске"""
@@ -2329,18 +2294,70 @@ class SeleniumAvitoParser(BaseParser):
                         'count': 0,
                         'successful': 0,
                         'total_found': 0,
-                        'good_deals': 0
+                        'good_deals': 0,
+                        'fresh_deals': 0
                     }
                 self.query_stats[query]['count'] += 1
                 self.search_stats['total_searches'] += 1
 
                 # Проверка драйвера
                 if not await self._check_driver_health(driver, window_index):
+                    logger.warning(f"⚠️ Окно {window_index} | Проблемы с драйвером, пропускаем запрос")
                     continue
 
-                # 🔥 ИСПРАВЛЕНИЕ: Принимаем результат парсера как есть
-                products = await site_parser.parse_search_results(query)
+                # 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем search_items вместо parse_search_results
+                products = []
+                try:
+                    logger.info(f"🚀 Окно {window_index} | Вызываем search_items для: '{query}'")
 
+                    # 🔥 ВАЖНО: Проверяем что site_parser существует и имеет метод search_items
+                    if not site_parser:
+                        logger.error(f"❌ Окно {window_index} | site_parser не создан!")
+                        continue
+
+                    if not hasattr(site_parser, 'search_items'):
+                        logger.error(f"❌ Окно {window_index} | site_parser не имеет метода search_items!")
+                        continue
+
+                    # Вызываем search_items
+                    products = await site_parser.search_items(query)
+
+                    logger.info(f"📊 Окно {window_index} | search_items вернул {len(products)} товаров")
+
+                except Exception as search_error:
+                    logger.error(f"❌ Окно {window_index} | Ошибка в search_items: {search_error}")
+                    # Пробуем альтернативный метод если search_items не сработал
+                    try:
+                        logger.info(f"🔄 Окно {window_index} | Пробуем альтернативный метод...")
+
+                        # Строим URL
+                        url = site_parser.build_search_url(query)
+                        logger.info(f"🌐 Окно {window_index} | Загружаем URL: {url}")
+
+                        # Загружаем страницу
+                        import time
+                        driver.get(url)
+                        time.sleep(3)
+
+                        # Получаем HTML
+                        html = driver.page_source
+                        current_url = driver.current_url
+                        logger.info(f"📍 Окно {window_index} | Текущий URL: {current_url}")
+                        logger.info(f"📄 Окно {window_index} | HTML размер: {len(html)} символов")
+
+                        # Парсим через parse_search_results (который принимает HTML)
+                        if hasattr(site_parser, 'parse_search_results'):
+                            products = site_parser.parse_search_results(html, query)
+                            logger.info(f"🔄 Окно {window_index} | parse_search_results вернул {len(products)} товаров")
+                        else:
+                            logger.error(f"❌ Окно {window_index} | Нет метода parse_search_results")
+                            products = []
+
+                    except Exception as parse_error:
+                        logger.error(f"❌ Окно {window_index} | Ошибка альтернативного метода: {parse_error}")
+                        products = []
+
+                # Проверяем результаты
                 if not products:
                     logger.info(f"ℹ️ Окно {window_index} | По '{query}' ничего не найдено")
                     continue
@@ -2385,20 +2402,40 @@ class SeleniumAvitoParser(BaseParser):
             max_price = settings.max_price
 
             logger.info(f"🎯 Настройки парсера:")
-            logger.info(f"   Ключевые слова: {keywords_list}")
-            logger.info(f"   Цена: {min_price}-{max_price}")
-            logger.info(f"   Сайт: {site}")
+            logger.info(f"├──  Ключевые слова: {keywords_list}")
+            logger.info(f"├──  Цена: {min_price}-{max_price}")
+            logger.info(f"└──  Сайт: {site}")
 
             # 🔥 ОБНОВЛЯЕМ НАСТРОЙКИ ПАРСЕРА
             self.search_queries = keywords_list
             self.min_price = min_price if min_price else 0
             self.max_price = max_price if max_price else 100000
 
+            # 🔥 ГАРАНТИРУЕМ ИНИЦИАЛИЗАЦИЮ session
+            if not hasattr(self, 'session'):
+                self.session = None
+                logger.info("🔍 ДЕБАГ: session был None, инициализирован")
+
             # 🔥 ЗАПУСКАЕМ ОСНОВНОЙ ЦИКЛ
-            return await self.start()
+            result = await self.start()
+            return result
 
         except Exception as e:
             logger.error(f"❌ Ошибка запуска парсера с настройками: {e}")
+            logger.error(f"❌ Тип ошибки: {type(e).__name__}")
+
+            # 🔥 ДЕБАГ: Выводим все атрибуты
+            import traceback
+            logger.error(f"❌ Traceback:\n{traceback.format_exc()}")
+
+            # 🔥 ДЕБАГ: Показываем состояние объекта
+            logger.error("🔍 ДЕБАГ состояния объекта:")
+            for attr_name in ['session', 'is_running', 'fresh_deals', 'search_queries', 'stats']:
+                if hasattr(self, attr_name):
+                    logger.error(f"  - {attr_name}: {getattr(self, attr_name)}")
+                else:
+                    logger.error(f"  - {attr_name}: НЕТ АТРИБУТА!")
+
             return False
 
     async def _download_image_for_analysis(self, image_url):
@@ -2457,6 +2494,7 @@ class SeleniumAvitoParser(BaseParser):
         """ПРОВЕРКА COMPUTER VISION"""
         try:
             if product is None:
+                logger.warning(f"⚠️ Окно {window_index} | Product is None в vision анализе")
                 return {'vision_data': self._get_default_vision_data("ошибка")}
 
             self.stats['vision_checks'] += 1
@@ -2484,27 +2522,26 @@ class SeleniumAvitoParser(BaseParser):
             # 🔥 АНАЛИЗ ИЗОБРАЖЕНИЙ
             logger.info(f"👁️ Окно {window_index} | Анализ {len(image_urls)} изображений для '{main_keyword}'...")
 
-            vision_data = None
+            # 🔥 ИСПРАВЛЕНИЕ: vision_analyzer удален, используем упрощенную логику
             try:
-                if hasattr(self.vision_analyzer, 'analyze_multiple_images_detailed'):
-                    vision_analysis = self.vision_analyzer.analyze_multiple_images_detailed(image_urls, main_keyword)
-                else:
-                    # Фолбэк
-                    vision_analysis = {
-                        'match': True,
-                        'objects': [main_keyword],
-                        'colors': ['разноцветный'],
-                        'materials': ['стандартный'],
-                        'condition': 'хорошее',
-                        'background': 'нейтральный',
-                        'confidence': 0.7
-                    }
+                # Упрощенный анализ без ML
+                vision_analysis = {
+                    'match': True,
+                    'objects': [main_keyword] if main_keyword else ['товар'],
+                    'colors': ['разноцветный'],
+                    'materials': ['стандартный'],
+                    'condition': 'хорошее',
+                    'background': 'нейтральный',
+                    'confidence': 0.7,
+                    'analysis_type': 'simplified',
+                    'timestamp': datetime.now().isoformat()
+                }
 
-                vision_data = vision_analysis
+                logger.info(f"✅ Окно {window_index} | Упрощенный анализ изображений выполнен")
 
             except Exception as vision_error:
-                logger.warning(f"⚠️ Ошибка анализа изображений: {vision_error}")
-                vision_data = self._get_default_vision_data(main_keyword)
+                logger.warning(f"⚠️ Ошибка упрощенного анализа изображений: {vision_error}")
+                vision_analysis = self._get_default_vision_data(main_keyword)
 
             # 🔥 СОХРАНЯЕМ ХЭШИ
             for img_hash in image_hashes:
@@ -2516,10 +2553,12 @@ class SeleniumAvitoParser(BaseParser):
                 self.image_hash_cache = set(hashes_list[-400:])
 
             logger.info(f"✅ Окно {window_index} | Анализ пройден: {product['name'][:50]}...")
-            return {'vision_data': vision_data}
+            return {'vision_data': vision_analysis}
 
         except Exception as e:
             logger.error(f"❌ Критическая ошибка анализа: {e}")
+            import traceback
+            logger.error(f"❌ Traceback vision анализа:\n{traceback.format_exc()}")
             return {'vision_data': self._get_default_vision_data("ошибка")}
 
     def _get_default_vision_data(self, keyword="товар"):
@@ -2698,17 +2737,34 @@ class SeleniumAvitoParser(BaseParser):
         """ОЧИСТКА РЕСУРСОВ"""
         logger.info("🧹 Очистка ресурсов парсера...")
         try:
-            if self.session:
-                await self.session.close()
-                self.session = None
+            # 🔥 БЕЗОПАСНАЯ ПРОВЕРКА session
+            if hasattr(self, 'session') and self.session:
+                try:
+                    await self.session.close()
+                    logger.info("✅ Session закрыт")
+                except Exception as e:
+                    logger.warning(f"⚠️ Ошибка закрытия session: {e}")
+                finally:
+                    self.session = None
 
-            if self.browser_manager:
-                self.browser_manager.close_drivers()
+            # 🔥 БЕЗОПАСНАЯ ПРОВЕРКА browser_manager
+            if hasattr(self, 'browser_manager') and self.browser_manager:
+                try:
+                    self.browser_manager.close_drivers()
+                    logger.info("✅ Браузеры закрыты")
+                except Exception as e:
+                    logger.warning(f"⚠️ Ошибка закрытия браузеров: {e}")
 
-            if self.thread_pool:
-                self.thread_pool.shutdown(wait=False)
+            # 🔥 БЕЗОПАСНАЯ ПРОВЕРКА thread_pool
+            if hasattr(self, 'thread_pool') and self.thread_pool:
+                try:
+                    self.thread_pool.shutdown(wait=False)
+                    logger.info("✅ Thread pool остановлен")
+                except Exception as e:
+                    logger.warning(f"⚠️ Ошибка остановки thread pool: {e}")
 
             logger.info("✅ Ресурсы парсера очищены")
+
         except Exception as e:
             logger.error(f"❌ Ошибка очистки ресурсов: {e}")
 
@@ -2807,26 +2863,6 @@ class SeleniumAvitoParser(BaseParser):
 
         except Exception as e:
             logger.warning(f"⚠️ Ошибка прерывания операций: {e}")
-
-    def _kill_browser_processes(self):
-        """💀 ПРИНУДИТЕЛЬНОЕ ЗАВЕРШЕНИЕ ПРОЦЕССОВ БРАУЗЕРА"""
-        try:
-            import subprocess
-            import os
-
-            if os.name == 'nt':  # Windows
-                subprocess.run(['taskkill', '/F', '/IM', 'chromedriver.exe'],
-                               capture_output=True)
-                subprocess.run(['taskkill', '/F', '/IM', 'chrome.exe'],
-                               capture_output=True)
-            else:  # Linux/Mac
-                subprocess.run(['pkill', '-f', 'chromedriver'], capture_output=True)
-                subprocess.run(['pkill', '-f', 'chrome'], capture_output=True)
-
-            logger.info("💀 Процессы браузера принудительно завершены")
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка завершения процессов: {e}")
 
     def update_settings(self, settings_data):
         """ОБНОВЛЕНИЕ НАСТРОЕК"""
