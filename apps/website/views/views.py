@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, FileResponse, JsonResponse
 from django.contrib import messages
 import requests
+from pathlib import Path
 from apps.notifications.utils import notification_cache
 from apps.notifications.services import ToastNotificationSystem
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -47,9 +48,9 @@ from shared.utils.config import get_bot_token, get_chat_id
 logger = logging.getLogger(__name__)
 
 # Создаем папку для бэкапов если ее нет
-BACKUP_DIR = 'database_backups'
-if not os.path.exists(BACKUP_DIR):
-    os.makedirs(BACKUP_DIR)
+BACKUP_DIR = Path('database_backups')
+if not BACKUP_DIR.exists():
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ========== УТИЛИТНЫЕ ФУНКЦИИ ==========
@@ -1448,7 +1449,7 @@ def backup_vision_database(request):
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_filename = f"vision_backup_{timestamp}.db"
-        backup_path = os.path.join(BACKUP_DIR, backup_filename)
+        backup_path = BACKUP_DIR / backup_filename
 
         shutil.copy2('vision_knowledge.db', backup_path)
 
@@ -4663,6 +4664,7 @@ def todo_kanban(request):
 
     🎯 Создание дефолтной доски если нет
     📊 Группировка карточек по статусу (todo/in_progress/done)
+    ⭐ Сортировка по приоритету (критические → низкие)
     🔄 Перетаскивание карточек между колонками
     """
     board, created = TodoBoard.objects.get_or_create(
@@ -4670,9 +4672,10 @@ def todo_kanban(request):
         defaults={'name': 'Моя доска задач'}
     )
 
-    todo_cards = TodoCard.objects.filter(board=board, status='todo').order_by('card_order')
-    in_progress_cards = TodoCard.objects.filter(board=board, status='in_progress').order_by('card_order')
-    done_cards = TodoCard.objects.filter(board=board, status='done').order_by('card_order')
+    todo_cards = TodoCard.objects.filter(board=board, status='todo').order_by('-priority', 'card_order', 'created_at')
+    in_progress_cards = TodoCard.objects.filter(board=board, status='in_progress').order_by('-priority', 'card_order',
+                                                                                            'created_at')
+    done_cards = TodoCard.objects.filter(board=board, status='done').order_by('-priority', 'card_order', 'created_at')
 
     context = {
         'board': board,
@@ -4689,8 +4692,9 @@ def todo_kanban(request):
 def create_todo_card_api(request):
     """➕ Создание новой карточки через API
 
-    📝 Создание карточки с заголовком и описанием
-    🎯 Установка начального статуса
+    📝 Создание карточки с заголовком, описанием и приоритетом
+    🎯 Установка начального статуса и важности
+    ⭐ Приоритет по умолчанию: 2 (Обычный)
     👤 Привязка к пользователю и доске
     """
     try:
@@ -4701,6 +4705,7 @@ def create_todo_card_api(request):
             title=data.get('title', 'Новая задача'),
             description=data.get('description', ''),
             status=data.get('status', 'todo'),
+            priority=data.get('priority', 2),  # Новый параметр приоритета
             board=board,
             created_by=request.user
         )
@@ -4712,6 +4717,9 @@ def create_todo_card_api(request):
                 'title': card.title,
                 'description': card.description,
                 'status': card.status,
+                'priority': card.priority,
+                'priority_label': card.priority_label,
+                'priority_badge_color': card.priority_badge_color,
                 'created_at': card.created_at.strftime('%d.%m.%Y %H:%M'),
             }
         })
@@ -4806,7 +4814,8 @@ def update_todo_card_order_api(request):
 def update_todo_card_api(request, card_id):
     """✏️ Редактирование карточки через API
 
-    📝 Изменение заголовка и описания
+    📝 Изменение заголовка, описания и приоритета
+    ⭐ Обновление важности задачи
     🔄 Сохранение изменений
     """
     try:
@@ -4815,6 +4824,11 @@ def update_todo_card_api(request, card_id):
 
         card.title = data.get('title', card.title)
         card.description = data.get('description', card.description)
+
+        # Обновляем приоритет если передан
+        if 'priority' in data:
+            card.priority = data.get('priority', card.priority)
+
         card.save()
 
         return JsonResponse({'status': 'success'})
@@ -4829,7 +4843,8 @@ def update_todo_card_api(request, card_id):
 def get_todo_card_api(request, card_id):
     """📄 Получение информации о карточке для редактирования
 
-    🔍 Получение полных данных карточки
+    🔍 Получение полных данных карточки включая приоритет
+    ⭐ Получение важности задачи
     ⏰ Временные метки создания, начала, завершения
     🕒 Время выполнения задачи
     """
@@ -4842,6 +4857,9 @@ def get_todo_card_api(request, card_id):
                 'title': card.title,
                 'description': card.description,
                 'status': card.status,
+                'priority': card.priority,  # Добавляем приоритет
+                'priority_label': card.priority_label,
+                'priority_badge_color': card.priority_badge_color,
                 'created_at': card.created_at.isoformat(),
                 'started_at': card.started_at.isoformat() if card.started_at else None,
                 'completed_at': card.completed_at.isoformat() if card.completed_at else None,
@@ -4857,8 +4875,9 @@ def list_todo_cards_api(request):
     """📋 Получение списка задач пользователя через API
 
     🔍 Фильтрация по статусу
-    📊 Возвращает все карточки пользователя
-    ⏰ Включает время выполнения
+    📊 Возвращает все карточки пользователя с приоритетами
+    ⭐ Включает данные о важности
+    ⏰ Время выполнения задачи
     """
     try:
         status_filter = request.GET.get('status')
@@ -4879,6 +4898,9 @@ def list_todo_cards_api(request):
                 'title': card.title,
                 'description': card.description,
                 'status': card.status,
+                'priority': card.priority,  # Добавляем приоритет
+                'priority_label': card.priority_label,
+                'priority_badge_color': card.priority_badge_color,
                 'created_at': card.created_at.isoformat(),
                 'started_at': card.started_at.isoformat() if card.started_at else None,
                 'completed_at': card.completed_at.isoformat() if card.completed_at else None,

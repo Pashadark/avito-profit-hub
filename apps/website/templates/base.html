@@ -128,46 +128,40 @@
 
                     <li class="menu-item {% if request.path == '/debug-settings/' %}active{% endif %}">
                         <a href="{% url 'website:debug_settings' %}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-bug-line" style="color: #ff4757;"></i>
-                            <div style="color: #ff4757;">Админ панель</div>
+                            <i class="menu-icon tf-icons ri-bug-line"></i>
+                            <div>Админ панель</div>
                         </a>
                     </li>
 
                     <!-- Пользователи - только для администраторов -->
                     <li class="menu-item {% if request.path == '/admin-users/' %}active{% endif %}">
                         <a href="{% url 'website:admin_users' %}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-group-line" style="color: #ff4757;"></i>
-                            <div style="color: #ff4757;">Акаунты</div>
+                            <i class="menu-icon tf-icons ri-group-line"></i>
+                            <div>Акаунты</div>
                         </a>
                     </li>
                     <li class="menu-item {% if request.path == '/todo/' %}active{% endif %}">
                         <a href="{% url 'website:todo_kanban' %}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-drag-drop-line" style="color: #ff4757;"></i>
-                            <div style="color: #ff4757;">Задачи</div>
+                            <i class="menu-icon tf-icons ri-drag-drop-line"></i>
+                            <div>Задачи</div>
                         </a>
                     </li>
                     <li class="menu-item {% if request.path == '#' %}active{% endif %}">
                         <a href="{% url 'website:todo_kanban' %}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-bar-chart-2-line" style="color: #ff4757;"></i>
-                            <div style="color: #ff4757;">Статистика</div>
+                            <i class="menu-icon tf-icons ri-bar-chart-2-line"></i>
+                            <div>Статистика</div>
                         </a>
                     </li>
                     <li class="menu-item {% if request.path == '#' %}active{% endif %}">
                         <a href="{% url 'website:help' %}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-archive-2-line" style="color: #ff4757;"></i>
-                            <div style="color: #ff4757;">Структура</div>
+                            <i class="menu-icon tf-icons ri-archive-2-line"></i>
+                            <div>Структура</div>
                         </a>
                     </li>
                     <li class="menu-item {% if '/vision-statistics/' in request.path %}active{% endif %}">
                         <a href="{% url 'website:vision_statistics' %}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-brain-line" style="color: #ff4757;"></i>
-                            <div style="color: #ff4757;">Интеллект ML</div>
-                        </a>
-                    </li>
-                    <li class="menu-item {% if 'statistics/parser/' in request.path %}active{% endif %}">
-                        <a href="{% url 'website:parser_statistics' %}" class="menu-link">
-                            <i class="menu-icon tf-icons ri-game-line" style="color: #ff4757;"></i>
-                            <div style="color: #ff4757;">Статистика парсера</div>
+                            <i class="menu-icon tf-icons ri-brain-line"></i>
+                            <div>Интеллект ML</div>
                         </a>
                     </li>
                     {% endif %}
@@ -176,9 +170,9 @@
                     <li class="menu-item mt-auto" style="margin-bottom: 1rem;">
                         <form method="post" action="{% url 'logout' %}" class="d-inline w-100">
                             {% csrf_token %}
-                            <a href="#" onclick="this.closest('form').submit(); return false;" class="menu-link" style="color: #ff4757;">
-                                <i class="menu-icon tf-icons ri-logout-box-r-line" style="color: #ff4757;"></i>
-                                <div style="color: #ff4757;">Выйти</div>
+                            <a href="#" onclick="this.closest('form').submit(); return false;" class="menu-link">
+                                <i class="menu-icon tf-icons ri-logout-box-r-line"></i>
+                                <div>Выйти</div>
                             </a>
                         </form>
                     </li>

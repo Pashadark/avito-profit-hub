@@ -9,7 +9,7 @@
         <div class="card mb-4">
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h4 class="card-title mb-0">📋 Доска системных задач</h4>
+                    <h4 class="card-title mb-0">Доска системных задач</h4>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">
                         <i class="ri-add-line me-2"></i>Новая задача
                     </button>
@@ -22,41 +22,56 @@
 <div class="row">
     <!-- Колонка "К выполнению" -->
     <div class="col-md-4 mb-4">
-        <div class="card">
+        <div class="card kanban-column">
             <div class="card-header bg-light">
                 <h5 class="card-title mb-0">
                     <i class="ri-task-line me-2"></i>К выполнению
                     <span class="badge bg-secondary ms-2">{{ todo_cards.count }}</span>
                 </h5>
             </div>
-            <div class="card-body kanban-column" data-status="todo">
+            <div class="card-body p-3" data-status="todo">
                 {% for card in todo_cards %}
-                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}">
+                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}" data-priority="{{ card.priority }}">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h6 class="card-title mb-0">{{ card.title }}</h6>
                             <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                <button class="btn btn-xs btn-outline-secondary dropdown-toggle p-1 waves-effect" type="button"
                                         data-bs-toggle="dropdown">
-                                    <i class="ri-more-2-fill"></i>
+                                    <i class="ri-more-2-fill fs-6"></i>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item edit-card" href="#" data-card-id="{{ card.id }}">
+                                    <li><a class="dropdown-item edit-card waves-effect" href="#" data-card-id="{{ card.id }}">
                                         <i class="ri-edit-line me-2"></i>Редактировать
                                     </a></li>
-                                    <li><a class="dropdown-item start-card" href="#" data-card-id="{{ card.id }}">
+                                    <li><a class="dropdown-item start-card waves-effect" href="#" data-card-id="{{ card.id }}">
                                         <i class="ri-play-line me-2"></i>Начать выполнение
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger delete-card" href="#"
+                                    <li><a class="dropdown-item text-danger delete-card waves-effect" href="#"
                                            data-card-id="{{ card.id }}">
                                         <i class="ri-delete-bin-line me-2"></i>Удалить
                                     </a></li>
                                 </ul>
                             </div>
                         </div>
+
+                        <!-- Бейдж приоритета -->
+                        <div class="mb-2">
+                            <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
+                                <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
+                                {% if card.priority == 4 %}Критический
+                                {% elif card.priority == 3 %}Высокий
+                                {% elif card.priority == 2 %}Обычный
+                                {% elif card.priority == 1 %}Низкий
+                                {% endif %}
+                            </span>
+                        </div>
+
                         {% if card.description %}
-                        <p class="card-text text-muted small">{{ card.description|truncatewords:10 }}</p>
+                        <div class="card-description mb-3">
+                            {{ card.description|linebreaks }}
+                        </div>
                         {% endif %}
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted">
@@ -77,44 +92,59 @@
 
     <!-- Колонка "В процессе" -->
     <div class="col-md-4 mb-4">
-        <div class="card">
+        <div class="card kanban-column">
             <div class="card-header bg-warning bg-opacity-25">
                 <h5 class="card-title mb-0">
                     <i class="ri-loader-3-line me-2"></i>В процессе
                     <span class="badge bg-warning ms-2">{{ in_progress_cards.count }}</span>
                 </h5>
             </div>
-            <div class="card-body kanban-column" data-status="in_progress">
+            <div class="card-body p-3" data-status="in_progress">
                 {% for card in in_progress_cards %}
-                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}">
+                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}" data-priority="{{ card.priority }}">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h6 class="card-title mb-0">{{ card.title }}</h6>
                             <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-warning dropdown-toggle" type="button"
+                                <button class="btn btn-xs btn-outline-warning dropdown-toggle p-1 waves-effect" type="button"
                                         data-bs-toggle="dropdown">
-                                    <i class="ri-more-2-fill"></i>
+                                    <i class="ri-more-2-fill fs-6"></i>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item edit-card" href="#" data-card-id="{{ card.id }}">
+                                    <li><a class="dropdown-item edit-card waves-effect" href="#" data-card-id="{{ card.id }}">
                                         <i class="ri-edit-line me-2"></i>Редактировать
                                     </a></li>
-                                    <li><a class="dropdown-item complete-card" href="#" data-card-id="{{ card.id }}">
+                                    <li><a class="dropdown-item complete-card waves-effect" href="#" data-card-id="{{ card.id }}">
                                         <i class="ri-checkbox-circle-line me-2"></i>Завершить
                                     </a></li>
-                                    <li><a class="dropdown-item pause-card" href="#" data-card-id="{{ card.id }}">
+                                    <li><a class="dropdown-item pause-card waves-effect" href="#" data-card-id="{{ card.id }}">
                                         <i class="ri-pause-circle-line me-2"></i>Вернуть в очередь
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger delete-card" href="#"
+                                    <li><a class="dropdown-item text-danger delete-card waves-effect" href="#"
                                            data-card-id="{{ card.id }}">
                                         <i class="ri-delete-bin-line me-2"></i>Удалить
                                     </a></li>
                                 </ul>
                             </div>
                         </div>
+
+                        <!-- Бейдж приоритета -->
+                        <div class="mb-2">
+                            <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
+                                <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
+                                {% if card.priority == 4 %}Критический
+                                {% elif card.priority == 3 %}Высокий
+                                {% elif card.priority == 2 %}Обычный
+                                {% elif card.priority == 1 %}Низкий
+                                {% endif %}
+                            </span>
+                        </div>
+
                         {% if card.description %}
-                        <p class="card-text text-muted small">{{ card.description|truncatewords:10 }}</p>
+                        <div class="card-description mb-3">
+                            {{ card.description|linebreaks }}
+                        </div>
                         {% endif %}
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-warning">
@@ -139,38 +169,53 @@
 
     <!-- Колонка "Выполнено" -->
     <div class="col-md-4 mb-4">
-        <div class="card">
+        <div class="card kanban-column">
             <div class="card-header bg-success bg-opacity-25">
                 <h5 class="card-title mb-0">
                     <i class="ri-checkbox-circle-line me-2"></i>Выполнено
                     <span class="badge bg-success ms-2">{{ done_cards.count }}</span>
                 </h5>
             </div>
-            <div class="card-body kanban-column" data-status="done">
+            <div class="card-body p-3" data-status="done">
                 {% for card in done_cards %}
-                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}">
+                <div class="card mb-3 todo-card" data-card-id="{{ card.id }}" data-priority="{{ card.priority }}">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h6 class="card-title mb-0 text-decoration-line-through">{{ card.title }}</h6>
                             <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-success dropdown-toggle" type="button"
+                                <button class="btn btn-xs btn-outline-success dropdown-toggle p-1 waves-effect" type="button"
                                         data-bs-toggle="dropdown">
-                                    <i class="ri-more-2-fill"></i>
+                                    <i class="ri-more-2-fill fs-6"></i>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item reopen-card" href="#" data-card-id="{{ card.id }}">
+                                    <li><a class="dropdown-item reopen-card waves-effect" href="#" data-card-id="{{ card.id }}">
                                         <i class="ri-refresh-line me-2"></i>Переоткрыть
                                     </a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger delete-card" href="#"
+                                    <li><a class="dropdown-item text-danger delete-card waves-effect" href="#"
                                            data-card-id="{{ card.id }}">
                                         <i class="ri-delete-bin-line me-2"></i>Удалить
                                     </a></li>
                                 </ul>
                             </div>
                         </div>
+
+                        <!-- Бейдж приоритета -->
+                        <div class="mb-2">
+                            <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
+                                <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
+                                {% if card.priority == 4 %}Критический
+                                {% elif card.priority == 3 %}Высокий
+                                {% elif card.priority == 2 %}Обычный
+                                {% elif card.priority == 1 %}Низкий
+                                {% endif %}
+                            </span>
+                        </div>
+
                         {% if card.description %}
-                        <p class="card-text text-muted small">{{ card.description|truncatewords:10 }}</p>
+                        <div class="card-description mb-3">
+                            {{ card.description|linebreaks }}
+                        </div>
                         {% endif %}
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-success">
@@ -206,8 +251,20 @@
                 <form id="createCardForm">
                     {% csrf_token %}
                     <div class="mb-3">
-                        <label for="cardTitle" class="form-label">Название задачи</label>
+                        <label for="cardTitle" class="form-label">Название задачи <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="cardTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cardPriority" class="form-label">Важность задачи</label>
+                        <select class="form-select" id="cardPriority">
+                            <option value="1"><i class="ri-leaf-fill me-1"></i> Низкий</option>
+                            <option value="2" selected><i class="ri-flag-fill me-1"></i> Обычный</option>
+                            <option value="3"><i class="ri-alert-fill me-1"></i> Высокий</option>
+                            <option value="4"><i class="ri-fire-fill me-1"></i> Критический</option>
+                        </select>
+                        <div class="form-text small">
+                            1 - Можно подождать, 2 - Стандартная, 3 - Срочно, 4 - Критично
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="cardDescription" class="form-label">Описание</label>
@@ -236,8 +293,17 @@
                     {% csrf_token %}
                     <input type="hidden" id="editCardId">
                     <div class="mb-3">
-                        <label for="editCardTitle" class="form-label">Название задачи</label>
+                        <label for="editCardTitle" class="form-label">Название задачи <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="editCardTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCardPriority" class="form-label">Важность задачи</label>
+                        <select class="form-select" id="editCardPriority">
+                            <option value="1"><i class="ri-leaf-fill me-1"></i> Низкий</option>
+                            <option value="2"><i class="ri-flag-fill me-1"></i> Обычный</option>
+                            <option value="3"><i class="ri-alert-fill me-1"></i> Высокий</option>
+                            <option value="4"><i class="ri-fire-fill me-1"></i> Критический</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="editCardDescription" class="form-label">Описание</label>
@@ -254,15 +320,12 @@
 </div>
 
 <style>
-.kanban-column {
-    min-height: 500px;
-    max-height: 700px;
-    overflow-y: auto;
-}
-
+/* Базовые стили карточек */
 .todo-card {
     cursor: move;
     transition: transform 0.2s;
+    border-radius: 12px !important;
+    border: 1px solid #e9ecef !important;
 }
 
 .todo-card:hover {
@@ -270,17 +333,135 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-.card-header h5 {
-    font-size: 1.1rem;
+/* Карточка растет по контенту */
+.todo-card .card-body {
+    padding: 1rem;
+}
+
+/* Отступ карточек от заголовка колонки */
+.kanban-column .card-body {
+    padding: 0.75rem !important;
+}
+
+/* Текст описания */
+.card-description {
+    color: #6c757d !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+    word-wrap: break-word !important;
+    white-space: pre-wrap !important;
+    text-align: left !important;
+    margin-bottom: 1rem !important;
+}
+
+/* Сбрасываем стили для <p> внутри карточки */
+.card-description p,
+.todo-card p {
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+    line-height: inherit !important;
+}
+
+/* ========== БЕЙДЖИ ПРИОРИТЕТОВ ========== */
+.priority-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 5px 10px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    height: 22px !important;
+    white-space: nowrap !important;
+    border: none !important;
+}
+
+/* Адаптив для мобилок */
+@media (max-width: 768px) {
+    .priority-badge {
+        padding: 4px 8px !important;
+        font-size: 10px !important;
+        height: 20px !important;
+    }
+}
+
+/* Цвета бейджей - БЕЗ ::before с эмоджи! */
+.badge-critical {
+    background: rgba(231, 76, 60, 0.1) !important;
+    color: #e74c3c !important;
+}
+.badge-critical i {
+    color: #e74c3c !important;
+    font-size: 12px;
+}
+
+.badge-high {
+    background: rgba(243, 156, 18, 0.1) !important;
+    color: #f39c12 !important;
+}
+.badge-high i {
+    color: #f39c12 !important;
+    font-size: 12px;
+}
+
+.badge-normal {
+    background: rgba(52, 152, 219, 0.1) !important;
+    color: #3498db !important;
+}
+.badge-normal i {
+    color: #3498db !important;
+    font-size: 12px;
+}
+
+.badge-low {
+    background: rgba(46, 204, 113, 0.1) !important;
+    color: #2ecc71 !important;
+}
+.badge-low i {
+    color: #2ecc71 !important;
+    font-size: 12px;
+}
+
+/* ========== МАЛЕНЬКАЯ КНОПКА ========== */
+.btn-xs {
+    padding: 0.2rem 0.4rem !important;
+    font-size: 0.75rem !important;
+    line-height: 1.2 !important;
+    min-width: 28px;
+    min-height: 28px;
+}
+
+.btn-xs i {
+    font-size: 14px !important;
+    line-height: 1 !important;
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Функция для получения CSRF токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
     // Создание новой карточки
     document.getElementById('saveCardBtn').addEventListener('click', function() {
         const title = document.getElementById('cardTitle').value;
         const description = document.getElementById('cardDescription').value;
+        const priority = parseInt(document.getElementById('cardPriority').value);
 
         if (!title) {
             alert('Введите название задачи');
@@ -296,6 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 title: title,
                 description: description,
+                priority: priority,
                 status: 'todo'
             })
         })
@@ -306,6 +488,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 alert('Ошибка: ' + data.message);
             }
+        })
+        .catch(error => {
+            alert('Ошибка сети: ' + error.message);
         });
     });
 
@@ -321,6 +506,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         document.getElementById('editCardId').value = cardId;
                         document.getElementById('editCardTitle').value = data.card.title;
                         document.getElementById('editCardDescription').value = data.card.description || '';
+                        document.getElementById('editCardPriority').value = data.card.priority;
 
                         const modal = new bootstrap.Modal(document.getElementById('editCardModal'));
                         modal.show();
@@ -334,6 +520,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const cardId = document.getElementById('editCardId').value;
         const title = document.getElementById('editCardTitle').value;
         const description = document.getElementById('editCardDescription').value;
+        const priority = parseInt(document.getElementById('editCardPriority').value);
 
         fetch(`/api/todo/update/${cardId}/`, {
             method: 'POST',
@@ -343,7 +530,8 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 title: title,
-                description: description
+                description: description,
+                priority: priority
             })
         })
         .then(response => response.json())
@@ -371,15 +559,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
-                // Обновляем отображение времени
-                const cardElement = document.querySelector(`[data-card-id="${cardId}"]`);
-                if (cardElement && data.time_info) {
-                    const timeElement = cardElement.querySelector('.text-warning, .text-success');
-                    if (timeElement) {
-                        timeElement.innerHTML = `<i class="ri-time-line me-1"></i>${data.time_info.completion_time}`;
-                    }
-                }
-                location.reload(); // Перезагружаем для обновления позиции
+                location.reload();
             } else {
                 alert('Ошибка: ' + data.message);
             }
@@ -453,7 +633,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.querySelectorAll('.kanban-column').forEach(column => {
+    document.querySelectorAll('.card-body[data-status]').forEach(column => {
         column.addEventListener('dragover', function(e) {
             e.preventDefault();
             this.style.backgroundColor = 'rgba(0,0,0,0.05)';
@@ -475,22 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-
-    // Функция для получения CSRF токена
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
 });
 </script>
+
 {% endblock %}

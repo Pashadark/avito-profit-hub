@@ -61,6 +61,54 @@
     white-space: nowrap;
     height: 22px;
 }
+/* Базовый стиль бейджа (как на Авито) */
+.priority-badge {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 5px 8px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    transition: all 0.2s ease !important;
+    height: 22px !important;
+    white-space: nowrap !important;
+    border: none !important;
+}
+
+/* Адаптив для мобилок */
+@media (max-width: 768px) {
+    .priority-badge {
+        padding: 4px 6px !important;
+        font-size: 10px !important;
+        height: 20px !important;
+    }
+}
+
+/* Критический (4) - Красный как "Срочно" на Авито */
+.badge-critical {
+    background: rgba(231, 76, 60, 0.1) !important;
+    color: #e74c3c !important;
+}
+
+/* Высокий (3) - Оранжевый как "Хит" на Авито */
+.badge-high {
+    background: rgba(243, 156, 18, 0.1) !important;
+    color: #f39c12 !important;
+}
+
+/* Обычный (2) - Синий как "Продавец" на Авито */
+.badge-normal {
+    background: rgba(52, 152, 219, 0.1) !important;
+    color: #3498db !important;
+}
+
+/* Низкий (1) - Зеленый как "Проверенный" на Авито */
+.badge-low {
+    background: rgba(46, 204, 113, 0.1) !important;
+    color: #2ecc71 !important;
+}
 
 /* Продавец-реселлер */
 .seller-badge.reseller,

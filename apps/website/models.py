@@ -1042,9 +1042,22 @@ class TodoCard(models.Model):
         ('done', 'Выполнено'),
     ]
 
+    # Добавляем приоритеты
+    PRIORITY_CHOICES = [
+        (1, 'Низкий'),
+        (2, 'Обычный'),
+        (3, 'Высокий'),
+        (4, 'Критический'),
+    ]
+
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='todo')
+    priority = models.IntegerField(
+        choices=PRIORITY_CHOICES,
+        default=2,
+        verbose_name='Важность'
+    )
     board = models.ForeignKey(TodoBoard, on_delete=models.CASCADE, related_name='cards')
     due_date = models.DateTimeField(blank=True, null=True)
     labels = models.JSONField(default=list, blank=True)
@@ -1062,7 +1075,7 @@ class TodoCard(models.Model):
         app_label = "website"
         verbose_name = "Карточка задачи"
         verbose_name_plural = "Карточки задач"
-        ordering = ['card_order', 'created_at']
+        ordering = ['-priority', 'card_order', 'created_at']  # Сначала важные задачи
 
     def __str__(self):
         return self.title
@@ -1131,6 +1144,33 @@ class TodoCard(models.Model):
         if self.due_date and timezone.now() > self.due_date and self.status != 'done':
             return True
         return False
+
+    @property
+    def priority_class(self):
+        """Возвращает CSS класс для приоритета"""
+        priority_classes = {
+            1: 'priority-low',
+            2: 'priority-normal',
+            3: 'priority-high',
+            4: 'priority-critical'
+        }
+        return priority_classes.get(self.priority, 'priority-normal')
+
+    @property
+    def priority_label(self):
+        """Возвращает текстовую метку приоритета"""
+        return dict(self.PRIORITY_CHOICES).get(self.priority, 'Обычный')
+
+    @property
+    def priority_badge_color(self):
+        """Возвращает цвет бейджа для приоритета"""
+        colors = {
+            1: 'success',  # Зеленый
+            2: 'primary',  # Синий
+            3: 'warning',  # Желтый
+            4: 'danger'  # Красный
+        }
+        return colors.get(self.priority, 'primary')
 
 
 # ============================================================================
