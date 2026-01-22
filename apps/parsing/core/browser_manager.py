@@ -223,7 +223,14 @@ class BrowserManager:
             return False
 
     def setup_drivers(self):
+        """УМНЫЙ ЗАПУСК ДРАЙВЕРОВ - ЕСЛИ ОКОН > 1, ЗАПУСКАЕТ МНОЖЕСТВЕННО"""
         try:
+            # 🔥 ИСПРАВЛЕНИЕ: Если окон больше 1, используем множественный запуск
+            if self.browser_windows > 1:
+                logger.info(f"🔄 Обнаружено {self.browser_windows} окон, запускаю множественно...")
+                return self.setup_multiple_drivers()
+
+            # Иначе стандартный одиночный запуск
             self.close_drivers()
             logger.info("🚀 Запуск браузера...")
 
@@ -233,7 +240,6 @@ class BrowserManager:
                 logger.info("✅ Браузер запущен успешно!")
                 return True
             return False
-
         except Exception as e:
             logger.error(f"❌ Критическая ошибка: {e}")
             return False

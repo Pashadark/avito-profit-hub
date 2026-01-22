@@ -1591,6 +1591,227 @@ class NotificationSender:
             traceback.print_exc()
             return False
 
+    async def send_parsing_start_notification(self, query, window_index, total_queries, query_index, user_id=None):
+        """Отправляет уведомление о начале парсинга запроса в Telegram"""
+        try:
+            from shared.utils.config import get_bot_token, get_chat_id
+            from telegram import Bot
+
+            token = get_bot_token()
+            chat_id = get_chat_id()
+
+            if not token or not chat_id:
+                logger.warning("⚠️ Не удалось отправить уведомление: нет токена или chat_id")
+                return False
+
+            bot = Bot(token=token)
+
+            # Получаем текущее время
+            current_time = datetime.now().strftime("%H:%M:%S")
+
+            # Информация о пользователе если есть
+            user_info = ""
+            if user_id:
+                try:
+                    from django.contrib.auth.models import User
+                    user = await sync_to_async(User.objects.get)(id=user_id)
+                    user_info = f"👤 <b>Пользователь:</b> {user.username}\n"
+                except Exception:
+                    user_info = f"👤 <b>Пользователь ID:</b> {user_id}\n"
+
+            message = (
+                f"🔍 <b>НАЧАЛО ПАРСИНГА</b>\n\n"
+                f"{user_info}"
+                f"⏰ <b>Время:</b> {current_time}\n"
+                f"🖥️ <b>Окно:</b> {window_index + 1}\n"
+                f"📊 <b>Запрос:</b> {query_index + 1}/{total_queries}\n"
+                f"🔎 <b>Поиск:</b> <code>{escape(query)}</code>\n\n"
+                f"⚡ <b>Статус:</b> Парсинг запущен..."
+            )
+
+            await bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode='HTML'
+            )
+
+            logger.info(f"✅ Уведомление о начале парсинга '{query}' отправлено в Telegram")
+            return True
+
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка отправки уведомления о начале парсинга: {e}")
+            return False
+
+    async def send_parsing_results_notification(self, query, window_index, found_count, items_processed, user_id=None):
+        """Отправляет уведомление о результатах парсинга в Telegram"""
+        try:
+            from shared.utils.config import get_bot_token, get_chat_id
+            from telegram import Bot
+
+            token = get_bot_token()
+            chat_id = get_chat_id()
+
+            if not token or not chat_id:
+                logger.warning("⚠️ Не удалось отправить уведомление: нет токена или chat_id")
+                return False
+
+            bot = Bot(token=token)
+
+            # Получаем текущее время
+            current_time = datetime.now().strftime("%H:%M:%S")
+
+            # Информация о пользователе если есть
+            user_info = ""
+            if user_id:
+                try:
+                    from django.contrib.auth.models import User
+                    user = await sync_to_async(User.objects.get)(id=user_id)
+                    user_info = f"👤 <b>Пользователь:</b> {user.username}\n"
+                except Exception:
+                    user_info = f"👤 <b>Пользователь ID:</b> {user_id}\n"
+
+            filtered_count = found_count - items_processed
+
+            message = (
+                f"📊 <b>РЕЗУЛЬТАТЫ ПАРСИНГА</b>\n\n"
+                f"{user_info}"
+                f"⏰ <b>Время:</b> {current_time}\n"
+                f"🖥️ <b>Окно:</b> {window_index + 1}\n"
+                f"🔎 <b>Запрос:</b> <code>{escape(query)}</code>\n\n"
+                f"📈 <b>Результаты:</b>\n"
+                f"• Найдено товаров: <b>{found_count}</b>\n"
+                f"• Обработано: <b>{items_processed}</b>\n"
+                f"• Отфильтровано: <b>{filtered_count}</b>\n\n"
+                f"✅ <b>Статус:</b> Парсинг завершен"
+            )
+
+            await bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode='HTML'
+            )
+
+            logger.info(f"✅ Уведомление о результатах парсинга '{query}' отправлено в Telegram")
+            return True
+
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка отправки уведомления о результатах: {e}")
+            return False
+
+    async def send_parser_start_notification(self, parser_data, user_id=None):
+        """Отправляет уведомление о старте парсера в Telegram"""
+        try:
+            from shared.utils.config import get_bot_token, get_chat_id
+            from telegram import Bot
+
+            token = get_bot_token()
+            chat_id = get_chat_id()
+
+            if not token or not chat_id:
+                logger.warning("⚠️ Не удалось отправить уведомление: нет токена или chat_id")
+                return False
+
+            bot = Bot(token=token)
+
+            # Получаем текущее время
+            current_time = datetime.now().strftime("%H:%M:%S")
+
+            # Информация о пользователе если есть
+            user_info = ""
+            if user_id:
+                try:
+                    from django.contrib.auth.models import User
+                    user = await sync_to_async(User.objects.get)(id=user_id)
+                    user_info = f"👤 <b>Пользователь:</b> {user.username}\n"
+                except Exception:
+                    user_info = f"👤 <b>Пользователь ID:</b> {user_id}\n"
+
+            message = (
+                f"🚀 <b>ПАРСЕР ЗАПУЩЕН</b>\n\n"
+                f"{user_info}"
+                f"⏰ <b>Время старта:</b> {current_time}\n"
+                f"🖥️ <b>Окон браузера:</b> {parser_data.get('browser_windows', 1)}\n"
+                f"🔎 <b>Запросов:</b> {parser_data.get('queries_count', 0)}\n"
+                f"🌐 <b>Сайт:</b> {parser_data.get('site', 'avito')}\n"
+                f"🏙️ <b>Город:</b> {parser_data.get('city', 'Москва')}\n\n"
+                f"⚡ <b>Статус:</b> Запускаем парсинг..."
+            )
+
+            await bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode='HTML'
+            )
+
+            logger.info("✅ Уведомление о старте парсера отправлено в Telegram")
+            return True
+
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка отправки уведомления о старте: {e}")
+            return False
+
+    async def send_parser_stop_notification(self, stats, user_id=None, reason="Нормальная остановка"):
+        """Отправляет уведомление об остановке парсера в Telegram"""
+        try:
+            from shared.utils.config import get_bot_token, get_chat_id
+            from telegram import Bot
+
+            token = get_bot_token()
+            chat_id = get_chat_id()
+
+            if not token or not chat_id:
+                logger.warning("⚠️ Не удалось отправить уведомление: нет токена или chat_id")
+                return False
+
+            bot = Bot(token=token)
+
+            # Получаем текущее время
+            current_time = datetime.now().strftime("%H:%M:%S")
+
+            # Информация о пользователе если есть
+            user_info = ""
+            if user_id:
+                try:
+                    from django.contrib.auth.models import User
+                    user = await sync_to_async(User.objects.get)(id=user_id)
+                    user_info = f"👤 <b>Пользователь:</b> {user.username}\n"
+                except Exception:
+                    user_info = f"👤 <b>Пользователь ID:</b> {user_id}\n"
+
+            # Форматируем статистику
+            stats_text = ""
+            if stats:
+                stats_text = (
+                    f"📊 <b>Статистика работы:</b>\n"
+                    f"• Обработано запросов: {stats.get('total_searches', 0)}\n"
+                    f"• Найдено товаров: {stats.get('items_found', 0)}\n"
+                    f"• Хороших сделок: {stats.get('good_deals_found', 0)}\n"
+                    f"• Свежих сделок: {stats.get('fresh_deals_found', 0)}\n"
+                    f"• Время работы: {stats.get('uptime', '0ч 0м')}\n\n"
+                )
+
+            message = (
+                f"🛑 <b>ПАРСЕР ОСТАНОВЛЕН</b>\n\n"
+                f"{user_info}"
+                f"⏰ <b>Время остановки:</b> {current_time}\n"
+                f"📝 <b>Причина:</b> {reason}\n\n"
+                f"{stats_text}"
+                f"✅ <b>Статус:</b> Парсер успешно остановлен"
+            )
+
+            await bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                parse_mode='HTML'
+            )
+
+            logger.info("✅ Уведомление об остановке парсера отправлено в Telegram")
+            return True
+
+        except Exception as e:
+            logger.warning(f"⚠️ Ошибка отправки уведомления об остановке: {e}")
+            return False
+
     async def send_demo_notification(self):
         """Отправляет демо-уведомление"""
         try:

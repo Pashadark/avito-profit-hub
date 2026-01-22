@@ -388,7 +388,17 @@ def setup_logging(process_name=None):
                 'propagate': False,
                 'filters': ['django_server_filter']
             },
-
+            # ⚡ ML библиотеки (скрываем технические логи)
+            'joblib': {
+                'handlers': ['null'],
+                'level': 'WARNING',
+                'propagate': False
+            },
+            'sklearn': {
+                'handlers': ['null'],
+                'level': 'WARNING',
+                'propagate': False
+            },
             # 👤 Логи действий пользователей
             'user.actions': {
                 'handlers': ['console', 'apps_file'],

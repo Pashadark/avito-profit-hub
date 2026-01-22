@@ -1195,13 +1195,38 @@ class SeleniumAvitoParser(BaseParser):
 
         if not await self._optimized_driver_setup():
             logger.error("❌ Не удалось запустить парсер")
+
+            # 🔥 УВЕДОМЛЕНИЕ ОБ ОШИБКЕ ЗАПУСКА
+            try:
+                await self.notification_sender.send_captcha_notification(
+                    reason="Не удалось запустить драйверы браузера"
+                )
+            except Exception as notify_error:
+                logger.error(f"❌ Ошибка отправки уведомления об ошибке: {notify_error}")
+
             return
 
         self.is_running = True
         self.force_stop = False  # 🔥 Сбрасываем флаг принудительной остановки
         logger.info("🔥 СУПЕР-ПАРСЕР АКТИВИРОВАН!")
-        logger.info(f"🎯 ЗАПРОСЫ: {self.search_queries}")  # Убрали "AI-"
+        logger.info(f"🎯 ЗАПРОСЫ: {self.search_queries}")
         logger.info(f"🖥️ ОКОН: {self.browser_windows}")
+
+        # 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ О СТАРТЕ ПАРСЕРА
+        try:
+            parser_data = {
+                'browser_windows': self.browser_windows,
+                'queries_count': len(self.search_queries),
+                'site': self.current_site,
+                'city': self.current_city
+            }
+            await self.notification_sender.send_parser_start_notification(
+                parser_data=parser_data,
+                user_id=self.current_user_id
+            )
+            logger.info("✅ Уведомление о старте парсера отправлено")
+        except Exception as notify_error:
+            logger.warning(f"⚠️ Не удалось отправить уведомление о старте: {notify_error}")
 
         cycle_count = 0
         consecutive_empty_cycles = 0
@@ -1219,6 +1244,17 @@ class SeleniumAvitoParser(BaseParser):
                 # 🔥 ПРОВЕРКА ТАЙМЕРА
                 if hasattr(self.timer_manager, 'should_stop') and await sync_to_async(self.timer_manager.should_stop)():
                     logger.info("⏰ Таймер истек, останавливаемся...")
+
+                    # 🔥 УВЕДОМЛЕНИЕ ОБ ОСТАНОВКЕ ПО ТАЙМЕРУ
+                    try:
+                        await self.notification_sender.send_parser_stop_notification(
+                            stats=self.search_stats,
+                            user_id=self.current_user_id,
+                            reason="Истек таймер работы"
+                        )
+                    except Exception as notify_error:
+                        logger.warning(f"⚠️ Не удалось отправить уведомление об остановке: {notify_error}")
+
                     self.stop()
                     break
 
@@ -1242,12 +1278,10 @@ class SeleniumAvitoParser(BaseParser):
                 if cycle_count % 5 == 0:
                     await self._safe_async_operation("fast_settings_check", self._fast_settings_check)
 
-                    # 🔥 ПРОВЕРКА ОСТАНОВКИ - AI оптимизация удалена, оставляем только эту проверку
+                    # 🔥 ПРОВЕРКА ОСТАНОВКИ
                     if self.force_stop:
                         logger.info("🔴 Прерывание цикла перед обновлением статистики")
                         break
-
-                    # AI оптимизация удалена - сразу переходим к следующему блоку
 
                 # 🔥 ПРОВЕРКА ОСТАНОВКИ
                 if self.force_stop:
@@ -1268,7 +1302,7 @@ class SeleniumAvitoParser(BaseParser):
                     logger.warning("❤️ ВНИМАНИЕ: Система работает нестабильно!")
 
                 logger.info(
-                    f"🌀 Цикл #{cycle_count} | Запросы: {len(self.search_queries)} | Здоровье: {health_status}")  # Убрали "AI-"
+                    f"🌀 Цикл #{cycle_count} | Запросы: {len(self.search_queries)} | Здоровье: {health_status}")
 
                 # 🔥 ПРОВЕРКА ОСТАНОВКИ ПЕРЕД ПАРАЛЛЕЛЬНОЙ ОБРАБОТКОЙ
                 if self.force_stop:
@@ -1301,6 +1335,16 @@ class SeleniumAvitoParser(BaseParser):
                     consecutive_empty_cycles += 1
                     if consecutive_empty_cycles > 2:
                         logger.info(f"⚡ Пустой цикл #{consecutive_empty_cycles}")
+
+                        # 🔥 УВЕДОМЛЕНИЕ О ПУСТЫХ ЦИКЛАХ
+                        if consecutive_empty_cycles >= 5:
+                            logger.warning("⚠️ Подряд 5 пустых циклов, возможно проблемы с парсингом")
+                            try:
+                                await self.notification_sender.send_captcha_notification(
+                                    reason=f"Подряд {consecutive_empty_cycles} пустых циклов. Возможна блокировка."
+                                )
+                            except Exception as notify_error:
+                                logger.warning(f"⚠️ Не удалось отправить уведомление о проблемах: {notify_error}")
 
                 # 🔥 ПРОВЕРКА ОСТАНОВКИ ПЕРЕД СТАТИСТИКОЙ
                 if self.force_stop:
@@ -1360,6 +1404,15 @@ class SeleniumAvitoParser(BaseParser):
                     # ❤️ ЗАПИСЬ ОШИБКИ
                     self.health_monitor.record_cycle(success=False)
 
+                    # 🔥 УВЕДОМЛЕНИЕ ОБ ОШИБКЕ
+                    if self.search_stats['error_count'] % 5 == 0:  # Каждую 5 ошибку
+                        try:
+                            await self.notification_sender.send_captcha_notification(
+                                reason=f"Ошибка #{self.search_stats['error_count']} в цикле {cycle_count}: {str(e)[:100]}..."
+                            )
+                        except Exception as notify_error:
+                            logger.warning(f"⚠️ Не удалось отправить уведомление об ошибке: {notify_error}")
+
                     # 🔥 ПРОВЕРКА ОСТАНОВКИ ПЕРЕД ОБРАБОТКОЙ ОШИБКИ
                     if not self.force_stop:
                         # 🔥 АДАПТИВНАЯ ОБРАБОТКА ОШИБОК
@@ -1377,8 +1430,28 @@ class SeleniumAvitoParser(BaseParser):
         # 🔥 ФИНАЛЬНАЯ СТАТИСТИКА ТОЛЬКО ЕСЛИ НЕ ПРИНУДИТЕЛЬНАЯ ОСТАНОВКА
         if not self.force_stop:
             logger.info(f"📊 ИТОГО: Выполнено {cycle_count} циклов за {time.time() - self.start_time:.1f} секунд")
+
+            # 🔥 УВЕДОМЛЕНИЕ О НОРМАЛЬНОЙ ОСТАНОВКЕ
+            try:
+                await self.notification_sender.send_parser_stop_notification(
+                    stats=self.search_stats,
+                    user_id=self.current_user_id,
+                    reason="Завершение работы (цикл закончен)"
+                )
+            except Exception as notify_error:
+                logger.warning(f"⚠️ Не удалось отправить уведомление о завершении: {notify_error}")
         else:
             logger.info(f"🔴 ПРИНУДИТЕЛЬНАЯ ОСТАНОВКА: Выполнено {cycle_count} циклов")
+
+            # 🔥 УВЕДОМЛЕНИЕ О ПРИНУДИТЕЛЬНОЙ ОСТАНОВКЕ
+            try:
+                await self.notification_sender.send_parser_stop_notification(
+                    stats=self.search_stats,
+                    user_id=self.current_user_id,
+                    reason="Принудительная остановка"
+                )
+            except Exception as notify_error:
+                logger.warning(f"⚠️ Не удалось отправить уведомление о принудительной остановке: {notify_error}")
 
         await self._cleanup()
 
@@ -2248,7 +2321,7 @@ class SeleniumAvitoParser(BaseParser):
         return total_found > 0
 
     async def _process_window_queries(self, driver, window_index, queries):
-        """ОБРАБОТКА ЗАПРОСОВ В ОДНОМ ОКНЕ С ВЫБОРОМ САЙТА"""
+        """ОБРАБОТКА ЗАПРОСОВ В ОДНОМ ОКНЕ С УВЕДОМЛЕНИЯМИ"""
         site_parser = None
         try:
             # 🔥 ИСПОЛЬЗУЕМ ТЕКУЩИЙ САЙТ
@@ -2263,6 +2336,18 @@ class SeleniumAvitoParser(BaseParser):
                     break
 
                 logger.info(f"🔎 Окно {window_index} | {self.current_site} | Запрос: '{query}'")
+
+                # 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ О НАЧАЛЕ ПАРСИНГА
+                try:
+                    await self.notification_sender.send_parsing_start_notification(
+                        query=query,
+                        window_index=window_index,
+                        total_queries=len(queries),
+                        query_index=query_index,
+                        user_id=self.current_user_id
+                    )
+                except Exception as notify_error:
+                    logger.warning(f"⚠️ Не удалось отправить уведомление о начале парсинга: {notify_error}")
 
                 # 🔥 ОБНОВЛЯЕМ СТАТИСТИКУ ЗАПРОСА
                 if query not in self.query_stats:
@@ -2279,6 +2364,15 @@ class SeleniumAvitoParser(BaseParser):
                 # Проверка драйвера
                 if not await self._check_driver_health(driver, window_index):
                     logger.warning(f"⚠️ Окно {window_index} | Проблемы с драйвером, пропускаем запрос")
+
+                    # 🔥 УВЕДОМЛЕНИЕ О ПРОБЛЕМЕ С ДРАЙВЕРОМ
+                    try:
+                        await self.notification_sender.send_captcha_notification(
+                            reason=f"Окно {window_index} | Проблемы с драйвером браузера"
+                        )
+                    except Exception as notify_error:
+                        logger.warning(f"⚠️ Не удалось отправить уведомление о проблемах с драйвером: {notify_error}")
+
                     continue
 
                 # 🔥 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Используем search_items вместо parse_search_results
@@ -2289,10 +2383,28 @@ class SeleniumAvitoParser(BaseParser):
                     # 🔥 ВАЖНО: Проверяем что site_parser существует и имеет метод search_items
                     if not site_parser:
                         logger.error(f"❌ Окно {window_index} | site_parser не создан!")
+
+                        # 🔥 УВЕДОМЛЕНИЕ О ПРОБЛЕМЕ С ПАРСЕРОМ
+                        try:
+                            await self.notification_sender.send_captcha_notification(
+                                reason=f"Окно {window_index} | Не удалось создать парсер для сайта {self.current_site}"
+                            )
+                        except Exception as notify_error:
+                            logger.warning(f"⚠️ Не удалось отправить уведомление о проблеме с парсером: {notify_error}")
+
                         continue
 
                     if not hasattr(site_parser, 'search_items'):
                         logger.error(f"❌ Окно {window_index} | site_parser не имеет метода search_items!")
+
+                        # 🔥 УВЕДОМЛЕНИЕ О ПРОБЛЕМЕ С МЕТОДОМ
+                        try:
+                            await self.notification_sender.send_captcha_notification(
+                                reason=f"Окно {window_index} | Парсер не имеет метода search_items"
+                            )
+                        except Exception as notify_error:
+                            logger.warning(f"⚠️ Не удалось отправить уведомление о проблеме с методом: {notify_error}")
+
                         continue
 
                     # Вызываем search_items
@@ -2302,6 +2414,15 @@ class SeleniumAvitoParser(BaseParser):
 
                 except Exception as search_error:
                     logger.error(f"❌ Окно {window_index} | Ошибка в search_items: {search_error}")
+
+                    # 🔥 УВЕДОМЛЕНИЕ ОБ ОШИБКЕ ПАРСИНГА
+                    try:
+                        await self.notification_sender.send_captcha_notification(
+                            reason=f"Окно {window_index} | Ошибка при поиске товаров: {str(search_error)[:100]}..."
+                        )
+                    except Exception as notify_error:
+                        logger.warning(f"⚠️ Не удалось отправить уведомление об ошибке парсинга: {notify_error}")
+
                     # Пробуем альтернативный метод если search_items не сработал
                     try:
                         logger.info(f"🔄 Окно {window_index} | Пробуем альтернативный метод...")
@@ -2336,16 +2457,43 @@ class SeleniumAvitoParser(BaseParser):
                 # Проверяем результаты
                 if not products:
                     logger.info(f"ℹ️ Окно {window_index} | По '{query}' ничего не найдено")
+
+                    # 🔥 УВЕДОМЛЕНИЕ О ПУСТОМ РЕЗУЛЬТАТЕ
+                    try:
+                        await self.notification_sender.send_parsing_results_notification(
+                            query=query,
+                            window_index=window_index,
+                            found_count=0,
+                            items_processed=0,
+                            user_id=self.current_user_id
+                        )
+                    except Exception as notify_error:
+                        logger.warning(f"⚠️ Не удалось отправить уведомление о пустом результате: {notify_error}")
+
                     continue
 
                 logger.info(f"✅ Окно {window_index} | Найдено {len(products)} товаров по '{query}'")
                 self.query_stats[query]['successful'] += 1
                 self.search_stats['successful_searches'] += 1
 
+                # 🔥 ОТПРАВЛЯЕМ РЕЗУЛЬТАТЫ ПАРСИНГА
+                try:
+                    items_to_process = min(len(products), 15)  # Примерно сколько обработаем
+                    await self.notification_sender.send_parsing_results_notification(
+                        query=query,
+                        window_index=window_index,
+                        found_count=len(products),
+                        items_processed=items_to_process,
+                        user_id=self.current_user_id
+                    )
+                except Exception as notify_error:
+                    logger.warning(f"⚠️ Не удалось отправить уведомление о результатах: {notify_error}")
+
                 # 🔥 ОБРАБОТКА ТОВАРОВ
                 found_deals = await self._fast_process_products_with_vision(products, site_parser, window_index, query)
                 if found_deals:
                     found_any_in_window = True
+                    logger.info(f"🎉 Окно {window_index} | Найдены хорошие сделки!")
 
                 # Обновляем успешность запроса
                 query_stats = self.query_stats[query]
@@ -2356,11 +2504,21 @@ class SeleniumAvitoParser(BaseParser):
                 if query_index < len(queries) - 1:
                     await asyncio.sleep(1.5)
 
+            logger.info(f"🏁 Окно {window_index} | Обработка завершена. Найдено сделок: {found_any_in_window}")
             return found_any_in_window
 
         except Exception as e:
             logger.error(f"❌ Ошибка в окне {window_index} для сайта {self.current_site}: {e}")
             self.search_stats['error_count'] += 1
+
+            # 🔥 УВЕДОМЛЕНИЕ О КРИТИЧЕСКОЙ ОШИБКЕ
+            try:
+                await self.notification_sender.send_captcha_notification(
+                    reason=f"Критическая ошибка в окне {window_index}: {str(e)[:100]}..."
+                )
+            except Exception as notify_error:
+                logger.warning(f"⚠️ Не удалось отправить уведомление о критической ошибке: {notify_error}")
+
             return False
 
     async def start_with_settings(self, settings, site: str = None):
@@ -2778,6 +2936,19 @@ class SeleniumAvitoParser(BaseParser):
             self.is_running = False
             self.force_stop = True
             self.stop_requested = True
+
+            # 🔥 ОТПРАВЛЯЕМ УВЕДОМЛЕНИЕ ОБ ОСТАНОВКЕ (асинхронно)
+            import asyncio
+
+            async def send_stop_notification():
+                await self.notification_sender.send_parser_stop_notification(
+                    stats=self.search_stats,
+                    user_id=self.current_user_id,
+                    reason="Запрошена пользователем"
+                )
+
+            # Запускаем отправку уведомления в фоне
+            asyncio.create_task(send_stop_notification())
 
             # 2. Быстрое логирование текущих операций
             if self.current_operations:

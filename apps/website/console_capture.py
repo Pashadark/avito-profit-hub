@@ -61,6 +61,21 @@ class ConsoleOutputCapturer:
             'July', 'August', 'September', 'October', 'November', 'December',
         ]
 
+        # 🔥 НОВОЕ: Паттерны которые ПОЛНОСТЬЮ ИГНОРИРУЕМ (ML/logging технические)
+        self._ml_ignore_patterns = [
+            'Parallel(n_jobs=',
+            'Using backend',
+            'Done',
+            'elapsed:',
+            '[Parallel(',
+            '] Using backend',
+            '] Done',
+            ' out of ',
+            ' tasks',
+            'finished',
+            'ThreadingBackend',
+        ]
+
     def start_capture(self):
         """Начинает перехват вывода"""
         with self.lock:
@@ -157,6 +172,12 @@ class ConsoleOutputCapturer:
             return
 
         text_str = text.rstrip('\n')
+
+        # 🔥 НОВОЕ: Полностью игнорируем ML (joblib) логи
+        if any(pattern in text_str for pattern in self._ml_ignore_patterns):
+            # Просто выводим в консоль и ВОЗВРАЩАЕМСЯ - НЕ логируем!
+            self.original_stdout.write(text)
+            return
 
         # 🔥 ПРОВЕРКА: Игнорируем сообщения об ошибках логирования
         if self._should_ignore(text_str):
@@ -255,7 +276,7 @@ class ConsoleOutputCapturer:
         self.original_stdout.flush()
 
     def get_captured_output(self):
-        """Возвращает перехваченный вывод для веб-интерфейса"""
+        """Возвращает перехваченный вывод для веб-интерфейсра"""
         with self.lock:
             output = self.captured_output.getvalue()
             self.captured_output.seek(0)
