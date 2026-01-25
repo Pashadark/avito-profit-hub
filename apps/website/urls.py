@@ -33,7 +33,7 @@ from .views import (
     check_database_stats, force_clean_database, test_settings_api,
     encrypt_database, decrypt_database, start_replication,
     stop_replication, replication_status, dynamic_search_api, site_search_api,
-    user_parser_stats_api, user_ml_stats_api, export_project_structure, get_cities_list,
+    user_parser_stats_api, user_ml_stats_api, export_project_structure, get_cities_list,admin_dashboard_data,
 
     # Функции из search.py тоже должны импортироваться через __init__.py
     universal_search_api, header_search_api, table_search_api,
@@ -106,11 +106,13 @@ urlpatterns = [
     path('api/user-parser-stats/', user_parser_stats_api, name='user_parser_stats_api'),
     path('api/user-ml-stats/', user_ml_stats_api, name='user_ml_stats_api'),
     path('api/get-cities/', get_cities_list, name='get_cities_list'),
+
     # -------------------- ML СТАТИСТИКА --------------------
     path('ml-stats/', ml_dashboard, name='ml_stats'),
     path('api/ml-stats/', api_ml_stats, name='api_ml_stats'),
     path('api/ml-test/', api_ml_test, name='api_ml_test'),
     path('api/ml-retrain/', api_ml_retrain, name='api_ml_retrain'),
+    path('api/admin-dashboard-data/', admin_dashboard_data, name='admin_dashboard_data'),
 
     # -------------------- ОТЛАДКА --------------------
     path('debug-settings/', debug_settings, name='debug_settings'),

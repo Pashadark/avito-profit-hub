@@ -910,12 +910,23 @@ def start_telegram_bot():
             # Запускаем бота в отдельном процессе
             def run_bot():
                 try:
-                    # Импортируем и запускаем бота в отдельном процессе
-                    from apps.bot.bot import initialize_bot
+                    # ✅ ИМПОРТИРУЕМ НОВЫЙ МОДУЛЬ БОТА
+                    from apps.bot.bot import main as run_new_bot
                     INITIALIZED_MODULES['bot'] = True
-                    initialize_bot()
+
+                    # ✅ ЗАПУСКАЕМ НОВЫЙ БОТ
+                    print("🚀 Запускаю новый ProfitHub бота...")
+                    success = run_new_bot()
+
+                    if success:
+                        bot_logger.info("✅ Новый бот запущен успешно")
+                    else:
+                        bot_logger.error("❌ Не удалось запустить новый бот")
+
                 except Exception as e:
-                    bot_logger.error(f"Ошибка бота: {e}")
+                    bot_logger.error(f"❌ Ошибка запуска бота: {e}")
+                    import traceback
+                    traceback.print_exc()
                     INITIALIZED_MODULES['bot'] = False
 
             progress.update(60)

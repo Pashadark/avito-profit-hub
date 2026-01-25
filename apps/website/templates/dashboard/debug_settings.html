@@ -426,14 +426,14 @@
                         <div class="avatar bg-label-success rounded">
                             <i class="ri-database-2-line ri-24px"></i>
                         </div>
-                        <h5 class="mb-1" id="totalItems">1,247</h5>
+                        <h5 class="mb-1" id="totalItems">0</h5>
                         <p class="mb-0">Всего записей</p>
                     </div>
                     <div class="col-4 system-overview-item">
                         <div class="avatar bg-label-primary rounded">
                             <i class="ri-user-line ri-24px"></i>
                         </div>
-                        <h5 class="mb-1" id="totalUsers">8</h5>
+                        <h5 class="mb-1" id="totalUsers">0</h5>
                         <p class="mb-0">Активных пользователей</p>
                     </div>
                     <div class="col-4 system-overview-item">
@@ -465,43 +465,43 @@
                     </div>
                 </div>
                 <div class="d-flex align-items-center mb-2">
-                    <h4 class="mb-0 me-2" id="dbSize">45.2 MB</h4>
-                    <small class="text-success" id="dbGrowth">+12%</small>
+                    <h4 class="mb-0 me-2" id="dbSize">0 MB</h4>
+                    <small class="text-success" id="dbGrowth">+0%</small>
                 </div>
                 <div class="progress progress-thin">
-                    <div class="progress-bar bg-success" id="dbProgress" style="width: 65%"></div>
+                    <div class="progress-bar bg-success" id="dbProgress" style="width: 0%"></div>
                 </div>
             </div>
         </div>
     </div>
     <!--/ Статус базы данных -->
 
-    <!-- Статус Vision AI -->
+    <!-- Статус Парсера -->
     <div class="col-lg-3 col-sm-6">
         <div class="card h-100 admin-stat-card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-3">
                     <div class="card-info">
-                        <h6 class="mb-1">Vision AI</h6>
-                        <span class="badge bg-label-success">Активен</span>
+                        <h6 class="mb-1">Статистика</h6>
+                        <span class="badge bg-label-success">PostgreSQL</span>
                     </div>
                     <div class="avatar">
                         <div class="avatar-initial bg-label-success rounded">
-                            <i class="ri-eye-line ri-24px"></i>
+                            <i class="ri-database-2-line ri-24px"></i>
                         </div>
                     </div>
                 </div>
                 <div class="d-flex align-items-center mb-2">
-                    <h4 class="mb-0 me-2" id="visionCache">1,250</h4>
-                    <small class="text-success" id="visionAccuracy">+89%</small>
+                    <h4 class="mb-0 me-2" id="parserTotal">0</h4>
+                    <small class="text-success" id="parserGrowth">+0%</small>
                 </div>
                 <div class="progress progress-thin">
-                    <div class="progress-bar bg-info" id="visionProgress" style="width: 89%"></div>
+                    <div class="progress-bar bg-info" id="parserProgress" style="width: 0%"></div>
                 </div>
             </div>
         </div>
     </div>
-    <!--/ Статус Vision AI -->
+    <!--/ Статус Парсера -->
 
     <!-- УЛУЧШЕННАЯ СИСТЕМНАЯ КОНСОЛЬ -->
     <div class="col-lg-6">
@@ -561,9 +561,6 @@
                     <button class="btn btn-primary" onclick="backupMainDatabase()">
                         <i class="ri-database-2-line me-2"></i>Бэкап основной БД
                     </button>
-                    <button class="btn btn-info" onclick="backupVisionDatabase()">
-                        <i class="ri-eye-line me-2"></i>Бэкап Vision AI
-                    </button>
                     <button class="btn btn-warning" onclick="testAllSystems()">
                         <i class="ri-test-tube-line me-2"></i>Тест систем
                     </button>
@@ -585,19 +582,19 @@
             <div class="card-body">
                 <div class="row text-center mb-3">
                     <div class="col-6 mb-3">
-                        <div class="text-primary fw-bold fs-4" id="backupCount">12</div>
+                        <div class="text-primary fw-bold fs-4" id="backupCount">0</div>
                         <small class="text-muted">Всего бэкапов</small>
                     </div>
                     <div class="col-6 mb-3">
-                        <div class="text-success fw-bold fs-4" id="lastBackup">Сегодня</div>
+                        <div class="text-success fw-bold fs-4" id="lastBackup">-</div>
                         <small class="text-muted">Последний бэкап</small>
                     </div>
                     <div class="col-6">
-                        <div class="text-warning fw-bold fs-4" id="visionBackups">4</div>
-                        <small class="text-muted">Vision бэкапов</small>
+                        <div class="text-warning fw-bold fs-4" id="visionBackups">0</div>
+                        <small class="text-muted">-</small>
                     </div>
                     <div class="col-6">
-                        <div class="text-info fw-bold fs-4" id="storageUsed">45 MB</div>
+                        <div class="text-info fw-bold fs-4" id="storageUsed">0 MB</div>
                         <small class="text-muted">Использовано</small>
                     </div>
                 </div>
@@ -678,64 +675,6 @@
     </div>
     <!--/ Управление базой данных -->
 
-    <!-- Управление Vision AI -->
-    <div class="col-xl-6">
-        <div class="card h-100 admin-stat-card">
-            <div class="card-header d-flex justify-content-between">
-                <div>
-                    <h5 class="card-title mb-1">👁️ Управление Vision AI</h5>
-                    <p class="card-subtitle mb-0">База машинного обучения</p>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-text-secondary rounded-pill text-muted border-0 p-1" type="button" id="visionAIDropdown" data-bs-toggle="dropdown">
-                        <i class="ri-more-2-line ri-20px"></i>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-end" aria-labelledby="visionAIDropdown">
-                        <a class="dropdown-item" href="javascript:void(0);" onclick="refreshVisionStats()">
-                            <i class="ri-refresh-line me-2"></i>Обновить статистику
-                        </a>
-                        <a class="dropdown-item" href="javascript:void(0);" onclick="exportVisionData()">
-                            <i class="ri-download-line me-2"></i>Экспорт данных
-                        </a>
-                        <div class="dropdown-divider"></div>
-                        <a class="dropdown-item text-danger" href="javascript:void(0);" onclick="clearVisionCache()">
-                            <i class="ri-delete-bin-line me-2"></i>Очистить кэш
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row text-center mb-4">
-                    <div class="col-4">
-                        <div class="text-primary fw-bold fs-4" id="visionTotalCache">1,250</div>
-                        <small class="text-muted">Всего в кэше</small>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-success fw-bold fs-4" id="visionPositiveMatches">890</div>
-                        <small class="text-muted">Позитивные совпадения</small>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-info fw-bold fs-4" id="visionAccuracyRate">89%</div>
-                        <small class="text-muted">Точность</small>
-                    </div>
-                </div>
-
-                <div class="d-grid gap-2">
-                    <button class="btn btn-primary" onclick="backupVisionDatabase()">
-                        <i class="ri-copy-line me-2"></i>Бэкап Vision AI
-                    </button>
-                    <button class="btn btn-info" onclick="showVisionStats()">
-                        <i class="ri-bar-chart-line me-2"></i>Детальная статистика
-                    </button>
-                    <button class="btn btn-warning" onclick="optimizeVisionDatabase()">
-                        <i class="ri-dashboard-line me-2"></i>Оптимизация Vision AI
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!--/ Управление Vision AI -->
-
     <!-- Производительность системы -->
     <div class="col-lg-3 col-sm-6">
         <div class="card h-100 admin-stat-card performance-card">
@@ -787,19 +726,19 @@
             <div class="card-body">
                 <div class="row text-center mb-4">
                     <div class="col-3">
-                        <div class="text-primary fw-bold fs-4" id="parserTotalSearches">1,247</div>
+                        <div class="text-primary fw-bold fs-4" id="parserTotalSearches">0</div>
                         <small class="text-muted">Всего поисков</small>
                     </div>
                     <div class="col-3">
-                        <div class="text-success fw-bold fs-4" id="parserItemsFound">8,562</div>
+                        <div class="text-success fw-bold fs-4" id="parserItemsFound">0</div>
                         <small class="text-muted">Найдено товаров</small>
                     </div>
                     <div class="col-3">
-                        <div class="text-warning fw-bold fs-4" id="parserGoodDeals">342</div>
+                        <div class="text-warning fw-bold fs-4" id="parserGoodDeals">0</div>
                         <small class="text-muted">Хороших сделок</small>
                     </div>
                     <div class="col-3">
-                        <div class="text-info fw-bold fs-4" id="parserSuccessRate">87%</div>
+                        <div class="text-info fw-bold fs-4" id="parserSuccessRate">0%</div>
                         <small class="text-muted">Успешность</small>
                     </div>
                 </div>
@@ -844,19 +783,6 @@
                                 </small>
                             </div>
                             <p class="mb-0">Соединение стабильное, задержка 12ms</p>
-                        </div>
-                    </div>
-                    <div class="timeline-item timeline-item-transparent">
-                        <span class="timeline-point timeline-point-success"></span>
-                        <div class="timeline-event">
-                            <div class="timeline-header">
-                                <h6 class="mb-0">Vision AI</h6>
-                                <small class="text-muted">
-                                    <span class="health-indicator health-online"></span>
-                                    Активен
-                                </small>
-                            </div>
-                            <p class="mb-0">Точность 89%, кэш 1.2K записей</p>
                         </div>
                     </div>
                     <div class="timeline-item timeline-item-transparent">
@@ -1461,7 +1387,6 @@ function refreshSystemStats() {
     updatePerformanceStats();
     updateParserStats();
     updateBackupInfo();
-    updateVisionStats();
     loadAdvancedStats();
 }
 
@@ -1474,10 +1399,10 @@ function loadRealSystemStats() {
             const dbGrowthElement = document.getElementById('dbGrowth');
             const dbProgressElement = document.getElementById('dbProgress');
 
-            if (dbSizeElement) dbSizeElement.textContent = (data.database_size_mb || 45.2) + ' MB';
-            if (totalItemsElement) totalItemsElement.textContent = (data.total_records || 1247).toLocaleString();
-            if (dbGrowthElement) dbGrowthElement.textContent = '+12%';
-            if (dbProgressElement) dbProgressElement.style.width = '65%';
+            if (dbSizeElement) dbSizeElement.textContent = (data.database_size_mb || 0) + ' MB';
+            if (totalItemsElement) totalItemsElement.textContent = (data.total_records || 0).toLocaleString();
+            if (dbGrowthElement) dbGrowthElement.textContent = '+0%';
+            if (dbProgressElement) dbProgressElement.style.width = '0%';
         }
     })
     .catch(error => {
@@ -1488,7 +1413,7 @@ function loadRealSystemStats() {
     .then(data => {
         if (data.status === 'success') {
             const totalUsersElement = document.getElementById('totalUsers');
-            if (totalUsersElement) totalUsersElement.textContent = '8';
+            if (totalUsersElement) totalUsersElement.textContent = (data.total_users || 0);
         }
     })
     .catch(error => {
@@ -1511,8 +1436,7 @@ function loadAdvancedStats() {
 function updateHealthIndicators(health) {
     const indicators = {
         database: health.database_status || 'online',
-        parser: health.parser_status || 'warning',
-        vision: health.vision_status || 'online'
+        parser: health.parser_status || 'warning'
     };
 
     console.log('Health indicators updated:', indicators);
@@ -1581,46 +1505,15 @@ function updateParserStats() {
             const parserGoodDeals = document.getElementById('parserGoodDeals');
             const parserSuccessRate = document.getElementById('parserSuccessRate');
 
-            if (parserTotalSearches) parserTotalSearches.textContent = (stats.total_searches || 1247).toLocaleString();
-            if (parserItemsFound) parserItemsFound.textContent = (stats.items_found || 8562).toLocaleString();
-            if (parserGoodDeals) parserGoodDeals.textContent = (stats.good_deals_found || 342).toLocaleString();
+            if (parserTotalSearches) parserTotalSearches.textContent = (stats.total_searches || 0).toLocaleString();
+            if (parserItemsFound) parserItemsFound.textContent = (stats.items_found || 0).toLocaleString();
+            if (parserGoodDeals) parserGoodDeals.textContent = (stats.good_deals_found || 0).toLocaleString();
 
-            const successRate = stats.total_searches > 0 ?
-                Math.round((stats.successful_searches / stats.total_searches) * 100) : 87;
-            if (parserSuccessRate) parserSuccessRate.textContent = successRate + '%';
+            if (parserSuccessRate) parserSuccessRate.textContent = '0%';
         }
     })
     .catch(error => {
         AutoRecovery.handleError(error, 'parser-stats');
-    });
-}
-
-function updateVisionStats() {
-    DataCache.fetchWithCache('/api/vision-stats/')
-    .then(data => {
-        if (data.status === 'success') {
-            const learningStats = data.learning_stats;
-            const cacheStats = data.cache_stats;
-
-            const visionCache = document.getElementById('visionCache');
-            const visionTotalCache = document.getElementById('visionTotalCache');
-            const visionPositiveMatches = document.getElementById('visionPositiveMatches');
-            const visionAccuracyRate = document.getElementById('visionAccuracyRate');
-            const visionAccuracy = document.getElementById('visionAccuracy');
-            const visionProgress = document.getElementById('visionProgress');
-
-            if (visionCache) visionCache.textContent = (learningStats?.cache_size || 1250).toLocaleString();
-            if (visionTotalCache) visionTotalCache.textContent = (learningStats?.cache_size || 1250).toLocaleString();
-            if (visionPositiveMatches) visionPositiveMatches.textContent = (cacheStats?.positive_matches || 890).toLocaleString();
-
-            const accuracy = learningStats?.average_success_rate || 0.89;
-            if (visionAccuracyRate) visionAccuracyRate.textContent = Math.round(accuracy * 100) + '%';
-            if (visionAccuracy) visionAccuracy.textContent = '+' + Math.round(accuracy * 100) + '%';
-            if (visionProgress) visionProgress.style.width = Math.round(accuracy * 100) + '%';
-        }
-    })
-    .catch(error => {
-        AutoRecovery.handleError(error, 'vision-stats');
     });
 }
 
@@ -1633,15 +1526,16 @@ function updateBackupInfo() {
             const visionBackups = document.getElementById('visionBackups');
             const storageUsed = document.getElementById('storageUsed');
 
-            if (backupCount) backupCount.textContent = data.backups?.length || 12;
+            if (backupCount) backupCount.textContent = data.backups?.length || 0;
 
             if (data.backups && data.backups.length > 0) {
-                if (lastBackup) lastBackup.textContent = 'Сегодня';
+                if (lastBackup) lastBackup.textContent = data.backups[0].created || 'Сегодня';
+            } else {
+                if (lastBackup) lastBackup.textContent = '-';
             }
 
-            const visionBackupsData = data.backups?.filter(backup => backup.filename.includes('vision')) || [];
-            if (visionBackups) visionBackups.textContent = visionBackupsData.length || 4;
-            if (storageUsed) storageUsed.textContent = '45 MB';
+            if (visionBackups) visionBackups.textContent = 0;
+            if (storageUsed) storageUsed.textContent = '0 MB';
         }
     })
     .catch(error => {
@@ -1655,11 +1549,6 @@ function updateBackupInfo() {
 function backupMainDatabase() {
     AdminLogger.logAction('backup_start', { type: 'main' });
     startBackupProcess('main', 'Основная база данных');
-}
-
-function backupVisionDatabase() {
-    AdminLogger.logAction('backup_start', { type: 'vision' });
-    startBackupProcess('vision', 'Vision AI база данных');
 }
 
 function startBackupProcess(type, name) {
@@ -1742,14 +1631,12 @@ function refreshBackupList() {
         if (data.status === 'success' && data.backups && data.backups.length > 0) {
             let html = '<div class="list-group">';
             data.backups.forEach(backup => {
-                const isVision = backup.filename.includes('vision');
                 const isRecent = backup.created.includes('Сегодня') || backup.created.includes('Вчера');
                 html += `
                     <div class="list-group-item d-flex justify-content-between align-items-center backup-item ${isRecent ? 'border-start border-3 border-success' : ''}">
                         <div class="flex-grow-1">
                             <div class="d-flex align-items-center mb-1">
                                 <strong class="me-2">${backup.filename}</strong>
-                                ${isVision ? '<span class="badge bg-info">Vision AI</span>' : ''}
                                 ${isRecent ? '<span class="badge bg-success ms-1">Новый</span>' : ''}
                             </div>
                             <small class="text-muted d-block">${backup.size} • ${backup.created}</small>
@@ -1876,7 +1763,7 @@ function cleanOldBackups() {
                 throw new Error(data.message);
             }
         })
-        .catch(error => {
+    .catch(error => {
             console.error('Clean old backups error:', error);
             notificationAlert('❌ Ошибка очистки бэкапов', 'error');
         });
@@ -2310,11 +2197,11 @@ function showDatabaseInfo() {
     .then(data => {
         if (data.status === 'success') {
             const info = `💾 Информация о базе данных:\n\n` +
-                        `📊 Размер: ${data.database_size || '45.2 MB'}\n` +
-                        `📈 Записей: ${data.total_records_count || '1,247'}\n` +
-                        `🗑️ Старых записей: ${data.old_records_count || '89'}\n` +
-                        `📋 Таблиц: ${data.tables_count || '12'}\n` +
-                        `🔄 Последнее обновление: ${data.last_update || 'Сегодня'}`;
+                        `📊 Размер: ${data.database_size || '0 MB'}\n` +
+                        `📈 Записей: ${data.total_records_count || '0'}\n` +
+                        `🗑️ Старых записей: ${data.old_records_count || '0'}\n` +
+                        `📋 Таблиц: ${data.tables_count || '0'}\n` +
+                        `🔄 Последнее обновление: ${data.last_update || '-'}`;
             alert(info);
         } else {
             throw new Error(data.message);
@@ -2397,84 +2284,11 @@ function showParserAnalytics() {
     AdminLogger.logAction('parser_analytics_open');
 }
 
-function refreshVisionStats() {
-    notificationAlert('🔄 Обновление статистики Vision AI...', 'info');
-    updateVisionStats();
-    setTimeout(() => notificationAlert('✅ Статистика Vision AI обновлена', 'success'), 1000);
-    AdminLogger.logAction('vision_stats_refresh');
-}
-
-function clearVisionCache() {
-    if (confirm('Очистить кэш Vision AI? Это удалит все данные машинного обучения.')) {
-        notificationAlert('🧹 Очистка кэша Vision AI...', 'info');
-        AdminLogger.logAction('vision_cache_clear');
-
-        fetch('/api/vision-cache/clear/', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCSRFToken()
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                notificationAlert('✅ Кэш Vision AI очищен', 'success');
-                refreshVisionStats();
-                AdminLogger.logAction('vision_cache_clear_success', {
-                    cache_size_cleared: data.cache_size_cleared
-                });
-            } else {
-                throw new Error(data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Clear vision cache error:', error);
-            notificationAlert('❌ Ошибка очистки кэша', 'error');
-            AdminLogger.logAction('vision_cache_clear_error', { error: error.message });
-        });
-    }
-}
-
-function showVisionStats() {
-    notificationAlert('📊 Открытие детальной статистики Vision AI...', 'info');
-    window.open('/statistics/vision/', '_blank');
-    AdminLogger.logAction('vision_stats_open');
-}
-
-function optimizeVisionDatabase() {
-    notificationAlert('⚡ Оптимизация базы данных Vision AI...', 'info');
-    AdminLogger.logAction('vision_optimize_start');
-
-    fetch('/api/optimize-vision-database/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCSRFToken()
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            notificationAlert('✅ База данных Vision AI оптимизирована', 'success');
-            AdminLogger.logAction('vision_optimize_success', {
-                performance_improvement: data.performance_improvement
-            });
-        } else {
-            throw new Error(data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Optimize vision database error:', error);
-        notificationAlert('❌ Ошибка оптимизации Vision AI', 'error');
-        AdminLogger.logAction('vision_optimize_error', { error: error.message });
-    });
-}
-
 function exportSystemReport() {
     notificationAlert('📊 Генерация системного отчета...', 'info');
     AdminLogger.logAction('system_report_generate');
 
     const dbSize = document.getElementById('dbSize');
-    const visionCache = document.getElementById('visionCache');
     const perfUptime = document.getElementById('perfUptime');
     const perfResponse = document.getElementById('perfResponse');
     const perfMemory = document.getElementById('perfMemory');
@@ -2487,8 +2301,7 @@ function exportSystemReport() {
     const reportData = {
         timestamp: new Date().toISOString(),
         system_health: {
-            database: dbSize ? dbSize.textContent : '45.2 MB',
-            vision_ai: visionCache ? visionCache.textContent : '1,250',
+            database: dbSize ? dbSize.textContent : '0 MB',
             performance: {
                 uptime: perfUptime ? perfUptime.textContent : '99.8%',
                 response: perfResponse ? perfResponse.textContent : '125ms',
@@ -2497,12 +2310,12 @@ function exportSystemReport() {
             }
         },
         backups: {
-            total: backupCount ? backupCount.textContent : '12',
-            last_backup: lastBackup ? lastBackup.textContent : 'Сегодня'
+            total: backupCount ? backupCount.textContent : '0',
+            last_backup: lastBackup ? lastBackup.textContent : '-'
         },
         parser_stats: {
-            total_searches: parserTotalSearches ? parserTotalSearches.textContent : '1,247',
-            success_rate: parserSuccessRate ? parserSuccessRate.textContent : '87%'
+            total_searches: parserTotalSearches ? parserTotalSearches.textContent : '0',
+            success_rate: parserSuccessRate ? parserSuccessRate.textContent : '0%'
         }
     };
 
@@ -2520,41 +2333,6 @@ function exportSystemReport() {
 
     notificationAlert('✅ Системный отчет готов к скачиванию', 'success');
     AdminLogger.logAction('system_report_download');
-}
-
-function exportVisionData() {
-    notificationAlert('📤 Экспорт данных Vision AI...', 'info');
-    AdminLogger.logAction('vision_data_export');
-
-    fetch('/api/export-vision-data/')
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            const blob = new Blob([JSON.stringify(data.vision_data, null, 2)], {
-                type: 'application/json; charset=utf-8'
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `vision_ai_data_${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            notificationAlert('✅ Данные Vision AI экспортированы', 'success');
-            AdminLogger.logAction('vision_data_export_success', {
-                records_exported: data.records_exported
-            });
-        } else {
-            throw new Error(data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Export vision data error:', error);
-        notificationAlert('❌ Ошибка экспорта данных Vision AI', 'error');
-        AdminLogger.logAction('vision_data_export_error', { error: error.message });
-    });
 }
 
 function showSystemHealth() {
@@ -2645,7 +2423,6 @@ document.addEventListener('keydown', function(e) {
 function performSystemCheck() {
     const checks = [
         checkDatabaseConnection(),
-        checkVisionAIService(),
         checkParserService(),
         checkBackupService()
     ];
@@ -2669,17 +2446,6 @@ function checkDatabaseConnection() {
         .then(data => {
             if (data.status !== 'success') {
                 throw new Error('Database health check failed');
-            }
-            return data;
-        });
-}
-
-function checkVisionAIService() {
-    return fetch('/api/health/vision/')
-        .then(response => response.json())
-        .then(data => {
-            if (data.status !== 'success') {
-                throw new Error('Vision AI health check failed');
             }
             return data;
         });
