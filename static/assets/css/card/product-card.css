@@ -250,6 +250,52 @@
 /* 6. БЕЙДЖИ НА КАРТОЧКЕ                                               */
 /* -------------------------------------------------------------------- */
 
+/* ОБЩИЙ СТИЛЬ ДЛЯ ВСЕХ БЕЙДЖЕЙ */
+.site-badge {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 5px 8px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    transition: all 0.2s ease !important;
+    height: 22px !important;
+    white-space: nowrap !important;
+}
+
+/* Бейдж скорости - наследует .site-badge, только цвета добавляем */
+.site-badge-speed.speed-fast {
+    background: rgba(46, 204, 113, 0.1) !important;
+    color: #27ae60 !important;
+}
+
+.site-badge-speed.speed-normal {
+    background: rgba(52, 152, 219, 0.1) !important;
+    color: #3498db !important;
+}
+
+.site-badge-speed.speed-slow {
+    background: rgba(243, 156, 18, 0.1) !important;
+    color: #f39c12 !important;
+}
+
+.site-badge-speed.speed-very-slow {
+    background: rgba(231, 76, 60, 0.1) !important;
+    color: #e74c3c !important;
+}
+
+/* Иконки внутри всех бейджей */
+.site-badge i {
+    font-size: 12px !important;
+    line-height: 1 !important;
+}
+
+/* -------------------------------------------------------------------- */
+/* ОСТАЛЬНЫЕ БЕЙДЖИ (оставляем как есть)                               */
+/* -------------------------------------------------------------------- */
+
 /* Бейдж прибыли */
 .profit-badge {
     position: absolute !important;
@@ -350,7 +396,6 @@
     color: #ff4757 !important;
     border-color: #ff4757 !important;
 }
-
 /* -------------------------------------------------------------------- */
 /* 8. ЦЕНЫ                                                              */
 /* -------------------------------------------------------------------- */

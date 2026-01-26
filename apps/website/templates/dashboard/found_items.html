@@ -245,111 +245,71 @@
             </div>
 
             <!-- БЛОК БЕЙДЖЕЙ -->
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-                <!-- БЕЙДЖ ИСТОЧНИКА -->
-                {% if item.source == 'auto_ru' %}
-                <div class="site-badge site-badge-source source-auto-ru" title="Auto.ru">
-                    <i class="ri-car-fill"></i>
-                    <span>Auto.ru</span>
-                </div>
-                {% elif item.source == 'avito' %}
-                <div class="site-badge site-badge-source source-avito" title="Авито">
-                    <i class="ri-home-4-fill"></i>
-                    <span>Авито</span>
-                </div>
-                {% else %}
-                <div class="site-badge site-badge-source source-unknown" title="{{ item.source|default:'Источник' }}">
-                    <i class="ri-question-line"></i>
-                    <span>{{ item.source|default:"Источник" }}</span>
-                </div>
-                {% endif %}
-
-                <!-- РЕЙТИНГ -->
-                {% if item.seller_rating %}
-                <div class="site-badge site-badge-rating" title="Рейтинг продавца">
-                    <i class="ri-star-fill"></i>
-                    <span>{{ item.seller_rating }}</span>
-                </div>
-                {% endif %}
-
-                <!-- СТАТУС ПРОСМОТРОВ -->
-                {% if item.views_count %}
-                    {% if item.views_count < 20 %}
-                    <div class="site-badge site-badge-status status-new" title="Меньше 20 просмотров">
-                        <i class="ri-fire-fill"></i>
-                        <span>Новое</span>
-                    </div>
-                    {% elif item.views_count >= 21 and item.views_count <= 40 %}
-                    <div class="site-badge site-badge-status status-fresh" title="21-40 просмотров">
-                        <i class="ri-leaf-fill"></i>
-                        <span>Свежее</span>
-                    </div>
-                    {% elif item.views_count > 40 %}
-                    <div class="site-badge site-badge-status status-old" title="Больше 40 просмотров">
-                        <i class="ri-time-line"></i>
-                        <span>Старое</span>
-                    </div>
-                    {% endif %}
-                {% endif %}
-
-                <!-- ПРОДАВЕЦ -->
-                {% if item.seller_type == 'Компания' or item.seller_type == 'Магазин' or item.seller_type == 'reseller' %}
-                <div class="site-badge site-badge-seller seller-reseller" title="Продавец">
-                    <i class="ri-store-2-line"></i>
-                    <span>{{ item.seller_type }}</span>
-                </div>
-                {% else %}
-                <div class="site-badge site-badge-seller seller-private" title="Продавец">
-                    <i class="ri-user-line"></i>
-                    <span>{{ item.seller_type|default:"Частное лицо" }}</span>
-                </div>
-                {% endif %}
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- БЕЙДЖ ИСТОЧНИКА -->
+            {% if item.source == 'auto_ru' %}
+            <div class="site-badge site-badge-source source-auto-ru" title="Auto.ru">
+                <i class="ri-car-fill"></i>
+                <span>Auto.ru</span>
             </div>
-
-            <!-- БЛОК ЦЕН -->
-            <div class="price-section mb-2">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="current-price">
-                        {{ item.price|intcomma }} ₽
-                    </div>
-                    <div class="target-price">
-                        цель {{ item.target_price|intcomma }} ₽
-                    </div>
-                </div>
-
-                {% if item.source == 'avito' %}
-                    {% if item.profit > 0 %}
-                    <div class="profit-indicator positive">
-                        <i class="ri-arrow-up-line me-1"></i>
-                        Прибыль: +{{ item.profit|intcomma }} ₽
-                    </div>
-                    {% elif item.profit < 0 %}
-                    <div class="profit-indicator negative">
-                        <i class="ri-arrow-down-line me-1"></i>
-                        Убыток: {{ item.profit|intcomma }} ₽
-                    </div>
-                    {% endif %}
-                {% endif %}
-
-                {% if item.source == 'auto_ru' and item.price_status %}
-                    {% if 'Выше' in item.price_status %}
-                    <div class="profit-indicator negative">
-                        <i class="ri-arrow-up-line me-1"></i>
-                        {{ item.price_status }}
-                    </div>
-                    {% elif 'Ниже' in item.price_status %}
-                    <div class="profit-indicator positive">
-                        <i class="ri-arrow-down-line me-1"></i>
-                        {{ item.price_status }}
-                    </div>
-                    {% elif 'Справедливая' in item.price_status %}
-                    <div class="profit-indicator fair">
-                        <i class="ri-check-line me-1"></i>
-                        {{ item.price_status }}
-                    </div>
-                    {% endif %}
-                {% endif %}
+            {% elif item.source == 'avito' %}
+            <div class="site-badge site-badge-source source-avito" title="Авито">
+                <i class="ri-home-4-fill"></i>
+                <span>Авито</span>
             </div>
+            {% else %}
+            <div class="site-badge site-badge-source source-unknown" title="{{ item.source|default:'Источник' }}">
+                <i class="ri-question-line"></i>
+                <span>{{ item.source|default:"Источник" }}</span>
+            </div>
+            {% endif %}
+
+            <!-- РЕЙТИНГ -->
+            {% if item.seller_rating %}
+            <div class="site-badge site-badge-rating" title="Рейтинг продавца">
+                <i class="ri-star-fill"></i>
+                <span>{{ item.seller_rating }}</span>
+            </div>
+            {% endif %}
+
+            <!-- СТАТУС ПРОСМОТРОВ -->
+            {% if item.views_count %}
+                {% if item.views_count < 20 %}
+                <div class="site-badge site-badge-status status-new" title="Меньше 20 просмотров">
+                    <i class="ri-fire-fill"></i>
+                    <span>Новое</span>
+                </div>
+                {% elif item.views_count >= 21 and item.views_count <= 40 %}
+                <div class="site-badge site-badge-status status-fresh" title="21-40 просмотров">
+                    <i class="ri-leaf-fill"></i>
+                    <span>Свежее</span>
+                </div>
+                {% elif item.views_count > 40 %}
+                <div class="site-badge site-badge-status status-old" title="Больше 40 просмотров">
+                    <i class="ri-time-line"></i>
+                    <span>Старое</span>
+                </div>
+                {% endif %}
+            {% endif %}
+
+            <!-- ПРОДАВЕЦ -->
+            {% if item.seller_type == 'Компания' or item.seller_type == 'Магазин' or item.seller_type == 'reseller' %}
+            <div class="site-badge site-badge-seller seller-reseller" title="Продавец">
+                <i class="ri-store-2-line"></i>
+                <span>{{ item.seller_type }}</span>
+            </div>
+            {% else %}
+            <div class="site-badge site-badge-seller seller-private" title="Продавец">
+                <i class="ri-user-line"></i>
+                <span>{{ item.seller_type|default:"Частное лицо" }}</span>
+            </div>
+            {% endif %}
+
+            <!-- БЕЙДЖ СКОРОСТИ (НОВЫЙ) -->
+            {% if item.time_status %}
+            {{ item.get_speed_badge }}
+            {% endif %}
+        </div>
 
             <!-- ПРОДАВЕЦ -->
             <div class="seller-rating-sidebar">

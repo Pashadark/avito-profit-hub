@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 import os
+from django.utils.safestring import mark_safe
 from datetime import datetime, timedelta
 import re
 
@@ -270,6 +271,47 @@ class FoundItem(models.Model):
 
         except Exception:
             return "Неизвестно"
+
+    def get_speed_badge(self):
+        """Бейдж скорости как в found_items (11px, 5px 8px, height 22px)"""
+        if not self.time_status:
+            return ""
+
+        # Убираем emoji
+        text = self.time_status
+        for emoji in ["⚡", "🚀", "🐇", "🐢", "⚠️", "🚧"]:
+            text = text.replace(emoji, "")
+        text = text.strip() or "Нормально"
+
+        # Определяем цвет и иконку
+        css_class = "speed-normal"
+        icon_class = "ri-zap-line"
+
+        if "⚡" in self.time_status:
+            css_class = "speed-super-fast"
+            icon_class = "ri-flashlight-line"
+        elif "🚀" in self.time_status:
+            css_class = "speed-fast"
+            icon_class = "ri-rocket-line"
+        elif "🐇" in self.time_status:
+            css_class = "speed-normal"
+            icon_class = "ri-zap-line"
+        elif "🐢" in self.time_status:
+            css_class = "speed-slow"
+            icon_class = "ri-time-line"
+        elif "⚠️" in self.time_status or "🚧" in self.time_status:
+            css_class = "speed-very-slow"
+            icon_class = "ri-alert-line"
+
+        html = f'''
+        <div class="site-badge site-badge-speed {css_class}" title="Скорость обработки">
+            <i class="{icon_class}"></i>
+            <span>{text}</span>
+        </div>
+        '''
+        return mark_safe(html)
+
+    get_speed_badge.short_description = "Скорость обработки"
 
     def get_metro_stations_display(self):
         """Форматирует станции метро для отображения в HTML"""

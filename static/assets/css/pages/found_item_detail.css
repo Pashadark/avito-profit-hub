@@ -84,17 +84,65 @@
     }
 }
 
+/* -------------------------------------------------------------------- */
+/* БЕЙДЖИ НА КАРТОЧКЕ - ЕДИНЫЙ СТИЛЬ                                   */
+/* -------------------------------------------------------------------- */
+
+/* ОБЩИЙ СТИЛЬ ДЛЯ ВСЕХ БЕЙДЖЕЙ (как в found_items) */
+.site-badge {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 5px 8px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    transition: all 0.2s ease !important;
+    height: 22px !important;
+    white-space: nowrap !important;
+}
+
+/* Бейдж скорости - наследует .site-badge, только цвета добавляем */
+.site-badge-speed.speed-fast {
+    background: rgba(46, 204, 113, 0.1) !important;
+    color: #27ae60 !important;
+}
+
+.site-badge-speed.speed-normal {
+    background: rgba(52, 152, 219, 0.1) !important;
+    color: #3498db !important;
+}
+
+.site-badge-speed.speed-slow {
+    background: rgba(243, 156, 18, 0.1) !important;
+    color: #f39c12 !important;
+}
+
+.site-badge-speed.speed-very-slow {
+    background: rgba(231, 76, 60, 0.1) !important;
+    color: #e74c3c !important;
+}
+
+/* Иконки внутри всех бейджей */
+.site-badge i {
+    font-size: 12px !important;
+    line-height: 1 !important;
+}
+
 /* Стили для бейджей источников */
 .source-badge {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 8px;
+    padding: 5px 8px;
     border-radius: 8px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     line-height: 1;
     transition: all 0.2s ease;
+    height: 22px;
+    white-space: nowrap;
 }
 
 .source-auto-ru {
@@ -118,19 +166,23 @@
     align-items: center;
     gap: 4px;
     background: rgba(255, 193, 7, 0.1);
-    padding: 4px 8px;
+    padding: 5px 8px;
     border-radius: 8px;
-    font-size: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    height: 22px;
 }
 
 /* Стили для статуса цены */
 .price-status {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
-    padding: 4px 8px;
+    padding: 5px 8px;
     border-radius: 6px;
     margin-top: 4px;
     text-align: center;
+    height: 22px;
+    line-height: 1;
 }
 
 .price-status.price-fair {
@@ -164,25 +216,72 @@
     gap: 8px;
 }
 
+/* Стили для бейджей продавца */
 .seller-badge {
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-weight: 600;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 4px;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 5px 8px !important;
+    border-radius: 8px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    height: 22px !important;
+    white-space: nowrap !important;
 }
 
 .seller-badge.reseller {
-    background: rgba(255, 193, 7, 0.1);
-    color: #e67e22;
+    background: rgba(255, 193, 7, 0.1) !important;
+    color: #e67e22 !important;
 }
 
 .seller-badge.private {
-    background: rgba(52, 152, 219, 0.1);
-    color: #3498db;
+    background: rgba(52, 152, 219, 0.1) !important;
+    color: #3498db !important;
+}
+
+/* Бейдж просмотров */
+.view-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    height: 22px;
+    border: 1px solid transparent;
+}
+
+.view-status-new {
+    background: rgba(255, 107, 107, 0.1);
+    color: #ff6b6b;
+}
+
+.view-status-fresh {
+    background: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+.view-status-old {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+/* Адаптив для бейджей */
+@media (max-width: 768px) {
+    .site-badge,
+    .source-badge,
+    .seller-badge,
+    .modern-rating,
+    .view-status-badge,
+    .price-status {
+        padding: 4px 6px !important;
+        font-size: 10px !important;
+        height: 20px !important;
+    }
 }
 
 /* Стили для адресной секции - такие же как у характеристик */
@@ -217,7 +316,7 @@
 
 /* Метро бейджи в адресной секции */
 .address-section .metro-badge {
-    font-size: 11px;
+    font-size: 10px;
     padding: 3px 6px;
 }
 
@@ -300,7 +399,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: 11px;
     padding: 4px 8px;
     border-radius: 8px;
     font-weight: 500;
@@ -308,6 +407,7 @@
     line-height: 1.2;
     background: rgba(102, 102, 102, 0.1);
     color: #666;
+    height: 22px;
 }
 
 .metro-circle {
@@ -435,26 +535,7 @@
 }
 
 /* ПРОДАВЦЫ */
-.seller-badge {
-    font-size: 12px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-weight: 600;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.seller-badge.reseller {
-    background: rgba(255, 193, 7, 0.1);
-    color: #e67e22;
-}
-
-.seller-badge.private {
-    background: rgba(52, 152, 219, 0.1);
-    color: #3498db;
-}
+/* seller-badge стили уже определены выше в общем блоке */
 
 /* Миниатюры галереи */
 .gallery-thumbnails {
@@ -634,6 +715,7 @@
     background: none !important;
     padding: 0 !important;
     border-radius: 0 !important;
+    height: auto;
 }
 
 .seller-rating i {
@@ -654,10 +736,12 @@
 
 .profit-badge-sidebar {
     text-align: center;
-    padding: 8px 12px;
+    padding: 5px 8px;
     border-radius: 8px;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 11px;
+    height: 22px;
+    line-height: 1;
 }
 
 .profit-badge-sidebar.positive {
@@ -787,9 +871,9 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    padding: 6px 10px;
+    padding: 5px 8px;
     border-radius: 8px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     border: 1px solid transparent;
     cursor: pointer;
@@ -798,9 +882,8 @@
     color: #ff4757;
     width: auto;
     min-width: 28px;
-    /* УБРАТЬ: height: auto; */
-    /* УБРАТЬ: min-height: 32px; */
-    line-height: 1; /* ИЗМЕНИТЬ с normal на 1 */
+    height: 22px;
+    line-height: 1;
     white-space: nowrap;
     box-sizing: border-box;
 }
@@ -816,7 +899,7 @@
 }
 
 .header-favorite-btn i {
-    font-size: 14px;
+    font-size: 12px;
 }
 
 /* Дата размещения под заголовком */
@@ -1190,187 +1273,6 @@
         width: 32px;
         height: 32px;
         font-size: 24px;
-    }
-}
-
-/* Стили для бейджей в заголовке */
-.header-badges {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-/* Бейджи источников */
-.source-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1;
-    transition: all 0.2s ease;
-}
-
-.source-auto-ru {
-    background: rgba(230, 0, 0, 0.1);
-    color: #E60000;
-}
-
-.source-avito {
-    background: rgba(76, 175, 80, 0.1);
-    color: #4CAF50;
-}
-
-.source-unknown {
-    background: rgba(158, 158, 158, 0.1);
-    color: #666666;
-}
-
-/* Бейджи статуса просмотров */
-.view-status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-    border: 1px solid transparent;
-}
-
-.view-status-new {
-    background: rgba(255, 107, 107, 0.1);
-    color: #ff6b6b;
-}
-
-.view-status-fresh {
-    background: rgba(255, 193, 7, 0.1);
-    color: #ffc107;
-}
-
-.view-status-old {
-    background: rgba(108, 117, 125, 0.1);
-    color: #6c757d;
-}
-
-/* Бейджи продавцов */
-.seller-badge {
-    font-size: 12px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-weight: 600;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    border: 1px solid transparent;
-}
-
-.seller-badge.reseller {
-    background: rgba(255, 193, 7, 0.1);
-    color: #e67e22;
-}
-
-.seller-badge.private {
-    background: rgba(52, 152, 219, 0.1);
-    color: #3498db;
-}
-
-/* Рейтинг */
-.modern-rating {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: rgba(255, 193, 7, 0.1);
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-/* Контейнер для продавца и кнопок */
-.seller-badge-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-/* Кнопка избранного в заголовке */
-.header-favorite-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: rgba(255, 71, 87, 0.1);
-    color: #ff4757;
-    width: auto;
-    min-width: 28px;
-    height: 32px;
-}
-
-.header-favorite-btn:hover {
-    background: rgba(255, 71, 87, 0.2);
-    transform: translateY(-1px);
-}
-
-.header-favorite-btn.active {
-    background: rgba(255, 71, 87, 0.2);
-    color: #ff4757;
-}
-
-.header-favorite-btn i {
-    font-size: 14px;
-}
-
-/* Адаптивность для заголовка */
-@media (max-width: 768px) {
-    .header-badges {
-        gap: 6px;
-    }
-
-    .source-badge,
-    .view-status-badge,
-    .seller-badge,
-    .modern-rating,
-    .header-favorite-btn {
-        padding: 5px 8px;
-        font-size: 11px;
-    }
-
-    .seller-badge-container {
-        gap: 6px;
-    }
-}
-
-@media (max-width: 576px) {
-    .header-badges {
-        justify-content: flex-start;
-        width: 100%;
-    }
-
-    .source-badge,
-    .view-status-badge,
-    .seller-badge,
-    .modern-rating {
-        flex: 0 0 auto;
-    }
-
-    .seller-badge-container {
-        margin-left: 0;
-        width: 100%;
-        justify-content: flex-start;
-        margin-top: 8px;
     }
 }
 

@@ -141,6 +141,11 @@
                             {% endif %}
                         {% endif %}
 
+                        <!-- БЕЙДЖ СКОРОСТИ (НОВЫЙ) - вставляем тут -->
+                        {% if item.time_status %}
+                            {{ item.get_speed_badge }}
+                        {% endif %}
+
                         <!-- Продавец -->
                         <div class="seller-badge-container">
                             {% if item.seller_type == 'Компания' or item.seller_type == 'Магазин' %}
@@ -154,7 +159,6 @@
                                     {{ item.seller_type|default:"Частное лицо" }}
                                 </span>
                             {% endif %}
-
 
                             <!-- Сердечко избранного в заголовке -->
                             <button class="header-favorite-btn {% if item.is_favorite %}active{% endif %}"
