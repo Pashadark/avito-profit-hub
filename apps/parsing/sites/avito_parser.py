@@ -638,29 +638,29 @@ class AvitoParser(BaseSiteParser):
             time.sleep(1.5)  # Увеличил для полной загрузки страницы
 
             # Парсим основные данные
-            condition = self._extract_condition()
-            color = self._extract_color_from_details()
-            location_data = self._extract_location_details_improved()
-            seller_info = await self._extract_seller_info_with_avatar()
+            condition = self._extract_condition_optimized()
+            color = self._extract_color_optimized()
+            location_data = self._extract_location_optimized()
+            seller_info = await self._extract_seller_info_optimized()
 
             # 🔥 🔥 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Добавляем парсинг КАТЕГОРИИ из старого парсера
-            avito_category = self._extract_category()
+            avito_category = self._extract_category_optimized()
 
             # 🔥 ИСПОЛЬЗУЕМ ОПТИМИЗИРОВАННЫЙ МЕТОД (все фото, но быстрее)
-            image_urls = self.image_processor.get_avito_images()  # Это теперь быстрее собирает ВСЕ фото
+            image_urls = self.image_processor.get_avito_images_fast()  # Быстрый метод
 
             main_image_url = image_urls[0] if image_urls else None
 
             # 🔥 🔥 🔥 ВАЖНОЕ ИСПРАВЛЕНИЕ: Восстанавливаем полное извлечение описания!
-            description = self._extract_description_full()
+            description = self._extract_description_optimized()
 
             # Извлекаем дополнительную информацию
             try:
-                seller_name = seller_info.get('seller_name') or self._extract_seller_name()
-                seller_rating, reviews_count = self._extract_seller_rating()
-                city = self._extract_city()
-                posted_date = self.extract_posted_date()
-                views_data = self._extract_views_count()
+                seller_name = seller_info.get('seller_name') or self._extract_seller_name_optimized()
+                seller_rating, reviews_count = self._extract_seller_rating_optimized()
+                city = self._extract_city_optimized()
+                posted_date = self.extract_posted_date_optimized()
+                views_data = self._extract_views_optimized()
 
                 # 🔥 ОБНОВЛЯЕМ ПРОДУКТ С ПОЛНЫМ ОПИСАНИЕМ И КАТЕГОРИЕЙ
                 product.update({
@@ -699,37 +699,110 @@ class AvitoParser(BaseSiteParser):
             self.logger.error(f"❌ Ошибка загрузки товара: {e}")
             return product
 
-    def _check_captcha_page(self):
-        """Проверка капчи на странице товара"""
+    def _extract_condition_optimized(self):
+        """Оптимизированный поиск состояния товара с основными селекторами"""
         try:
-            page_title = self.driver.title.lower()
-            page_url = self.driver.current_url.lower()
+            self.logger.info("🔍 Оптимизированный поиск параметра 'Состояние'...")
 
-            critical_indicators = [
-                "подозрительная активность",
-                "проблемы с ip",
-                "доступ ограничен",
-                "автоматические запросы",
-                "вы робот",
-                "подтвердите что вы не робот"
+            # Основные селекторы (только важные)
+            params_selectors = [
+                '[data-marker="item-view/item-params"]',  # Основной селектор
+                '.params__paramsList___XzY3MG',  # Резервный 1
+                '.item-params'  # Резервный 2
             ]
 
-            for indicator in critical_indicators:
-                if indicator in page_title:
-                    self.logger.warning(f"🚨 Капча в заголовке: '{indicator}'")
-                    return True
+            for selector in params_selectors:
+                try:
+                    params_blocks = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    if params_blocks:
+                        self.logger.info(f"✅ Найден блок с селектором '{selector}'")
 
-            if "blocked" in page_url or "captcha" in page_url:
-                self.logger.warning(f"🚨 URL капчи: {page_url}")
-                return True
+                        for block in params_blocks:
+                            try:
+                                # Ищем в основном формате
+                                condition = self._find_condition_in_block_optimized(block)
+                                if condition:
+                                    condition_lower = condition.lower()
+                                    if any(word in condition_lower for word in ['нов', 'new', 'бирк']):
+                                        condition = "Новое с биркой"
+                                    elif any(word in condition_lower for word in ['б/у', 'бу', 'used']):
+                                        condition = "Б/у"
+                                    elif any(word in condition_lower for word in ['как нов', 'like new']):
+                                        condition = "Как новый"
 
-            return False
+                                    self.logger.info(f"✅ Состояние найдено и нормализовано: '{condition}'")
+                                    return condition
+
+                            except Exception as e:
+                                self.logger.debug(f"❌ Ошибка анализа блока: {e}")
+                                continue
+
+                except Exception as e:
+                    self.logger.debug(f"❌ Селектор '{selector}' не сработал: {e}")
+                    continue
+
+            self.logger.info("🔧 Состояние не найдено в характеристиках")
+            return "Не указано"
 
         except Exception as e:
-            self.logger.debug(f"❌ Ошибка проверки капчи: {e}")
-            return False
+            self.logger.error(f"❌ Ошибка парсинга состояния: {e}")
+            return "Не указано"
 
-    def _extract_color_from_details(self):
+    def _find_condition_in_block_optimized(self, block):
+        """Оптимизированный поиск параметра 'Состояние' в блоке"""
+        try:
+            # Основные селекторы для элементов характеристик
+            item_selectors = [
+                '.params__paramsList__item___XzY3MG',
+                'li',
+                'div',
+                'span'
+            ]
+
+            for item_selector in item_selectors:
+                try:
+                    items = block.find_elements(By.CSS_SELECTOR, item_selector)
+
+                    for item in items:
+                        try:
+                            item_text = item.text.strip()
+                            if 'Состояние' in item_text:
+                                self.logger.debug(f"🔍 Текст элемента: '{item_text}'")
+
+                                # Разделители
+                                separators = [':', ' ', '—', '-']
+
+                                for separator in separators:
+                                    if f'Состояние{separator}' in item_text:
+                                        parts = item_text.split(f'Состояние{separator}')
+                                        if len(parts) > 1:
+                                            value = parts[1].strip()
+                                            if value:
+                                                self.logger.info(f"✅ Состояние найдено через '{separator}': '{value}'")
+                                                return value
+
+                                # Если нет разделителя
+                                if 'Состояние' in item_text:
+                                    value = item_text.replace('Состояние', '').strip()
+                                    if value:
+                                        self.logger.info(f"✅ Состояние найдено (без разделителя): '{value}'")
+                                        return value
+
+                        except Exception as e:
+                            self.logger.debug(f"❌ Ошибка анализа элемента: {e}")
+                            continue
+
+                except Exception as e:
+                    self.logger.debug(f"❌ Ошибка поиска элементов с '{item_selector}': {e}")
+                    continue
+
+            return None
+
+        except Exception as e:
+            self.logger.debug(f"❌ Ошибка поиска состояния в блоке: {e}")
+            return None
+
+    def _extract_color_optimized(self):
         """Оптимизированный поиск цвета"""
         try:
             params_selectors = [
@@ -739,11 +812,37 @@ class AvitoParser(BaseSiteParser):
 
             for selector in params_selectors:
                 try:
-                    params_blocks = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for block in params_blocks:
-                        color = self._find_color_in_params_block(block)
-                        if color and color != "Разноцветный":
-                            return color
+                    block = self.driver.find_element(By.CSS_SELECTOR, selector)
+
+                    # Основные селекторы для элементов
+                    item_selectors = ['.params__paramsList__item___XzY3MG', 'li', 'div']
+
+                    for item_selector in item_selectors:
+                        try:
+                            items = block.find_elements(By.CSS_SELECTOR, item_selector)
+
+                            for item in items:
+                                item_text = item.text.strip()
+                                if 'Цвет' in item_text:
+                                    # Разделители
+                                    separators = [':', ' ', '—', '-']
+
+                                    for separator in separators:
+                                        if f'Цвет{separator}' in item_text:
+                                            parts = item_text.split(f'Цвет{separator}')
+                                            if len(parts) > 1:
+                                                color = parts[1].strip()
+                                                if color:
+                                                    return self._normalize_color_name_optimized(color)
+
+                                    # Если нет разделителя
+                                    if 'Цвет' in item_text:
+                                        color = item_text.replace('Цвет', '').strip()
+                                        if color:
+                                            return self._normalize_color_name_optimized(color)
+                        except:
+                            continue
+
                 except:
                     continue
 
@@ -753,35 +852,8 @@ class AvitoParser(BaseSiteParser):
             self.logger.debug(f"❌ Ошибка цвета: {e}")
             return "Разноцветный"
 
-    def _find_color_in_params_block(self, block):
-        """Поиск цвета в блоке параметров"""
-        try:
-            item_elements = block.find_elements(By.CSS_SELECTOR, '.params__paramsList__item___XzY3MG')
-
-            for item in item_elements:
-                item_text = item.text.strip()
-                if 'Цвет' in item_text:
-                    separators = [':', ' ']
-                    for separator in separators:
-                        if f'Цвет{separator}' in item_text:
-                            parts = item_text.split(f'Цвет{separator}')
-                            if len(parts) > 1:
-                                value = parts[1].strip()
-                                if value:
-                                    return self._normalize_color_name(value)
-
-                    if 'Цвет' in item_text and not any(sep in item_text for sep in [':', ' ']):
-                        value = item_text.replace('Цвет', '').strip()
-                        if value:
-                            return self._normalize_color_name(value)
-
-            return None
-
-        except:
-            return None
-
-    def _normalize_color_name(self, color_text):
-        """Нормализация названия цвета"""
+    def _normalize_color_name_optimized(self, color_text):
+        """Оптимизированная нормализация названия цвета"""
         if not color_text:
             return "Разноцветный"
 
@@ -813,10 +885,10 @@ class AvitoParser(BaseSiteParser):
 
         return "Разноцветный"
 
-    def _extract_location_details_improved(self):
-        """УЛУЧШЕННЫЙ метод извлечения деталей местоположения из старого парсера"""
+    def _extract_location_optimized(self):
+        """Оптимизированный поиск местоположения"""
         try:
-            self.logger.info("🔍 УЛУЧШЕННЫЙ поиск данных о местоположении...")
+            self.logger.info("🔍 Оптимизированный поиск данных о местоположении...")
 
             location_data = {
                 'metro_stations': [],
@@ -824,18 +896,18 @@ class AvitoParser(BaseSiteParser):
                 'full_location': None
             }
 
-            self._find_location_on_main_page(location_data)
+            # Быстрый поиск на основной странице
+            self._find_location_on_main_page_optimized(location_data)
 
+            # Если не нашли метро или адрес, пробуем раскрыть карту
             if not location_data['metro_stations'] or not location_data['address']:
-                self.logger.info("🗺️ Раскрываем карту для детального поиска...")
-                if self._expand_location_map_improved():
+                self.logger.info("🗺️ Пробуем раскрыть карту для детального поиска...")
+                if self._expand_location_map_optimized():
                     time.sleep(1.0)  # Уменьшено с 3 до 1
-                    self._find_location_after_map_expansion_improved(location_data)
+                    self._find_location_after_map_expansion_optimized(location_data)
 
-            if not location_data['metro_stations']:
-                self._find_metro_in_expanded_card(location_data)
-
-            self._build_final_location_improved(location_data)
+            # Формируем итоговое местоположение
+            self._build_final_location_optimized(location_data)
 
             self.logger.info(f"📍 Итоговое местоположение: {location_data['full_location']}")
             self.logger.info(f"📍 Станций метро найдено: {len(location_data['metro_stations'])}")
@@ -843,74 +915,56 @@ class AvitoParser(BaseSiteParser):
             return location_data
 
         except Exception as e:
-            self.logger.error(f"❌ Критическая ошибка извлечения местоположения: {e}")
+            self.logger.error(f"❌ Ошибка извлечения местоположения: {e}")
             return {
                 'metro_stations': [],
                 'address': None,
                 'full_location': 'Местоположение не указано'
             }
 
-    def _find_location_on_main_page(self, location_data):
-        """УПРОЩЕННЫЙ поиск местоположения на основной странице"""
+    def _find_location_on_main_page_optimized(self, location_data):
+        """Оптимизированный поиск местоположения на основной странице"""
         try:
             self.logger.info("🔍 Поиск местоположения на основной странице...")
 
+            # Основные селекторы для адреса
             address_selectors = [
                 '[data-marker="item-view/item-address"]',
                 '[class*="address"]',
                 '.style-address',
-                '.item-address',
-                '.seller-address',
-                '.xLPJ6',
-                '//span[contains(text(), "Москва")]',
-                '//*[contains(text(), "ул.") or contains(text(), "проспект") or contains(text(), "шоссе")]'
+                '.item-address'
             ]
 
             for selector in address_selectors:
                 try:
-                    if selector.startswith('//'):
-                        elements = self.driver.find_elements(By.XPATH, selector)
-                    else:
-                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
                     for elem in elements:
                         text = elem.text.strip()
-                        if text and self._is_valid_address_simple(text):
+                        if text and self._is_valid_address_optimized(text):
                             location_data['address'] = text
                             self.logger.info(f"🏠 Адрес найден на основной странице: '{text}'")
                             break
-
                     if location_data['address']:
                         break
-
                 except Exception as e:
                     self.logger.debug(f"❌ Селектор адреса '{selector}' не сработал: {e}")
                     continue
 
+            # Основные селекторы для метро
             metro_selectors = [
                 '[data-marker*="metro"]',
                 '[class*="metro"]',
                 '.style-metro',
-                '.metro-station',
-                '//*[contains(@class, "metro")]',
-                '//*[contains(text(), "метро") or contains(text(), "Метро")]',
-                '//*[contains(@class, "geo-geo")]',
-                '.geo-geo',
+                '.metro-station'
             ]
 
             for selector in metro_selectors:
                 try:
-                    if selector.startswith('//'):
-                        elements = self.driver.find_elements(By.XPATH, selector)
-                    else:
-                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
                     for elem in elements:
                         text = elem.text.strip()
                         if text:
-                            self.logger.info(f"🔍 Найден элемент метро: '{text}'")
-                            self._extract_metro_from_text_simple(text, location_data)
-
+                            self._extract_metro_from_text_optimized(text, location_data)
                 except Exception as e:
                     self.logger.debug(f"❌ Селектор метро '{selector}' не сработал: {e}")
                     continue
@@ -918,52 +972,35 @@ class AvitoParser(BaseSiteParser):
         except Exception as e:
             self.logger.error(f"❌ Ошибка поиска на основной странице: {e}")
 
-    def _is_valid_address_simple(self, line):
-        """УЛУЧШЕННАЯ проверка валидности адреса"""
+    def _is_valid_address_optimized(self, line):
+        """Оптимизированная проверка валидности адреса"""
         try:
             if not line or len(line) < 5:
                 return False
 
             line_lower = line.lower()
 
-            critical_address_indicators = [
-                'москва, ул.',
-                'москва, улица',
-                'москва, проспект',
-                'москва, шоссе',
-                'москва, бульвар',
-                'москва, переулок',
-                'москва, набережная',
-                'ул. ',
-                'улица ',
-                'проспект ',
-                'шоссе ',
-                'бульвар ',
-                'переулок ',
-                'набережная ',
-                'пл. ',
-                'площадь '
-            ]
-
-            additional_indicators = [
-                'дом', 'д.', 'корпус', 'корп.', 'строение', 'стр.',
-                'район', 'р-н', 'микрорайон', 'мкр.', 'квартал'
+            address_indicators = [
+                'москва, ул.', 'москва, улица', 'москва, проспект',
+                'москва, шоссе', 'москва, бульвар', 'ул. ', 'улица ',
+                'проспект ', 'шоссе ', 'бульвар ', 'переулок ', 'набережная ',
+                'пл. ', 'площадь '
             ]
 
             exclude_indicators = [
                 'цена', 'руб', '₽', 'просмотр', 'отзыв', 'рейтинг',
-                'продавец', 'объявление', 'избранное', 'метро', 'станция'
+                'продавец', 'объявление', 'избранное'
             ]
 
-            has_critical_indicator = any(indicator in line_lower for indicator in critical_address_indicators)
-            has_additional_indicator = any(indicator in line_lower for indicator in additional_indicators)
+            has_address_indicator = any(indicator in line_lower for indicator in address_indicators)
             has_exclude_indicator = any(indicator in line_lower for indicator in exclude_indicators)
             has_russian_letters = re.search(r'[а-яА-Я]', line)
 
             result = (
-                    (has_critical_indicator and not has_exclude_indicator) or
+                    (has_address_indicator and not has_exclude_indicator) or
                     (line_lower.startswith('москва,') and has_russian_letters and not has_exclude_indicator) or
-                    (has_additional_indicator and has_russian_letters and not has_exclude_indicator and len(line) > 10)
+                    (any(indicator in line_lower for indicator in ['ул.', 'улица', 'проспект']) and
+                     has_russian_letters and not has_exclude_indicator and len(line) > 10)
             )
 
             if result:
@@ -977,8 +1014,8 @@ class AvitoParser(BaseSiteParser):
             self.logger.error(f"❌ Ошибка проверки адреса: {e}")
             return False
 
-    def _extract_metro_from_text_simple(self, text, location_data):
-        """ПРОСТОЕ извлечение станций метро из текста"""
+    def _extract_metro_from_text_optimized(self, text, location_data):
+        """Оптимизированное извлечение станций метро из текста"""
         try:
             text_lower = text.lower()
 
@@ -986,13 +1023,12 @@ class AvitoParser(BaseSiteParser):
                 station_lower = station_name.lower()
 
                 if station_lower in text_lower:
-                    metro_data = self._get_metro_data_by_station(station_name)
+                    metro_data = self._get_metro_data_by_station_optimized(station_name)
                     station_data = {
                         'name': station_name,
                         'color': metro_data['color'],
                         'line_number': metro_data['line_number'],
-                        'line_name': metro_data['line_name'],
-                        'circle_color': metro_data['circle_color']
+                        'line_name': metro_data['line_name']
                     }
 
                     if not any(s['name'] == station_name for s in location_data['metro_stations']):
@@ -1006,27 +1042,34 @@ class AvitoParser(BaseSiteParser):
             self.logger.debug(f"❌ Ошибка извлечения метро из текста: {e}")
             return False
 
-    def _expand_location_map_improved(self):
-        """УЛУЧШЕННОЕ раскрытие карты местоположения"""
-        try:
-            self.logger.info("🗺️ УЛУЧШЕННОЕ раскрытие карты местоположения...")
+    def _get_metro_data_by_station_optimized(self, station_name):
+        """Оптимизированное получение данных станции метро"""
+        if station_name in self.metro_database:
+            data = self.metro_database[station_name]
+            return {
+                'color': data['color'],
+                'line_number': data['line_number'],
+                'line_name': data['line_name']
+            }
 
+        return {
+            'color': '#666666',
+            'line_number': '?',
+            'line_name': 'Неизвестная линия'
+        }
+
+    def _expand_location_map_optimized(self):
+        """Оптимизированное раскрытие карты местоположения"""
+        try:
+            self.logger.info("🗺️ Оптимизированное раскрытие карты местоположения...")
+
+            # Основные селекторы для кнопки карты
             map_button_selectors = [
                 '[data-marker="item-map-button"]',
                 '[data-text-open="Узнать подробности"]',
                 'button[data-text-open*="Узнать подробности"]',
-                '.style-item-address-button-1yOgg',
-                '[class*="map-button"]',
-                '[class*="address-button"]',
-                '.fDM1R',
-                'button[class*="fDM1R"]',
-                '.desktop-1q9f1w0',
-                'button[class*="desktop"]',
                 '//button[contains(text(), "Узнать подробности")]',
-                '//span[contains(text(), "Узнать подробности")]',
-                '//a[contains(text(), "Узнать подробности")]',
-                '//*[contains(text(), "Узнать подробности")]',
-                '//*[contains(@class, "item-map-button")]',
+                '//span[contains(text(), "Узнать подробности")]'
             ]
 
             for selector in map_button_selectors:
@@ -1036,19 +1079,19 @@ class AvitoParser(BaseSiteParser):
                     else:
                         map_buttons = self.driver.find_elements(By.CSS_SELECTOR, selector)
 
-                    self.logger.info(f"🔍 Найдено кнопок '{selector}': {len(map_buttons)}")
+                    self.logger.info(f"🔍 Проверяем селектор '{selector}': найдено {len(map_buttons)} кнопок")
 
                     for button in map_buttons:
                         try:
                             button_text = button.text.strip()
                             self.logger.info(f"🔍 Текст кнопки: '{button_text}'")
 
-                            if any(word in button_text.lower() for word in
-                                   ['узнать', 'подробности', 'карта', 'map', 'адрес', 'location']):
+                            if any(word in button_text.lower() for word in ['узнать', 'подробности', 'карта']):
                                 self.logger.info(f"🎯 Нажатие на кнопку: '{button_text}'")
 
+                                # Прокручиваем к кнопке
                                 self.driver.execute_script(
-                                    "arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", button)
+                                    "arguments[0].scrollIntoView({block: 'center'});", button)
 
                                 try:
                                     button.click()
@@ -1060,13 +1103,7 @@ class AvitoParser(BaseSiteParser):
                                         self.logger.info("✅ Клик по кнопке выполнен через JavaScript")
                                         return True
                                     except:
-                                        try:
-                                            ActionChains(self.driver).move_to_element(button).click().perform()
-                                            self.logger.info("✅ Клик по кнопке выполнен через ActionChains")
-                                            return True
-                                        except Exception as e:
-                                            self.logger.debug(f"❌ Все способы клика не сработали: {e}")
-                                            continue
+                                        continue
 
                         except Exception as e:
                             self.logger.debug(f"❌ Ошибка клика по кнопке: {e}")
@@ -1083,14 +1120,17 @@ class AvitoParser(BaseSiteParser):
             self.logger.error(f"❌ Ошибка раскрытия карты: {e}")
             return False
 
-    def _find_location_after_map_expansion_improved(self, location_data):
-        """УЛУЧШЕННЫЙ поиск местоположения после раскрытия карты"""
+    def _find_location_after_map_expansion_optimized(self, location_data):
+        """Оптимизированный поиск местоположения после раскрытия карты"""
         try:
-            self.logger.info("🔍 УЛУЧШЕННЫЙ поиск после раскрытия карты...")
+            self.logger.info("🔍 Поиск после раскрытия карты...")
             time.sleep(0.5)  # Уменьшено с 2 до 0.5
 
+            # Основной селектор для карточки адреса
             address_card_selectors = [
                 '[data-marker="sellerAddressInfoCard"]',
+                '[class*="address-card"]',
+                '[class*="location-card"]'
             ]
 
             for selector in address_card_selectors:
@@ -1103,7 +1143,7 @@ class AvitoParser(BaseSiteParser):
                             card_text = card.text.strip()
                             if card_text:
                                 self.logger.info(f"📍 Карточка содержит текст: '{card_text}'")
-                                self._parse_location_card_content_improved(card_text, location_data)
+                                self._parse_location_card_content_optimized(card_text, location_data)
                         except Exception as e:
                             self.logger.debug(f"❌ Ошибка анализа карточки: {e}")
                             continue
@@ -1112,23 +1152,24 @@ class AvitoParser(BaseSiteParser):
                     self.logger.debug(f"❌ Селектор карточки '{selector}' не сработал: {e}")
                     continue
 
-            expanded_selectors = [
+            # Дополнительный поиск
+            additional_selectors = [
                 '//*[contains(@class, "address")]',
                 '//*[contains(text(), "ул.")]',
                 '//*[contains(@class, "geo")]',
             ]
 
-            for selector in expanded_selectors:
+            for selector in additional_selectors:
                 try:
                     elements = self.driver.find_elements(By.XPATH, selector)
                     for elem in elements:
                         text = elem.text.strip()
                         if text:
-                            if not location_data['address'] and self._is_valid_address_simple(text):
+                            if not location_data['address'] and self._is_valid_address_optimized(text):
                                 location_data['address'] = text
                                 self.logger.info(f"🏠 Адрес найден после раскрытия карты: '{text}'")
 
-                            self._extract_metro_from_text_simple(text, location_data)
+                            self._extract_metro_from_text_optimized(text, location_data)
 
                 except Exception as e:
                     self.logger.debug(f"❌ Селектор после раскрытия '{selector}' не сработал: {e}")
@@ -1137,37 +1178,8 @@ class AvitoParser(BaseSiteParser):
         except Exception as e:
             self.logger.error(f"❌ Ошибка поиска после раскрытия карты: {e}")
 
-    def _find_metro_in_expanded_card(self, location_data):
-        """Специализированный поиск метро в раскрытой карточке"""
-        try:
-            self.logger.info("🔍 Специализированный поиск метро в раскрытой карточке...")
-
-            metro_specific_selectors = [
-                '//*[contains(@class, "metro-station")]',
-                '//*[contains(@class, "metro-list")]',
-                '//*[contains(@class, "station-item")]',
-                '//*[contains(@class, "geo-station")]',
-                '//span[contains(@class, "metro")]',
-                '//div[contains(@class, "metro")]',
-            ]
-
-            for selector in metro_specific_selectors:
-                try:
-                    metro_elements = self.driver.find_elements(By.XPATH, selector)
-                    for elem in metro_elements:
-                        text = elem.text.strip()
-                        if text:
-                            self.logger.info(f"🔍 Найден элемент метро: '{text}'")
-                            self._extract_metro_from_text_simple(text, location_data)
-                except Exception as e:
-                    self.logger.debug(f"❌ Селектор метро '{selector}' не сработал: {e}")
-                    continue
-
-        except Exception as e:
-            self.logger.error(f"❌ Ошибка специализированного поиска метро: {e}")
-
-    def _parse_location_card_content_improved(self, card_text, location_data):
-        """УЛУЧШЕННЫЙ парсинг содержимого карточки местоположения"""
+    def _parse_location_card_content_optimized(self, card_text, location_data):
+        """Оптимизированный парсинг содержимого карточки местоположения"""
         try:
             lines = [line.strip() for line in card_text.split('\n') if line.strip()]
             self.logger.info(f"🔍 Анализируем строки карточки: {lines}")
@@ -1181,42 +1193,19 @@ class AvitoParser(BaseSiteParser):
 
             if not location_data['address']:
                 for line in lines:
-                    if self._is_valid_address_simple(line):
+                    if self._is_valid_address_optimized(line):
                         location_data['address'] = line
                         self.logger.info(f"🏠 Адрес найден альтернативно: '{line}'")
                         break
 
             for line in lines:
-                self._extract_metro_from_text_simple(line, location_data)
+                self._extract_metro_from_text_optimized(line, location_data)
 
         except Exception as e:
             self.logger.error(f"❌ Ошибка парсинга карточки: {e}")
 
-    def _get_metro_data_by_station(self, station_name):
-        """Возвращает данные станции метро из базы"""
-        if station_name in self.metro_database:
-            data = self.metro_database[station_name]
-            return {
-                'color': data['color'],
-                'line_number': data['line_number'],
-                'line_name': data['line_name'],
-                'circle_color': self._get_circle_color_for_line(data['line_number'])
-            }
-
-        return {
-            'color': '#666666',
-            'line_number': '?',
-            'line_name': 'Неизвестная линия',
-            'circle_color': '#ffffff'
-        }
-
-    def _get_circle_color_for_line(self, line_number):
-        """Определяет цвет кружка (белый или черный) в зависимости от цвета линии"""
-        dark_lines = {'1', '2', '3', '5', '7', '8', '9', '10', '11', '12'}
-        return '#000000' if line_number in dark_lines else '#ffffff'
-
-    def _build_final_location_improved(self, location_data):
-        """УЛУЧШЕННОЕ формирование итогового местоположения"""
+    def _build_final_location_optimized(self, location_data):
+        """Оптимизированное формирование итогового местоположения"""
         location_parts = []
 
         if location_data['metro_stations']:
@@ -1235,530 +1224,8 @@ class AvitoParser(BaseSiteParser):
 
         return location_data
 
-    def extract_posted_date(self):
-        """УЛУЧШЕННЫЙ метод извлечения даты размещения объявления"""
-        try:
-            self.logger.info("🔍 УЛУЧШЕННЫЙ поиск даты на странице...")
-
-            # 🔥 ШАГ 1: Основной селектор - ищем ЛЮБОЙ элемент с data-marker="item-view/item-date"
-            primary_selectors = [
-                '[data-marker="item-view/item-date"]',
-                '*[data-marker="item-view/item-date"]',  # Все элементы с этим data-marker
-            ]
-
-            for selector in primary_selectors:
-                try:
-                    date_elems = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    self.logger.info(f"🔍 Проверяем селектор '{selector}': найдено {len(date_elems)} элементов")
-
-                    for date_elem in date_elems:
-                        # 🔥 ВАЖНО: Сначала получаем ВЕСЬ HTML элемента
-                        elem_html = date_elem.get_attribute('outerHTML')
-                        self.logger.info(f"🔍 HTML элемента: {elem_html[:200]}...")
-
-                        # 🔥 Ищем дату ВНУТРИ элемента (включая дочерние элементы)
-                        date_info = self._extract_date_from_element(date_elem)
-                        if date_info:
-                            self.logger.info(f"✅ Дата найдена через '{selector}': '{date_info}'")
-                            return date_info
-
-                except Exception as e:
-                    self.logger.debug(f"❌ Селектор '{selector}' не сработал: {e}")
-                    continue
-
-            # 🔥 ШАГ 2: Если не нашли, пробуем альтернативные методы
-            self.logger.warning("❌ Дата не найдена в основном селекторе, ищем альтернативно")
-            return 'Дата не указана'
-
-        except Exception as e:
-            self.logger.error(f"❌ Критическая ошибка извлечения даты: {e}")
-            return 'Дата не указана'
-
-    def _extract_date_from_element(self, element):
-        """Извлекает дату из элемента, включая ВСЕ дочерние элементы"""
-        try:
-            # 🔥 Метод 1: Получаем ВЕСЬ текст элемента (включая дочерние)
-            full_text = element.text.strip()
-            if full_text:
-                self.logger.info(f"🔍 Полный текст элемента: '{full_text}'")
-                cleaned = self._clean_date_text(full_text)
-                if cleaned and cleaned != 'Дата не указана':
-                    return cleaned
-
-            # 🔥 Метод 2: Проверяем ВСЕ дочерние элементы
-            try:
-                # Получаем ВСЕ текстовые узлы внутри элемента
-                all_text_nodes = self.driver.execute_script("""
-                    var texts = [];
-                    var walker = document.createTreeWalker(
-                        arguments[0],
-                        NodeFilter.SHOW_TEXT,
-                        null,
-                        false
-                    );
-                    var node;
-                    while (node = walker.nextNode()) {
-                        var text = node.textContent.trim();
-                        if (text && text.length > 1) {
-                            texts.push(text);
-                        }
-                    }
-                    return texts;
-                """, element)
-
-                if all_text_nodes:
-                    combined_text = ' '.join(all_text_nodes).strip()
-                    self.logger.info(f"🔍 Все текстовые узлы: {combined_text}")
-                    cleaned = self._clean_date_text(combined_text)
-                    if cleaned and cleaned != 'Дата не указана':
-                        return cleaned
-            except Exception as e:
-                self.logger.debug(f"❌ Ошибка получения текстовых узлов: {e}")
-
-            # 🔥 Метод 3: Проверяем innerHTML
-            inner_html = element.get_attribute('innerHTML')
-            if inner_html:
-                self.logger.info(f"🔍 innerHTML элемента: {inner_html[:200]}...")
-
-                # Убираем HTML теги, оставляем только текст
-                import re
-                text_only = re.sub(r'<[^>]+>', ' ', inner_html)
-                text_only = ' '.join(text_only.split()).strip()
-
-                if text_only:
-                    self.logger.info(f"🔍 Текст из innerHTML: '{text_only}'")
-                    cleaned = self._clean_date_text(text_only)
-                    if cleaned and cleaned != 'Дата не указана':
-                        return cleaned
-
-            # 🔥 Метод 4: Ищем по XPath внутри элемента
-            xpath_patterns = [
-                ".//text()[contains(., 'сегодня') or contains(., 'вчера') or contains(., 'час') or contains(., 'минут')]",
-                ".//*[contains(text(), 'сегодня') or contains(text(), 'вчера')]",
-            ]
-
-            for xpath in xpath_patterns:
-                try:
-                    nodes = element.find_elements(By.XPATH, xpath)
-                    for node in nodes:
-                        text = node.text if hasattr(node, 'text') else str(node)
-                        if text:
-                            cleaned = self._clean_date_text(text)
-                            if cleaned and cleaned != 'Дата не указана':
-                                self.logger.info(f"🔍 Найдено по XPath '{xpath}': '{text}' -> '{cleaned}'")
-                                return cleaned
-                except:
-                    continue
-
-            return None
-
-        except Exception as e:
-            self.logger.error(f"❌ Ошибка извлечения даты из элемента: {e}")
-            return None
-
-    def _clean_date_text(self, date_text):
-        """Очищает текст даты от лишних символов"""
-        if not date_text:
-            return 'Дата не указана'
-
-        try:
-            # Убираем лишние символы в начале/конце
-            cleaned = date_text.strip()
-
-            # Убираем точки, звездочки и другие разделители в начале
-            cleaned = re.sub(r'^[·•*\-–—\s]+', '', cleaned)
-
-            # Убираем лишние пробелы
-            cleaned = re.sub(r'\s+', ' ', cleaned)
-
-            # Если начинается со слова "в" с маленькой буквы, делаем заглавной
-            if cleaned.startswith('в '):
-                cleaned = 'В ' + cleaned[2:]
-
-            # Капитализируем первое слово
-            if cleaned and len(cleaned) > 1:
-                if cleaned[0].islower():
-                    cleaned = cleaned[0].upper() + cleaned[1:]
-
-            # Если текст слишком короткий
-            if len(cleaned) < 3:
-                return 'Дата не указана'
-
-            self.logger.info(f"🔍 Очищенный текст даты: '{cleaned}'")
-            return cleaned
-
-        except Exception as e:
-            self.logger.debug(f"❌ Ошибка очистки даты '{date_text}': {e}")
-            return date_text.strip() if date_text else 'Дата не указана'
-
-    def _extract_condition(self):
-        """Парсит только параметр 'Состояние' из характеристик"""
-        try:
-            self.logger.info("🔍 Поиск параметра 'Состояние' в характеристиках...")
-
-            params_selectors = [
-                '[data-marker="item-view/item-params"]',
-                '#bx_item-params',
-                '[data-marker="item-params"]',
-                '[class*="params-params"]',
-                '[class*="item-params"]',
-                '.styles.module__root___XzUyYW.styles.module__root___XzIyMW.styles.module__size_xxxl___XzE0MG',
-                '[class*="styles.module__root"]',
-                '.params__paramsList___XzY3MG',
-                '.params__paramsList__item___XzY3MG',
-                '[class*="params__paramsList"]',
-                '.item-params',
-                '.params'
-            ]
-
-            for selector in params_selectors:
-                try:
-                    params_blocks = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    self.logger.info(f"🔍 Проверяем селектор '{selector}': найдено {len(params_blocks)} блоков")
-
-                    for block in params_blocks:
-                        try:
-                            condition = self._find_condition_in_block(block)
-                            if condition:
-                                condition_lower = condition.lower()
-                                if any(word in condition_lower for word in ['нов', 'new', 'бирк']):
-                                    condition = "Новое с биркой"
-                                elif any(word in condition_lower for word in ['б/у', 'бу', 'used']):
-                                    condition = "Б/у"
-                                elif any(word in condition_lower for word in ['как нов', 'like new']):
-                                    condition = "Как новый"
-
-                                self.logger.info(f"✅ Состояние найдено и нормализовано: '{condition}'")
-                                return condition
-
-                        except Exception as e:
-                            self.logger.debug(f"❌ Ошибка анализа блока: {e}")
-                            continue
-
-                except Exception as e:
-                    self.logger.debug(f"❌ Селектор '{selector}' не сработал: {e}")
-                    continue
-
-            self.logger.info("🔧 Состояние не найдено в характеристиках")
-            return "Не указано"
-
-        except Exception as e:
-            self.logger.error(f"❌ Ошибка парсинга состояния: {e}")
-            return "Не указано"
-
-    def _find_condition_in_block(self, block):
-        """Ищет параметр 'Состояние' в блоке характеристик"""
-        try:
-            item_elements = block.find_elements(By.CSS_SELECTOR, '.params__paramsList__item___XzY3MG')
-            self.logger.info(f"🔍 Найдено элементов характеристик: {len(item_elements)}")
-
-            for item in item_elements:
-                try:
-                    item_text = item.text.strip()
-                    self.logger.info(f"🔍 Текст элемента характеристик: '{item_text}'")
-
-                    if 'Состояние' in item_text:
-                        separators = [':', ' ']
-
-                        for separator in separators:
-                            if f'Состояние{separator}' in item_text:
-                                parts = item_text.split(f'Состояние{separator}')
-                                if len(parts) > 1:
-                                    value = parts[1].strip()
-                                    if value:
-                                        self.logger.info(f"✅ Состояние найдено через '{separator}': '{value}'")
-                                        return value
-
-                        if 'Состояние' in item_text and not any(sep in item_text for sep in [':', ' ']):
-                            value = item_text.replace('Состояние', '').strip()
-                            if value:
-                                self.logger.info(f"✅ Состояние найдено (без разделителя): '{value}'")
-                                return value
-
-                except Exception as e:
-                    self.logger.debug(f"❌ Ошибка анализа элемента: {e}")
-                    continue
-
-            try:
-                state_spans = block.find_elements(By.XPATH, ".//span[contains(text(), 'Состояние')]")
-                self.logger.info(f"🔍 Найдено span с 'Состояние': {len(state_spans)}")
-
-                for span in state_spans:
-                    try:
-                        parent = span.find_element(By.XPATH, "./..")
-                        full_text = parent.text.strip()
-                        self.logger.info(f"🔍 Текст родительского элемента: '{full_text}'")
-
-                        if 'Состояние' in full_text:
-                            if ':' in full_text:
-                                value = full_text.split(':')[-1].strip()
-                            else:
-                                value = full_text.replace('Состояние', '').strip()
-
-                            if value and value != 'Состояние':
-                                self.logger.info(f"✅ Состояние найдено через span: '{value}'")
-                                return value
-                    except Exception as e:
-                        self.logger.debug(f"❌ Ошибка анализа span: {e}")
-                        continue
-            except Exception as e:
-                self.logger.debug(f"❌ Поиск по span не сработал: {e}")
-
-            return None
-
-        except Exception as e:
-            self.logger.debug(f"❌ Ошибка поиска состояния в блоке: {e}")
-            return None
-
-    def _extract_seller_name(self):
-        """Имя продавца"""
-        seller_selectors = [
-            '[data-marker="seller-info/name"]',
-            '.seller-info-name'
-        ]
-
-        for selector in seller_selectors:
-            try:
-                seller_elem = self.driver.find_element(By.CSS_SELECTOR, selector)
-                seller_name = seller_elem.text.strip()
-                if seller_name:
-                    return seller_name
-            except:
-                continue
-        return None
-
-    def _extract_seller_rating(self):
-        """Рейтинг продавца"""
-        try:
-            rating = None
-            reviews_count = None
-
-            rating_selectors = [
-                '.seller-info-rating span',
-                '[data-marker="seller-rating/score"]'
-            ]
-
-            for selector in rating_selectors:
-                try:
-                    rating_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for elem in rating_elements:
-                        text = elem.text.strip()
-                        if text and re.match(r'^\d+[.,]?\d*$', text):
-                            rating_text = text.replace(',', '.')
-                            rating = float(rating_text)
-                            if 1 <= rating <= 5:
-                                break
-                    if rating:
-                        break
-                except:
-                    continue
-
-            reviews_selectors = [
-                '[data-marker="seller-rating/count"]',
-                '.seller-info-rating a'
-            ]
-
-            for selector in reviews_selectors:
-                try:
-                    reviews_elem = self.driver.find_element(By.CSS_SELECTOR, selector)
-                    reviews_text = reviews_elem.text.strip()
-                    reviews_match = re.search(r'(\d+)', reviews_text)
-                    if reviews_match:
-                        reviews_count = int(reviews_match.group(1))
-                        break
-                except:
-                    continue
-
-            return rating, reviews_count
-
-        except:
-            return None, None
-
-    def _extract_category(self):
-        """🔥 🔥 🔥 ВОССТАНОВЛЕННЫЙ МЕТОД ИЗ СТАРОГО ПАРСЕРА: Извлекает категорию из навигационной цепочки"""
-        try:
-            self.logger.info("📊 Поиск категории товара в навигационной цепочке...")
-
-            navigation_selectors = [
-                '[data-marker="breadcrumbs"]',
-                '[data-marker="item-navigation"]',
-                '.breadcrumbs',
-                '.js-breadcrumbs',
-                '.breadcrumb'
-            ]
-
-            navigation_element = None
-            for selector in navigation_selectors:
-                try:
-                    navigation_element = self.driver.find_element(By.CSS_SELECTOR, selector)
-                    self.logger.info(f"✅ Найден блок навигации с селектором: {selector}")
-                    break
-                except Exception as e:
-                    self.logger.debug(f"❌ Селектор навигации '{selector}' не сработал: {e}")
-                    continue
-
-            if not navigation_element:
-                self.logger.warning("⚠️ Не найден блок навигации для извлечения категории")
-                return None
-
-            try:
-                links = navigation_element.find_elements(By.TAG_NAME, 'a')
-                breadcrumbs = []
-                for link in links:
-                    try:
-                        text = link.text.strip()
-                        if text and text not in ['Главная', 'Avito', 'Все категории', '']:
-                            breadcrumbs.append(text)
-                            self.logger.debug(f"🔗 Хлебная крошка: {text}")
-                    except Exception as e:
-                        self.logger.debug(f"❌ Ошибка извлечения текста ссылки: {e}")
-                        continue
-
-                self.logger.info(f"📊 Найдены хлебные крошки: {breadcrumbs}")
-
-                # Логика выбора категории:
-                # 1. Если есть 3 или больше элементов, берем предпоследний (обычно это подкатегория)
-                # 2. Если есть 2 элемента, берем первый (главная категория)
-                # 3. Если есть 1 элемент, берем его
-                if len(breadcrumbs) >= 3:
-                    category = breadcrumbs[-2]  # Предпоследний элемент
-                    self.logger.info(f"✅ Категория найдена (предпоследний элемент): '{category}'")
-                    return category
-                elif len(breadcrumbs) == 2:
-                    category = breadcrumbs[0]  # Первый элемент
-                    self.logger.info(f"✅ Категория найдена (первый элемент): '{category}'")
-                    return category
-                elif len(breadcrumbs) == 1:
-                    category = breadcrumbs[0]  # Единственный элемент
-                    self.logger.info(f"✅ Категория найдена (единственный элемент): '{category}'")
-                    return category
-                else:
-                    self.logger.warning("⚠️ В хлебных крошках нет текста для извлечения категории")
-                    return None
-
-            except Exception as e:
-                self.logger.error(f"❌ Ошибка парсинга навигации: {e}")
-                return None
-
-        except Exception as e:
-            self.logger.error(f"❌ Критическая ошибка извлечения категории: {e}")
-            return None
-
-    def _extract_city(self):
-        """Поиск города"""
-        try:
-            location_selectors = [
-                '[data-marker="item-view/title-address"]',
-                '.style__item-address__string___XzQ5MT'
-            ]
-
-            for selector in location_selectors:
-                try:
-                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for element in elements:
-                        text = element.text.strip()
-                        if text:
-                            city = self._parse_city_from_text(text)
-                            if city:
-                                return city
-                except:
-                    continue
-
-            return self.city
-
-        except:
-            return self.city
-
-    def _parse_city_from_text(self, text):
-        """Парсинг города"""
-        try:
-            if not text:
-                return None
-
-            major_cities = {
-                'москва': 'Москва', 'мск': 'Москва',
-                'санкт-петербург': 'Санкт-Петербург', 'спб': 'Санкт-Петербург',
-                'воронеж': 'Воронеж', 'казань': 'Казань',
-                'екатеринбург': 'Екатеринбург', 'новосибирск': 'Новосибирск',
-                'нижний новгород': 'Нижний Новгород', 'самара': 'Самара',
-                'омск': 'Омск', 'челябинск': 'Челябинск',
-                'ростов-на-дону': 'Ростов-на-Дону', 'уфа': 'Уфа',
-                'красноярск': 'Красноярск', 'пермь': 'Пермь',
-                'волгоград': 'Волгоград', 'сочи': 'Сочи',
-                'пенза': 'Пенза'
-            }
-
-            text_lower = text.lower()
-
-            for city_pattern, city_name in major_cities.items():
-                if city_pattern in text_lower:
-                    return city_name
-
-            return None
-
-        except:
-            return None
-
-    def _extract_views_count(self):
-        """Просмотры"""
-        try:
-            views_data = {'total_views': 0, 'today_views': 0}
-
-            total_views_selectors = [
-                '[data-marker="item-view/total-views"]',
-                '.style-item-views-F2T5T'
-            ]
-
-            for selector in total_views_selectors:
-                try:
-                    views_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    for elem in views_elements:
-                        views_text = elem.text.strip()
-                        if views_text and 'просмотр' in views_text.lower():
-                            numbers = re.findall(r'\d+', views_text)
-                            if numbers:
-                                views_data['total_views'] = int(numbers[0])
-                                break
-                    if views_data['total_views'] > 0:
-                        break
-                except:
-                    continue
-
-            return views_data
-
-        except:
-            return {'total_views': 0, 'today_views': 0}
-
-    def parse_price(self, price_text):
-        """Парсинг цены"""
-        try:
-            digits = ''.join(filter(str.isdigit, price_text))
-            return int(digits) if digits else 0
-        except:
-            return 0
-
-    async def parse_product_item(self, item_element, query=None):
-        """Парсинг товара"""
-        try:
-            product_data = await self.parse_item_advanced(item_element, query)
-            if not product_data:
-                return None
-
-            freshness_score = await self.analyze_listing_freshness(item_element, product_data)
-            product_data['freshness_score'] = freshness_score
-            product_data['is_fresh_by_indicators'] = self._detect_fresh_listing_indicators(item_element)
-
-            return product_data
-
-        except:
-            return None
-
-    async def parse_item(self, item, category):
-        """Абстрактный метод"""
-        return await self.parse_product_item(item, category)
-
-    async def _extract_seller_info_with_avatar(self):
-        """Извлекает информацию о продавце с аватаркой - ДЕТАЛЬНЫЕ ЛОГИ"""
+    async def _extract_seller_info_optimized(self):
+        """Оптимизированное извлечение информации о продавце с аватаркой"""
         try:
             self.logger.info("🔍 НАЧАЛО поиска информации о продавце с аватаркой")
 
@@ -1769,7 +1236,7 @@ class AvitoParser(BaseSiteParser):
                 'seller_profile_url': None
             }
 
-            # 🔥 ПРОСТОЙ поиск аватарки - рабочие селекторы из старого парсера
+            # 🔥 ПОЛНЫЙ поиск аватарки как в оригинале
             avatar_selectors = [
                 '.style__seller-info-shop-img___XzY4OG',
                 '.style__sellerInfoShopImgRedesign___XzY4OG',
@@ -1790,8 +1257,6 @@ class AvitoParser(BaseSiteParser):
 
                     for i, element in enumerate(elements):
                         try:
-                            self.logger.info(f"🔍 Элемент {i + 1} селектора '{selector}':")
-
                             # Способ 1: атрибут src
                             avatar_url = element.get_attribute('src')
                             if avatar_url:
@@ -1863,7 +1328,7 @@ class AvitoParser(BaseSiteParser):
                     self.logger.info(f"⚠️ Ошибка селектора '{selector}': {e}")
                     continue
 
-            # Имя продавца (простая версия)
+            # Имя продавца
             self.logger.info("🔍 Поиск имени продавца...")
             name_selectors = [
                 '[data-marker="seller-info/name"]',
@@ -1903,7 +1368,7 @@ class AvitoParser(BaseSiteParser):
             except Exception as e:
                 self.logger.info(f"⚠️ Ошибка определения типа продавца: {e}")
 
-            # 🔥 🔥 🔥 ВОТ ЭТОТ МЕТОД ИЗВЛЕКАЕТ ССЫЛКУ НА ПРОФИЛЬ - ДОБАВЛЕНО!
+            # 🔥 Поиск ссылки на профиль продавца
             seller_profile_url = await self._extract_seller_profile_url()
             if seller_profile_url:
                 seller_info['seller_profile_url'] = seller_profile_url
@@ -1963,7 +1428,15 @@ class AvitoParser(BaseSiteParser):
         """Проверка аватарки"""
         if not url:
             return False
-        return 'avito.st/image/1/1.' in url or 'stub_avatars' in url
+        # Расширенные проверки для аватарок Avito
+        valid_patterns = [
+            'avito.st/image/1/1.',
+            'stub_avatars',
+            'img.avito.st',
+            'avatars.mds.yandex.net',
+            'avatars.yandex.net'
+        ]
+        return any(pattern in url for pattern in valid_patterns)
 
     def _normalize_avatar_url(self, url):
         """Нормализация URL"""
@@ -1973,21 +1446,272 @@ class AvitoParser(BaseSiteParser):
             return 'https:' + url
         elif url.startswith('/'):
             return 'https://www.avito.ru' + url
+        # Убираем лишние параметры
+        if '?' in url:
+            url = url.split('?')[0]
         return url
 
-    def _extract_description_full(self):
-        """🔥 🔥 🔥 ВОССТАНОВЛЕННЫЙ МЕТОД ИЗ СТАРОГО ПАРСЕРА: Извлекает полное описание товара с сохранением форматирования"""
+    def _extract_category_optimized(self):
+        """Оптимизированное извлечение категории"""
         try:
-            self.logger.info("🔍 ВОССТАНОВЛЕННЫЙ поиск полного описания товара...")
+            self.logger.info("📊 Оптимизированный поиск категории товара")
 
+            navigation_selectors = [
+                '[data-marker="breadcrumbs"]',
+                '.breadcrumbs',
+                '[data-marker="item-navigation"]'
+            ]
+
+            for selector in navigation_selectors:
+                try:
+                    navigation_element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    self.logger.info(f"✅ Найден блок навигации с селектором: {selector}")
+
+                    links = navigation_element.find_elements(By.TAG_NAME, 'a')
+                    breadcrumbs = []
+
+                    for link in links:
+                        try:
+                            text = link.text.strip()
+                            if text and text not in ['Главная', 'Avito', 'Все категории', '']:
+                                breadcrumbs.append(text)
+                        except:
+                            continue
+
+                    self.logger.info(f"📊 Найдены хлебные крошки: {breadcrumbs}")
+
+                    # Логика выбора категории
+                    if len(breadcrumbs) >= 3:
+                        category = breadcrumbs[-2]  # Предпоследний элемент
+                        self.logger.info(f"✅ Категория найдена (предпоследний элемент): '{category}'")
+                        return category
+                    elif len(breadcrumbs) == 2:
+                        category = breadcrumbs[0]  # Первый элемент
+                        self.logger.info(f"✅ Категория найдена (первый элемент): '{category}'")
+                        return category
+                    elif len(breadcrumbs) == 1:
+                        category = breadcrumbs[0]  # Единственный элемент
+                        self.logger.info(f"✅ Категория найдена (единственный элемент): '{category}'")
+                        return category
+                    else:
+                        self.logger.warning("⚠️ В хлебных крошках нет текста для извлечения категории")
+
+                except Exception as e:
+                    self.logger.debug(f"❌ Селектор навигации '{selector}' не сработал: {e}")
+                    continue
+
+            return None
+
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка извлечения категории: {e}")
+            return None
+
+    def _extract_seller_name_optimized(self):
+        """Оптимизированный поиск имени продавца"""
+        name_selectors = [
+            '[data-marker="seller-info/name"]',
+            '.seller-info-name'
+        ]
+
+        for selector in name_selectors:
+            try:
+                element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                name = element.text.strip()
+                if name:
+                    return name
+            except:
+                continue
+
+        return None
+
+    def _extract_seller_rating_optimized(self):
+        """Оптимизированный поиск рейтинга продавца"""
+        try:
+            rating = None
+            reviews_count = None
+
+            # Рейтинг
+            rating_selectors = [
+                '.seller-info-rating span',
+                '[data-marker="seller-rating/score"]'
+            ]
+
+            for selector in rating_selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    text = element.text.strip()
+                    if text:
+                        match = re.search(r'(\d+[.,]?\d*)', text)
+                        if match:
+                            rating_text = match.group(1).replace(',', '.')
+                            rating = float(rating_text)
+                            break
+                except:
+                    continue
+
+            # Отзывы
+            reviews_selectors = [
+                '[data-marker="seller-rating/count"]',
+                '.seller-info-rating a'
+            ]
+
+            for selector in reviews_selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    text = element.text.strip()
+                    if text:
+                        match = re.search(r'(\d+)', text)
+                        if match:
+                            reviews_count = int(match.group(1))
+                            break
+                except:
+                    continue
+
+            return rating, reviews_count
+
+        except:
+            return None, None
+
+    def _extract_city_optimized(self):
+        """Оптимизированный поиск города"""
+        try:
+            location_selectors = [
+                '[data-marker="item-view/title-address"]',
+                '.style__item-address__string___XzQ5MT'
+            ]
+
+            for selector in location_selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    text = element.text.strip().lower()
+
+                    if 'москва' in text or 'мск' in text:
+                        return 'Москва'
+                    elif 'санкт-петербург' in text or 'спб' in text:
+                        return 'Санкт-Петербург'
+                    elif 'казань' in text:
+                        return 'Казань'
+                    elif 'екатеринбург' in text:
+                        return 'Екатеринбург'
+                    elif 'новосибирск' in text:
+                        return 'Новосибирск'
+                    elif 'нижний новгород' in text:
+                        return 'Нижний Новгород'
+                except:
+                    continue
+
+            return self.city
+
+        except:
+            return self.city
+
+    def extract_posted_date_optimized(self):
+        """Оптимизированное извлечение даты размещения"""
+        try:
+            self.logger.info("🔍 Оптимизированный поиск даты на странице...")
+
+            # Основные селекторы
+            date_selectors = [
+                '[data-marker="item-view/item-date"]',
+                '.iva-item-dateStep-__qB8a',
+                '.styles_remainingTime__P_aaq'
+            ]
+
+            for selector in date_selectors:
+                try:
+                    date_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    if date_elements:
+                        date_elem = date_elements[0]
+
+                        # Получаем текст
+                        full_text = date_elem.text.strip()
+                        if full_text:
+                            # Очищаем текст
+                            cleaned = self._clean_date_text_optimized(full_text)
+                            if cleaned and cleaned != 'Дата не указана':
+                                self.logger.info(f"✅ Дата найдена через '{selector}': '{cleaned}'")
+                                return cleaned
+                except Exception as e:
+                    self.logger.debug(f"❌ Селектор даты '{selector}' не сработал: {e}")
+                    continue
+
+            return 'Дата не указана'
+
+        except Exception as e:
+            self.logger.error(f"❌ Ошибка извлечения даты: {e}")
+            return 'Дата не указана'
+
+    def _clean_date_text_optimized(self, date_text):
+        """Оптимизированная очистка текста даты"""
+        if not date_text:
+            return 'Дата не указана'
+
+        try:
+            # Убираем лишние символы в начале/конце
+            cleaned = date_text.strip()
+
+            # Убираем точки, звездочки и другие разделители в начале
+            cleaned = re.sub(r'^[·•*\-–—\s]+', '', cleaned)
+
+            # Убираем лишние пробелы
+            cleaned = re.sub(r'\s+', ' ', cleaned)
+
+            # Если начинается со слова "в" с маленькой буквы, делаем заглавной
+            if cleaned.startswith('в '):
+                cleaned = 'В ' + cleaned[2:]
+
+            # Капитализируем первое слово
+            if cleaned and len(cleaned) > 1:
+                if cleaned[0].islower():
+                    cleaned = cleaned[0].upper() + cleaned[1:]
+
+            # Если текст слишком короткий
+            if len(cleaned) < 3:
+                return 'Дата не указана'
+
+            return cleaned
+
+        except:
+            return date_text.strip() if date_text else 'Дата не указана'
+
+    def _extract_views_optimized(self):
+        """Оптимизированный поиск просмотров"""
+        try:
+            views_data = {'total_views': 0, 'today_views': 0}
+
+            views_selectors = [
+                '[data-marker="item-view/total-views"]',
+                '.style-item-views-F2T5T'
+            ]
+
+            for selector in views_selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    text = element.text.strip().lower()
+
+                    if 'просмотр' in text:
+                        match = re.search(r'(\d+)', text)
+                        if match:
+                            views_data['total_views'] = int(match.group(1))
+                            break
+                except:
+                    continue
+
+            return views_data
+
+        except:
+            return {'total_views': 0, 'today_views': 0}
+
+    def _extract_description_optimized(self):
+        """Оптимизированное извлечение описания"""
+        try:
+            self.logger.info("🔍 Оптимизированный поиск описания товара...")
+
+            # Сначала пробуем найти и нажать кнопку "Читать полностью"
             read_more_selectors = [
                 '//a[contains(text(), "Читать полностью")]',
                 '//button[contains(text(), "Читать полностью")]',
-                '//*[contains(text(), "Читать полностью")]',
-                '[data-marker="item-description/expand"]',
-                '.styles.module__root___XzVhMW',
-                'a[role="button"]',
-                '.style__item-description-expand___XzQzYT'
+                '[data-marker="item-description/expand"]'
             ]
 
             button_clicked = False
@@ -2001,29 +1725,17 @@ class AvitoParser(BaseSiteParser):
                     for button in buttons:
                         try:
                             button_text = button.text.strip()
-                            if any(phrase in button_text.lower() for phrase in
-                                   ['читать полностью', 'развернуть', 'показать полностью']):
+                            if any(phrase in button_text.lower() for phrase in ['читать полностью', 'развернуть']):
                                 self.logger.info(f"🎯 Нажимаем кнопку: '{button_text}'")
 
-                                self.driver.execute_script(
-                                    "arguments[0].scrollIntoView({block: 'center', behavior: 'smooth'});", button)
-                                time.sleep(0.5)
-
                                 try:
-                                    button.click()
-                                    self.logger.info("✅ Клик по кнопке выполнен")
+                                    self.driver.execute_script("arguments[0].click();", button)
+                                    self.logger.info("✅ Клик по кнопке выполнен через JavaScript")
                                     button_clicked = True
-                                    time.sleep(1)
+                                    time.sleep(0.5)
                                     break
                                 except:
-                                    try:
-                                        self.driver.execute_script("arguments[0].click();", button)
-                                        self.logger.info("✅ Клик по кнопке выполнен через JavaScript")
-                                        button_clicked = True
-                                        time.sleep(1)
-                                        break
-                                    except:
-                                        continue
+                                    continue
 
                         except Exception as e:
                             self.logger.debug(f"❌ Ошибка клика по кнопке: {e}")
@@ -2036,123 +1748,55 @@ class AvitoParser(BaseSiteParser):
                     self.logger.debug(f"❌ Селектор кнопки '{selector}' не сработал: {e}")
                     continue
 
-            description = None
-
+            # Поиск описания
             description_selectors = [
                 '[data-marker="item-view/item-description"]',
                 '.item-description-text',
-                '.description-text',
-                '[itemprop="description"]',
-                '.iva-item-text-Ge6dR'
+                '.description-text'
             ]
 
             for selector in description_selectors:
                 try:
-                    desc_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    self.logger.info(f"🔍 Проверяем селектор описания '{selector}': найдено {len(desc_elements)}")
-
-                    for desc_elem in desc_elements:
-                        try:
-                            desc_text = desc_elem.text.strip()
-                            if desc_text and len(desc_text) > 10:
-                                description = desc_text
-                                self.logger.info(f"✅ Описание найдено через '{selector}': {len(description)} символов")
-                                break
-                        except Exception as e:
-                            self.logger.debug(f"❌ Ошибка извлечения текста: {e}")
-                            continue
-
-                    if description:
-                        break
-
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in elements:
+                        desc_text = element.text.strip()
+                        if desc_text and len(desc_text) > 10:
+                            self.logger.info(f"✅ Описание найдено через '{selector}': {len(desc_text)} символов")
+                            return desc_text
                 except Exception as e:
                     self.logger.debug(f"❌ Селектор описания '{selector}' не сработал: {e}")
                     continue
 
-            if not description:
-                try:
-                    self.logger.info("🔍 Поиск описания в HTML содержимом...")
-
-                    html_description_selectors = [
-                        '.style__item-description-html___XzQzYT',
-                        '[data-marker="item-view/item-description-html"]',
-                        '.item-description-html',
-                        '.description-html'
-                    ]
-
-                    for selector in html_description_selectors:
-                        try:
-                            html_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                            for html_elem in html_elements:
-                                try:
-                                    html_content = html_elem.get_attribute('innerHTML')
-                                    if html_content:
-                                        from bs4 import BeautifulSoup
-                                        soup = BeautifulSoup(html_content, 'html.parser')
-
-                                        for br in soup.find_all("br"):
-                                            br.replace_with("\n")
-
-                                        text_content = soup.get_text(separator='\n', strip=False)
-                                        if text_content and len(text_content) > 10:
-                                            description = text_content.strip()
-                                            self.logger.info(f"✅ Описание из HTML: {len(description)} символов")
-                                            break
-                                except Exception as e:
-                                    self.logger.debug(f"❌ Ошибка парсинга HTML: {e}")
-                                    continue
-
-                            if description:
-                                break
-
-                        except Exception as e:
-                            self.logger.debug(f"❌ HTML селектор '{selector}' не сработал: {e}")
-                            continue
-                except Exception as e:
-                    self.logger.debug(f"❌ Поиск в HTML не сработал: {e}")
-
-            if not description:
-                try:
-                    self.logger.info("🔍 Поиск любого текста в блоке описания...")
-
-                    parent_selectors = [
-                        '#bx_item-description',
-                        '.style__item-description___XzQzYT',
-                        '[class*="item-description"]',
-                        '.item-view-description'
-                    ]
-
-                    for selector in parent_selectors:
-                        try:
-                            parent_elems = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                            for parent_elem in parent_elems:
-                                full_text = parent_elem.text
-                                if full_text and len(full_text) > 50:
-                                    lines = full_text.split('\n')
-                                    description_lines = []
-                                    for line in lines:
-                                        clean_line = line.strip()
-                                        if clean_line and clean_line.lower() not in ['описание', 'description']:
-                                            description_lines.append(clean_line)
-
-                                    if description_lines:
-                                        description = '\n'.join(description_lines)
-                                        self.logger.info(
-                                            f"✅ Описание из родительского блока: {len(description)} символов")
-                                        break
-                        except Exception as e:
-                            self.logger.debug(f"❌ Родительский селектор '{selector}' не сработал: {e}")
-                            continue
-                except Exception as e:
-                    self.logger.debug(f"❌ Поиск в родительском блоке не сработал: {e}")
-
-            if description:
-                self.logger.info(f"✅ ФИНАЛЬНОЕ ОПИСАНИЕ: {len(description)} символов")
-                return description
-            else:
-                self.logger.warning("❌ Описание не найдено")
-                return "Описание отсутствует"
+            return "Описание отсутствует"
 
         except Exception as e:
-            self.logger.error(f"❌ Критическая ошибка извлечения описания: {e}")
+            self.logger.error(f"❌ Ошибка извлечения описания: {e}")
             return "Описание отсутствует"
+
+    def parse_price(self, price_text):
+        """Парсинг цены"""
+        try:
+            digits = ''.join(filter(str.isdigit, price_text))
+            return int(digits) if digits else 0
+        except:
+            return 0
+
+    async def parse_product_item(self, item_element, query=None):
+        """Парсинг товара"""
+        try:
+            product_data = await self.parse_item_advanced(item_element, query)
+            if not product_data:
+                return None
+
+            freshness_score = await self.analyze_listing_freshness(item_element, product_data)
+            product_data['freshness_score'] = freshness_score
+            product_data['is_fresh_by_indicators'] = self._detect_fresh_listing_indicators(item_element)
+
+            return product_data
+
+        except:
+            return None
+
+    async def parse_item(self, item, category):
+        """Абстрактный метод"""
+        return await self.parse_product_item(item, category)
