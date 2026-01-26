@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -627,11 +627,11 @@ def found_item_detail(request, item_id):
 
     except FoundItem.DoesNotExist:
         messages.error(request, 'Товар не найден или у вас нет доступа к нему')
-        return redirect('found_items')
+        return redirect('/found-items/')
     except Exception as e:
         logger.error(f"Ошибка загрузки детальной страницы товара {item_id}: {e}")
         messages.error(request, 'Произошла ошибка при загрузке страницы товара')
-        return redirect('found_items')
+        return redirect('/found-items/')
 
 
 # ========== ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ==========

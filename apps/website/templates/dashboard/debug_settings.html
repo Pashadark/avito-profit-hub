@@ -1219,18 +1219,6 @@ class AdminLogger {
             ip: '127.0.0.1'
         };
 
-        // Отправляем лог на сервер
-        fetch('/api/admin-logs/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify(logEntry)
-        }).catch(error => {
-            console.error('Logging error:', error);
-        });
-
         console.log(`[ADMIN ACTION] ${action}`, details);
     }
 }

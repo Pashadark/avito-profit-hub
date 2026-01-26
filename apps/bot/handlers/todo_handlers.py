@@ -40,10 +40,9 @@ class TodoHandlers:
         keyboard = get_todo_main_keyboard()
 
         await update.message.reply_text(
-            "📋 **Управление задачами**\n\n"
+            "📋 Управление задачами\n\n"
             "Выберите действие или просто напишите задачу в чат!",
-            reply_markup=keyboard,
-            parse_mode='Markdown'
+            reply_markup=keyboard
         )
 
     async def handle_todo_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -103,23 +102,21 @@ class TodoHandlers:
             keyboard = get_task_management_keyboard(task.id)
 
             await update.message.reply_text(
-                f"✅ **Задача создана!**\n\n"
+                f"✅ Задача создана!\n\n"
                 f"📝 {task.title}\n"
                 f"🏷️ Статус: К выполнению\n\n"
                 f"Используйте кнопки ниже для управления:",
-                reply_markup=keyboard,
-                parse_mode='Markdown'
+                reply_markup=keyboard
             )
 
     async def show_create_dialog(self, query):
         """Показать диалог создания задачи"""
         await query.edit_message_text(
-            "📝 **Создание новой задачи**\n\n"
+            "📝 Создание новой задачи\n\n"
             "Просто напишите задачу в чат!\n\n"
             "Пример: \"Заказать продукты на неделю\"\n"
             "Или: \"Подготовить отчет|Важные графики и цифры\"\n\n"
-            "💡 *Можно добавить описание через символ |*",
-            parse_mode='Markdown',
+            "💡 Можно добавить описание через символ |",
             reply_markup=get_task_create_keyboard()
         )
 
@@ -135,27 +132,28 @@ class TodoHandlers:
             )
             return
 
-        message = "📋 **Все задачи:**\n\n"
-        for task in tasks[:15]:
+        message = "📋 Все задачи:\n\n"
+        for task in tasks[:10]:  # Ограничим 10 задачами
             status_emoji = {
                 'todo': '⏳',
                 'in_progress': '🔄',
                 'done': '✅'
             }.get(task['status'], '📝')
 
-            message += f"{status_emoji} **{task['title']}**\n"
-            message += f"   🏷️ {task['status_display']}\n"
-            if task['description']:
-                message += f"   📄 {task['description'][:100]}\n"
+            title = task['title']
+            description = task['description'][:50] + "..." if task['description'] and len(task['description']) > 50 else task['description'] or ""
 
-            message += f"   [➡️](/todo_start_{task['id']}) [✅](/todo_complete_{task['id']}) [🗑️](/todo_delete_{task['id']})\n\n"
+            message += f"{status_emoji} {title}\n"
+            message += f"   🏷️ {task['status_display']}\n"
+            if description:
+                message += f"   📄 {description}\n"
+            message += f"   ID: {task['id']}\n\n"
 
         keyboard = get_task_list_keyboard()
 
         await query.edit_message_text(
             message,
             reply_markup=keyboard,
-            parse_mode='Markdown',
             disable_web_page_preview=True
         )
 
@@ -172,18 +170,17 @@ class TodoHandlers:
             )
             return
 
-        message = "⚡ **Активные задачи:**\n\n"
+        message = "⚡ Активные задачи:\n\n"
         for task in active_tasks[:10]:
             status_emoji = '🔄' if task['status'] == 'in_progress' else '⏳'
-            message += f"{status_emoji} **{task['title']}**\n"
+            message += f"{status_emoji} {task['title']}\n"
             message += f"   🏷️ {task['status_display']}\n\n"
 
         keyboard = get_task_list_keyboard()
 
         await query.edit_message_text(
             message,
-            reply_markup=keyboard,
-            parse_mode='Markdown'
+            reply_markup=keyboard
         )
 
     async def show_done_tasks(self, query, user):
@@ -199,21 +196,20 @@ class TodoHandlers:
             )
             return
 
-        message = "✅ **Выполненные задачи:**\n\n"
+        message = "✅ Выполненные задачи:\n\n"
         for task in done_tasks[:10]:
             completion_time = "Неизвестно"
             if task['completed_at']:
                 completion_time = task['completed_at'].strftime('%d.%m.%Y %H:%M')
 
-            message += f"✅ **{task['title']}**\n"
+            message += f"✅ {task['title']}\n"
             message += f"   📅 Завершено: {completion_time}\n\n"
 
         keyboard = get_task_list_keyboard()
 
         await query.edit_message_text(
             message,
-            reply_markup=keyboard,
-            parse_mode='Markdown'
+            reply_markup=keyboard
         )
 
     async def create_task(self, user, text):
@@ -264,12 +260,11 @@ class TodoHandlers:
             keyboard = get_task_management_keyboard(task.id)
 
             await query.edit_message_text(
-                f"🔄 **Задача начата!**\n\n"
+                f"🔄 Задача начата!\n\n"
                 f"📝 {task.title}\n"
                 f"🏷️ Статус: В процессе\n\n"
                 f"⏰ Время начала: {task.started_at.strftime('%d.%m.%Y %H:%M') if task.started_at else 'Сейчас'}",
-                reply_markup=keyboard,
-                parse_mode='Markdown'
+                reply_markup=keyboard
             )
 
         except TodoCard.DoesNotExist:
@@ -290,13 +285,12 @@ class TodoHandlers:
             completion_time = task.get_completion_time()
 
             await query.edit_message_text(
-                f"✅ **Задача выполнена!**\n\n"
+                f"✅ Задача выполнена!\n\n"
                 f"📝 {task.title}\n"
                 f"🏷️ Статус: Выполнено\n"
                 f"⏱️ Затрачено времени: {completion_time if completion_time else 'Неизвестно'}\n"
                 f"📅 Завершено: {task.completed_at.strftime('%d.%m.%Y %H:%M') if task.completed_at else 'Сейчас'}",
-                reply_markup=get_task_list_keyboard(),
-                parse_mode='Markdown'
+                reply_markup=get_task_list_keyboard()
             )
 
         except TodoCard.DoesNotExist:
@@ -315,9 +309,8 @@ class TodoHandlers:
             await sync_to_async(task.delete)()
 
             await query.edit_message_text(
-                f"🗑️ **Задача удалена:** {task_title}",
-                reply_markup=get_task_list_keyboard(),
-                parse_mode='Markdown'
+                f"🗑️ Задача удалена: {task_title}",
+                reply_markup=get_task_list_keyboard()
             )
 
         except TodoCard.DoesNotExist:

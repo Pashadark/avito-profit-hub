@@ -1009,7 +1009,13 @@ def debug_subscription_info(request):
         user = request.user
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%subscription%'")
+            # 🔥 ИСПРАВЛЕНИЕ: PostgreSQL
+            cursor.execute("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name LIKE '%%subscription%%'
+            """)
             tables = cursor.fetchall()
             print("📋 Таблицы подписок:", tables)
 

@@ -30,10 +30,10 @@ from .views import (
     console_update, clean_database, database_info, database_stats,
     backup_database, list_backups, restore_backup, download_backup,
     delete_backup, clean_old_backups, quick_update_settings,
-    check_database_stats, force_clean_database, test_settings_api,
-    encrypt_database, decrypt_database, start_replication,
+    check_database_stats, force_clean_database, test_settings_api, start_replication,
     stop_replication, replication_status, dynamic_search_api, site_search_api,
-    user_parser_stats_api, user_ml_stats_api, export_project_structure, get_cities_list,admin_dashboard_data,
+    user_parser_stats_api, user_ml_stats_api, export_project_structure, get_cities_list,
+    admin_dashboard_data,
 
     # Функции из search.py тоже должны импортироваться через __init__.py
     universal_search_api, header_search_api, table_search_api,
@@ -239,10 +239,6 @@ urlpatterns = [
     path('api/check-db-stats/', check_database_stats, name='check_db_stats'),
     path('api/force-clean-database/', force_clean_database, name='force_clean_database'),
     path('api/test-settings-api/', test_settings_api, name='test_settings_api'),
-
-    # -------------------- БЕЗОПАСНОСТЬ --------------------
-    path('api/encrypt-database/', encrypt_database, name='encrypt_database'),
-    path('api/decrypt-database/', decrypt_database, name='decrypt_database'),
 
     # -------------------- РЕПЛИКАЦИЯ --------------------
     path('api/start-replication/', start_replication, name='start_replication'),

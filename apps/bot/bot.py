@@ -307,21 +307,16 @@ def initialize_bot():
 
 def main():
     """Основная функция запуска бота"""
-    print("=" * 60)
-    print("🚀 ЗАПУСК PROFIT HUB TELEGRAM БОТА")
-    print("=" * 60)
-    print(f"📁 Рабочая директория: {os.path.dirname(os.path.abspath(__file__))}")
-
     from shared.utils.config import get_bot_token
     token = get_bot_token()
 
     if not token or token == 'ваш_токен_бота':
-        print("❌ ТОКЕН БОТА НЕ НАЙДЕН!")
-        print("👉 Установите TELEGRAM_BOT_TOKEN в настройках Django")
+        logger.error("❌ ТОКЕН БОТА НЕ НАЙДЕН!")
+        logger.error("👉 Установите TELEGRAM_BOT_TOKEN в настройках Django")
         return False
 
-    print(f"✅ Токен найден: {token[:10]}...")
-    print("🔧 Инициализация бота...")
+    logger.info(f"✅ Токен найден: {token[:10]}...")
+    logger.info("🔧 Инициализация бота...")
 
     return initialize_bot()
 

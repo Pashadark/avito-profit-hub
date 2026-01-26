@@ -405,7 +405,7 @@ class FileUsageTracker:
             'apps/website/__init__.py', 'apps/website/apps.py', 'apps/website/models.py',
             'apps/website/views.py', 'apps/website/admin.py', 'apps/website/urls.py',
             'apps/website/forms.py', 'apps/website/middleware.py',
-            'apps/website/context_processors.py', 'apps/website/encryption.py',
+            'apps/website/context_processors.py',
             'apps/website/console_capture.py', 'apps/website/console_manager.py',
             'apps/website/database_replication.py', 'apps/website/log_viewer.py',
 

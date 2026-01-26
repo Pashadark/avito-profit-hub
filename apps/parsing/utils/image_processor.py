@@ -1,4 +1,3 @@
-# utils/image_processor.py
 import requests
 import base64
 import re
@@ -24,7 +23,225 @@ class ImageProcessor:
         if site == 'auto.ru':
             return self.get_auto_ru_images_improved()
         else:
-            return self.get_avito_images()
+            return self.get_avito_images_fast()  # Используем быстрый метод!
+
+    # 🔥 🔥 🔥 ДОБАВЛЯЕМ БЫСТРЫЕ МЕТОДЫ ДЛЯ AVITO 🔥 🔥 🔥
+
+    def get_avito_images_fast(self, max_images=3):
+        """🔥 СУПЕР-БЫСТРОЕ получение фото Avito (3-5 секунд вместо 15-20)"""
+        try:
+            logger.info("🚀 БЫСТРЫЙ поиск фото Avito...")
+
+            # 1. Пробуем найти превью без галереи (0.5 секунд)
+            preview_url = self._get_preview_image_fast()
+            if preview_url:
+                logger.info(f"✅ Превью найдено без галереи: {preview_url[:50]}...")
+                return [preview_url]
+
+            # 2. Быстро открываем галерею
+            if not self._open_gallery_fast():
+                logger.warning("⚠️ Галерею не удалось открыть")
+                return []
+
+            # 3. Собираем фото очень быстро
+            image_urls = []
+            try:
+                # Первое фото сразу
+                first_img = self._get_current_image_url_fast()
+                if first_img:
+                    big_url = self._convert_to_big_size_fast(first_img)
+                    if big_url:
+                        image_urls.append(big_url)
+                        logger.info(f"✅ Первое БОЛЬШОЕ фото: {big_url[:50]}...")
+
+                # Второе фото (быстрое переключение)
+                if max_images > 1 and len(image_urls) > 0:
+                    if self._switch_image_fast():
+                        time.sleep(0.2)  # Очень короткая задержка
+                        second_img = self._get_current_image_url_fast()
+                        if second_img and second_img != first_img:
+                            big_url = self._convert_to_big_size_fast(second_img)
+                            if big_url:
+                                image_urls.append(big_url)
+                                logger.info(f"✅ Второе БОЛЬШОЕ фото: {big_url[:50]}...")
+
+                # Третье фото (если нужно)
+                if max_images > 2 and len(image_urls) > 1:
+                    if self._switch_image_fast():
+                        time.sleep(0.2)  # Очень короткая задержка
+                        third_img = self._get_current_image_url_fast()
+                        if third_img and third_img not in [first_img, second_img]:
+                            big_url = self._convert_to_big_size_fast(third_img)
+                            if big_url:
+                                image_urls.append(big_url)
+                                logger.info(f"✅ Третье БОЛЬШОЕ фото: {big_url[:50]}...")
+
+            except Exception as e:
+                logger.debug(f"⚠️ Ошибка быстрого сбора: {e}")
+
+            # 4. Быстро закрываем галерею
+            self._close_gallery_fast()
+
+            logger.info(f"✅ Найдено {len(image_urls)} фото (быстрый режим)")
+            return image_urls
+
+        except Exception as e:
+            logger.error(f"❌ Быстрая обработка фото: {e}")
+            return self.get_avito_images()  # Fallback к старому методу
+
+    def _get_preview_image_fast(self):
+        """Быстрый поиск превью"""
+        try:
+            # Самые быстрые селекторы
+            fast_selectors = [
+                'img[data-marker="image-frame/image"]',
+                '.desktop-1ky5g7j',
+                '[data-marker="picture/image"]',
+                'img[class*="gallery-img"]'
+            ]
+
+            for selector in fast_selectors:
+                try:
+                    img_elem = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    img_url = img_elem.get_attribute('src')
+                    if img_url and 'avito.st/image' in img_url:
+                        return self._convert_to_big_size_fast(img_url)
+                except:
+                    continue
+
+            return None
+        except:
+            return None
+
+    def _open_gallery_fast(self):
+        """Быстрое открытие галереи"""
+        try:
+            # Ищем кликабельный элемент
+            click_selectors = [
+                'img[data-marker="image-frame/image"]',
+                '.desktop-1ky5g7j',
+                '[data-marker="picture/image"]'
+            ]
+
+            for selector in click_selectors:
+                try:
+                    elem = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    self.driver.execute_script("arguments[0].click();", elem)
+                    time.sleep(0.3)  # Очень короткая задержка
+                    return True
+                except:
+                    continue
+
+            return False
+        except:
+            return False
+
+    def _get_current_image_url_fast(self):
+        """Быстрое получение текущего фото"""
+        try:
+            current_img_selectors = [
+                '[data-marker="extended-gallery/frame-img"]',
+                'img[data-marker="extended-gallery/frame-img"]',
+                '.styles__extended-gallery-img___XzRjNG'
+            ]
+
+            for selector in current_img_selectors:
+                try:
+                    img_elem = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    url = img_elem.get_attribute('src')
+                    if url:
+                        return url
+                except:
+                    continue
+
+            return None
+        except:
+            return None
+
+    def _convert_to_big_size_fast(self, url):
+        """Быстрое преобразование в большой размер"""
+        if not url:
+            return None
+
+        try:
+            # Простая замена для больших фото
+            if '64x48' in url:
+                return url.replace('64x48', '640x480')
+            elif '80x60' in url:
+                return url.replace('80x60', '800x600')
+            elif '128x96' in url:
+                return url.replace('128x96', '1280x960')
+            elif '300x300' in url:
+                return url.replace('300x300', '1024x1024')
+            elif '200x200' in url:
+                return url.replace('200x200', '800x800')
+
+            # Если URL уже большой, возвращаем как есть
+            if any(size in url for size in ['640x480', '800x600', '1280x960', '1024x768']):
+                return url
+
+            return url
+        except:
+            return url
+
+    def _switch_image_fast(self):
+        """Быстрое переключение фото"""
+        try:
+            # Находим кнопку "вперед"
+            next_buttons = self.driver.find_elements(By.CSS_SELECTOR, '[data-marker="extended-gallery-frame/control-right"]')
+            if next_buttons:
+                self.driver.execute_script("arguments[0].click();", next_buttons[0])
+                return True
+
+            # Альтернативные селекторы
+            alt_selectors = [
+                '.styles__control-button_right___XzRjNG',
+                '[data-marker="extended-gallery/control-right"]',
+                '.image-frame-forward'
+            ]
+
+            for selector in alt_selectors:
+                try:
+                    next_btn = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    self.driver.execute_script("arguments[0].click();", next_btn)
+                    return True
+                except:
+                    continue
+
+            return False
+        except:
+            return False
+
+    def _close_gallery_fast(self):
+        """Быстрое закрытие галереи"""
+        try:
+            # ESC через JavaScript
+            self.driver.execute_script("document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));")
+            time.sleep(0.2)
+            return True
+        except:
+            # Попробуем найти кнопку закрытия
+            try:
+                close_selectors = [
+                    '[data-marker="extended-gallery-frame/control-close"]',
+                    '.styles__control-close___XzRjNG',
+                    '.image-frame-close'
+                ]
+
+                for selector in close_selectors:
+                    try:
+                        close_btn = self.driver.find_element(By.CSS_SELECTOR, selector)
+                        self.driver.execute_script("arguments[0].click();", close_btn)
+                        time.sleep(0.2)
+                        return True
+                    except:
+                        continue
+            except:
+                pass
+
+            return False
+
+    # 🔥 🔥 🔥 КОНЕЦ БЫСТРЫХ МЕТОДОВ 🔥 🔥 🔥
 
     def get_auto_ru_images_improved(self):
         """🔥 ПЕРЕПИСАННЫЙ метод получения фото Auto.ru в МАКСИМАЛЬНОМ КАЧЕСТВЕ"""
@@ -579,12 +796,12 @@ class ImageProcessor:
             return []
 
     def get_avito_images(self):
-        """🔥 УЛУЧШЕННЫЙ метод получения БОЛЬШИХ фото Avito через галерею"""
+        """🔥 УЛУЧШЕННЫЙ метод получения БОЛЬШИХ фото Avito через галерею (ОПТИМИЗИРОВАННЫЙ)"""
         try:
             logger.info("🎯 Автоматический поиск БОЛЬШИХ фото Avito...")
 
-            # 🔥 ПРИОРИТЕТ 1: Открываем галерею и берем полноразмерные фото
-            gallery_images = self._get_avito_gallery_images_enhanced()
+            # 🔥 ПРИОРИТЕТ 1: Открываем галерею и берем полноразмерные фото (ОПТИМИЗИРОВАННЫЙ)
+            gallery_images = self._get_avito_gallery_images_optimized()
             if gallery_images and len(gallery_images) > 1:
                 logger.info(f"✅ Найдено {len(gallery_images)} БОЛЬШИХ фото через галерею")
                 return gallery_images
@@ -608,57 +825,53 @@ class ImageProcessor:
             logger.error(f"❌ Критическая ошибка поиска фото Avito: {e}")
             return self.get_avito_images_fallback()
 
-    def _get_avito_gallery_images_enhanced(self):
-        """🔥 Получает БОЛЬШИЕ фото через открытие галереи Avito"""
+    def _get_avito_gallery_images_optimized(self):
+        """🔥 Получает БОЛЬШИЕ фото через открытие галереи Avito (ОПТИМИЗИРОВАННЫЙ)"""
         try:
-            logger.info("🖼️ Получение БОЛЬШИХ фото через галерею Avito...")
+            logger.info("🖼️ Получение БОЛЬШИХ фото через галерею Avito (быстрая версия)...")
 
             # Открываем галерею
-            if not self._open_avito_gallery():
+            if not self._open_avito_gallery_fast():
                 logger.warning("❌ Не удалось открыть галерею Avito")
                 return []
 
-            # Собираем БОЛЬШИЕ фото
-            large_images = self._collect_large_gallery_images()
+            # Собираем БОЛЬШИЕ фото (быстро)
+            large_images = self._collect_large_gallery_images_fast()
 
             # Закрываем галерею
-            self._close_avito_gallery()
+            self._close_avito_gallery_fast()
 
             return large_images
 
         except Exception as e:
             logger.error(f"❌ Ошибка получения больших фото: {e}")
             try:
-                self._close_avito_gallery()
+                self._close_avito_gallery_fast()
             except:
                 pass
             return []
 
-    def _open_avito_gallery(self):
-        """🔥 Открывает галерею Avito кликом по фото"""
+    def _open_avito_gallery_fast(self):
+        """🔥 Открывает галерею Avito кликом по фото (быстрая версия)"""
         try:
-            logger.info("🔍 Попытка открытия галереи Avito...")
+            logger.info("🔍 Быстрое открытие галереи Avito...")
 
+            # 🔥 ТОЛЬКО САМЫЕ НАДЕЖНЫЕ СЕЛЕКТОРЫ
             gallery_triggers = [
-                'img.desktop-1ky5g7j',  # ⬅️ ТВОЙ СЕЛЕКТОР!
+                'img.desktop-1ky5g7j',  # ⬅️ Основной селектор
                 '[data-marker="image-frame/image-wrapper"]',
-                '.image-frame-preview',
-                '[data-marker*="image"] img',
-                '.styles_imageWrapper__NoH_Y',
-                'img[data-marker*="image"]',
                 '.photo-slider-view__image',
-                '[data-marker="image-preview/image"]',
-                '.image-frame-picture'
+                '[data-marker*="image"] img',
             ]
 
             for trigger in gallery_triggers:
                 try:
-                    element = WebDriverWait(self.driver, 5).until(
+                    element = WebDriverWait(self.driver, 3).until(  # Было 5 секунд
                         EC.element_to_be_clickable((By.CSS_SELECTOR, trigger))
                     )
                     self.driver.execute_script("arguments[0].click();", element)
                     logger.info(f"✅ Галерея Avito открыта через: {trigger}")
-                    time.sleep(3)  # Увеличиваем время для загрузки галереи
+                    time.sleep(1.5)  # Было 3 секунды
                     return True
                 except Exception as e:
                     logger.debug(f"❌ Не удалось открыть через {trigger}: {e}")
@@ -670,31 +883,27 @@ class ImageProcessor:
             logger.error(f"❌ Ошибка открытия галереи Avito: {e}")
             return False
 
-    def _collect_large_gallery_images(self):
-        """🔥 Собирает БОЛЬШИЕ фото из открытой галереи Avito"""
+    def _collect_large_gallery_images_fast(self):
+        """🔥 Собирает БОЛЬШИЕ фото из открытой галереи Avito (быстрая версия)"""
         try:
             large_urls = set()
-            max_photos = 20
+            max_photos = 50  # Ограничиваем, но достаточно много
 
-            # 🔥 ЖДЕМ ПОЛНОЙ ЗАГРУЗКИ ГАЛЕРЕИ
-            time.sleep(4)
+            # 🔥 МЕНЬШЕЕ ВРЕМЯ ОЖИДАНИЯ
+            time.sleep(2)  # Было 4 секунды
 
             # 🔥 ПРАВИЛЬНЫЕ СЕЛЕКТОРЫ ДЛЯ ГАЛЕРЕИ
             current_image_selectors = [
-                '[data-marker="extended-gallery/frame-img"]',  # ⬅️ ТВОЙ СЕЛЕКТОР!
-                '.styles__extended-gallery-img___XzRjNG',  # ⬅️ ТВОЙ СЕЛЕКТОР!
+                '[data-marker="extended-gallery/frame-img"]',
+                '.styles__extended-gallery-img___XzRjNG',
                 '[data-marker="extended-gallery-frame/image"]',
-                '.image-frame-preview-img',
-                '.styles_previewImage__XzRjNG',
-                '.gallery-img-preview',
-                'img[class*="previewImage"]',
-                '.photo-slider-view__image img'
+                '.photo-slider-track-item-active img'
             ]
 
             current_image_element = None
             for selector in current_image_selectors:
                 try:
-                    current_image_element = WebDriverWait(self.driver, 10).until(
+                    current_image_element = WebDriverWait(self.driver, 5).until(  # Было 10
                         EC.presence_of_element_located((By.CSS_SELECTOR, selector))
                     )
                     logger.info(f"✅ Найден элемент изображения в галерее Avito: {selector}")
@@ -717,7 +926,7 @@ class ImageProcessor:
                 return []
 
             # 🔥 ПОЛУЧАЕМ ПЕРВОЕ ФОТО В БОЛЬШОМ КАЧЕСТВЕ
-            first_image = self._get_large_avito_image_url(current_image_element)
+            first_image = self._get_large_avito_image_url_fast(current_image_element)
             if first_image:
                 large_urls.add(first_image)
                 logger.info(f"✅ Первое БОЛЬШОЕ фото Avito: {first_image[:100]}...")
@@ -726,49 +935,73 @@ class ImageProcessor:
                 return []
 
             # 🔥 НАХОДИМ КНОПКУ "ВПЕРЕД" ДЛЯ AVITO
-            next_button = self._find_avito_gallery_next_button()
+            next_button = self._find_avito_gallery_next_button_fast()
             if not next_button:
                 logger.warning("❌ Не найдена кнопка переключения, возвращаем только первое фото")
                 return list(large_urls)
 
-            # 🔥 ПЕРЕБИРАЕМ ВСЕ ФОТО В ГАЛЕРЕЕ AVITO
+            # 🔥 ПЕРЕБИРАЕМ ВСЕ ФОТО В ГАЛЕРЕЕ AVITO (БЫСТРО)
             previous_url = first_image
+            consecutive_duplicates = 0
 
             for i in range(max_photos - 1):
                 try:
                     logger.info(f"🔄 Переключаем на фото Avito {i + 2}...")
 
-                    # Кликаем по кнопке "вперед"
-                    self.driver.execute_script("arguments[0].click();", next_button)
-                    time.sleep(2)  # Ждем загрузки нового фото
+                    # 🔥 ОПТИМИЗИРОВАННЫЙ КЛИК
+                    try:
+                        self.driver.execute_script("arguments[0].click();", next_button)
+                        time.sleep(0.8)  # Было 2 секунды
+                    except:
+                        # Пробуем альтернативный способ
+                        ActionChains(self.driver).move_to_element(next_button).click().perform()
+                        time.sleep(0.8)
 
-                    # Получаем новое фото
-                    new_image = self._get_large_avito_image_url(current_image_element)
+                    # 🔥 БЫСТРОЕ ПОЛУЧЕНИЕ НОВОГО ФОТО
+                    new_image = self._get_large_avito_image_url_fast(current_image_element)
 
                     if not new_image:
                         logger.warning("❌ Не удалось получить новое изображение")
-                        break
+                        consecutive_duplicates += 1
+                        if consecutive_duplicates >= 2:
+                            break
+                        continue
 
                     if new_image == previous_url:
-                        logger.warning("⚠️ Изображение не изменилось после клика")
-                        # Пробуем еще раз с большей задержкой
-                        time.sleep(3)
-                        new_image = self._get_large_avito_image_url(current_image_element)
+                        consecutive_duplicates += 1
+                        logger.warning(f"⚠️ Дубликат фото #{consecutive_duplicates}")
+
+                        if consecutive_duplicates >= 2:
+                            logger.info("🎯 Достигнут конец галереи (2 дубликата подряд)")
+                            break
+
+                        # Пробуем еще раз с минимальной задержкой
+                        time.sleep(0.5)
+                        new_image = self._get_large_avito_image_url_fast(current_image_element)
 
                         if new_image == previous_url:
-                            logger.info("⚠️ Достигнут конец галереи Avito")
+                            logger.info("🎯 Достигнут конец галереи")
                             break
+                    else:
+                        consecutive_duplicates = 0
 
                     if new_image and new_image not in large_urls:
                         large_urls.add(new_image)
                         logger.info(f"✅ БОЛЬШОЕ фото Avito {len(large_urls)}: {new_image[:100]}...")
                         previous_url = new_image
                     else:
-                        logger.info("⚠️ Дубликат фото или конец галереи Avito")
+                        logger.debug("⚠️ Дубликат или пустое фото")
+
+                    # 🔥 ОПТИМИЗАЦИЯ: если собрали много фото, можно выйти
+                    if len(large_urls) >= 25:
+                        logger.info(f"🎯 Собрано {len(large_urls)} фото - достаточно")
                         break
 
                 except Exception as e:
                     logger.warning(f"⚠️ Ошибка на шаге {i + 1}: {e}")
+                    consecutive_duplicates += 1
+                    if consecutive_duplicates >= 3:
+                        break
                     continue
 
             logger.info(f"🎯 Всего собрано БОЛЬШИХ фото Avito: {len(large_urls)}")
@@ -778,101 +1011,76 @@ class ImageProcessor:
             logger.error(f"❌ Ошибка сбора больших фото Avito: {e}")
             return []
 
-    def _get_large_avito_image_url(self, image_element):
-        """🔥 Получает URL БОЛЬШОГО фото Avito из галереи"""
+    def _get_large_avito_image_url_fast(self, image_element):
+        """🔥 Получает URL БОЛЬШОГО фото Avito из галереи (быстрая версия)"""
         try:
-            # 🔥 ПРОВЕРЯЕМ ВСЕ ВОЗМОЖНЫЕ АТРИБУТЫ
-            attributes = ['src', 'data-src', 'data-url', 'data-original', 'data-srcset']
+            # 🔥 БЫСТРЫЙ СПОСОБ: сначала src, потом data-src
+            url = image_element.get_attribute('src')
+            if url and 'avito.st' in url:
+                large_url = self._convert_to_large_avito_url_fast(url)
+                if large_url:
+                    return large_url
 
-            for attr in attributes:
-                try:
-                    url = image_element.get_attribute(attr)
-                    if url and 'avito.st' in url:
-                        logger.info(f"🔍 Найден URL в атрибуте {attr}: {url[:100]}...")
+            # Пробуем data-src
+            url = image_element.get_attribute('data-src')
+            if url and 'avito.st' in url:
+                large_url = self._convert_to_large_avito_url_fast(url)
+                if large_url:
+                    return large_url
 
-                        # 🔥 ПРЕОБРАЗУЕМ В БОЛЬШОЙ РАЗМЕР СРАЗУ
-                        large_url = self._convert_to_large_avito_url(url)
-                        if large_url:
-                            logger.info(f"✅ Преобразовано в большой размер: {large_url[:100]}...")
-                            return large_url
-                except:
-                    continue
+            # Последняя попытка
+            url = image_element.get_attribute('data-url') or image_element.get_attribute('data-original')
+            if url and 'avito.st' in url:
+                large_url = self._convert_to_large_avito_url_fast(url)
+                return large_url
 
-            # 🔥 ЕСЛИ НЕ НАШЛИ В АТРИБУТАХ, ПРОБУЕМ ВЗЯТЬ ПРЯМО SRC
-            try:
-                url = image_element.get_attribute('src')
-                if url and 'avito.st' in url:
-                    large_url = self._convert_to_large_avito_url(url)
-                    if large_url:
-                        return large_url
-            except:
-                pass
-
-            logger.warning("❌ Не удалось получить URL изображения")
             return None
 
         except Exception as e:
             logger.debug(f"⚠️ Ошибка получения URL большого фото Avito: {e}")
             return None
 
-    def _convert_to_large_avito_url(self, url):
-        """🔥 ПРЕОБРАЗУЕТ ЛЮБОЙ URL Avito В БОЛЬШОЙ РАЗМЕР"""
+    def _convert_to_large_avito_url_fast(self, url):
+        """🔥 ПРЕОБРАЗУЕТ ЛЮБОЙ URL Avito В БОЛЬШОЙ РАЗМЕР (быстрая версия)"""
         try:
             if not url or 'avito.st' not in url:
                 return url
 
-            # 🔥 ЗАМЕНЯЕМ РАЗМЕРЫ НА БОЛЬШИЕ
-            size_replacements = [
-                ('64x48', '1280x960'),
-                ('128x96', '1280x960'),
-                ('256x192', '1280x960'),
-                ('300x300', '1280x960'),
-                ('200x200', '1280x960'),
-                ('400x300', '1280x960'),
-                ('640x480', '1280x960')
-            ]
+            # 🔥 УПРОЩЕННАЯ ЗАМЕНА РАЗМЕРОВ
+            if '64x48' in url:
+                url = url.replace('64x48', '1280x960')
+            elif '128x96' in url:
+                url = url.replace('128x96', '1280x960')
+            elif '256x192' in url:
+                url = url.replace('256x192', '1280x960')
+            elif '300x300' in url:
+                url = url.replace('300x300', '1024x1024')
 
-            large_url = url
-            for small_size, large_size in size_replacements:
-                if small_size in large_url:
-                    large_url = large_url.replace(small_size, large_size)
-                    break
+            # 🔥 ПРОСТОЕ ДОБАВЛЕНИЕ КАЧЕСТВА
+            if '?' not in url:
+                url += '?quality=100'
+            elif 'quality=' not in url:
+                url += '&quality=100'
 
-            # 🔥 УДАЛЯЕМ ПАРАМЕТРЫ СЖАТИЯ И ДОБАВЛЯЕМ КАЧЕСТВО
-            large_url = re.sub(r'__[^_]+__', '', large_url)
-
-            # Добавляем параметр качества если его нет
-            if '?' in large_url:
-                if 'quality=' not in large_url:
-                    large_url += '&quality=100'
-            else:
-                large_url += '?quality=100'
-
-            logger.info(f"🎯 Преобразовано в БОЛЬШОЙ размер: {large_url[:100]}...")
-            return large_url
-
-        except Exception as e:
-            logger.warning(f"⚠️ Ошибка преобразования в большой размер: {e}")
             return url
 
-    def _find_avito_gallery_next_button(self):
-        """🔥 Поиск кнопки 'вперед' в галерее Avito"""
+        except Exception as e:
+            logger.debug(f"⚠️ Ошибка преобразования в большой размер: {e}")
+            return url
+
+    def _find_avito_gallery_next_button_fast(self):
+        """🔥 Поиск кнопки 'вперед' в галерее Avito (быстрая версия)"""
         try:
             next_selectors = [
-                '[data-marker="extended-gallery-frame/control-right"]',  # ⬅️ ТВОЙ СЕЛЕКТОР!
-                '.styles__control-button_right___XzRjNG',  # ⬅️ ТВОЙ СЕЛЕКТОР!
+                '[data-marker="extended-gallery-frame/control-right"]',
+                '.styles__control-button_right___XzRjNG',
                 '[data-marker="extended-gallery/control-right"]',
-                '.image-frame-forward',
-                '.photo-slider-track-button-next',
-                '[class*="control-right"]',
-                '.swiper-button-next',
-                'button[aria-label*="следующ"]',
-                'button[aria-label*="next"]'
+                '.photo-slider-track-button-next'
             ]
 
             for selector in next_selectors:
                 try:
-                    element = WebDriverWait(self.driver, 5).until(
+                    element = WebDriverWait(self.driver, 3).until(  # Было 5
                         EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
                     )
                     logger.info(f"✅ Найдена кнопка переключения Avito: {selector}")
@@ -887,37 +1095,34 @@ class ImageProcessor:
             logger.error(f"❌ Ошибка поиска кнопки Avito: {e}")
             return None
 
-    def _close_avito_gallery(self):
-        """Закрывает галерею Avito"""
+    def _close_avito_gallery_fast(self):
+        """Закрывает галерею Avito (быстрая версия)"""
         try:
-            close_selectors = [
-                '[data-marker="extended-gallery-frame/control-close"]',
-                '.styles__control-close___XzRjNG',
-                '.image-frame-close',
-                '.photo-slider-close',
-                '[class*="close"]',
-                'button[aria-label*="закрыть"]'
-            ]
+            # 🔥 СНАЧАЛА ESC ЧЕРЕЗ JAVASCRIPT (самый быстрый)
+            self.driver.execute_script("document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));")
+            time.sleep(0.5)  # Было 1
 
-            for selector in close_selectors:
-                try:
-                    close_btn = self.driver.find_element(By.CSS_SELECTOR, selector)
-                    self.driver.execute_script("arguments[0].click();", close_btn)
-                    time.sleep(1)
-                    logger.info("✅ Галерея Avito закрыта")
-                    return True
-                except:
-                    continue
-
-            # Пробуем ESC
+            # Проверяем, закрылась ли галерея
             try:
-                ActionChains(self.driver).send_keys(Keys.ESCAPE).perform()
-                logger.info("✅ Галерея Avito закрыта по ESC")
-                return True
+                # Если не закрылась, ищем кнопку закрытия
+                close_selectors = [
+                    '[data-marker="extended-gallery-frame/control-close"]',
+                    '.styles__control-close___XzRjNG',
+                    '.photo-slider-close'
+                ]
+
+                for selector in close_selectors:
+                    try:
+                        close_btn = self.driver.find_element(By.CSS_SELECTOR, selector)
+                        self.driver.execute_script("arguments[0].click();", close_btn)
+                        break
+                    except:
+                        continue
             except:
                 pass
 
-            return False
+            logger.info("✅ Галерея Avito закрыта")
+            return True
 
         except Exception as e:
             logger.debug(f"⚠️ Ошибка закрытия галереи Avito: {e}")

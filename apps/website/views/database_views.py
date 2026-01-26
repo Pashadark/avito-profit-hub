@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse, FileResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
@@ -12,15 +12,16 @@ import json
 import os
 import shutil
 import logging
-import sqlite3
 from datetime import datetime, timedelta
+import psutil
+import subprocess
+import gzip
 
-from apps.website.models import FoundItem, SearchQuery
+from apps.website.models import FoundItem, SearchQuery, UserProfile, ParserSettings
 from apps.website.console_manager import add_to_console
 from apps.core.utils.backup_manager import backup_manager
 
 logger = logging.getLogger(__name__)
-
 
 # Создаем папку для бэкапов если ее нет
 BACKUP_DIR = Path('database_backups')
@@ -33,14 +34,13 @@ if not BACKUP_DIR.exists():
 @require_GET
 @login_required
 def database_stats(request):
-    """📊 Возвращает детальную статистику базы данных PostgreSQL - РЕАЛЬНЫЕ ДАННЫЕ
+    """📊 Возвращает детальную статистику базы данных PostgreSQL - РЕАЛЬНЫЕ ДАННЫХ
 
     📏 Размер базы данных
     💾 Свободное место на диске
     📋 Количество таблиц и записей
     """
     try:
-        from django.db import connection
         import psutil
 
         with connection.cursor() as cursor:
@@ -76,6 +76,10 @@ def database_stats(request):
             cursor.execute("SELECT pg_postmaster_start_time();")
             start_time = cursor.fetchone()[0]
 
+            # Получаем список баз данных на сервере
+            cursor.execute("SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname;")
+            databases = [row[0] for row in cursor.fetchall()]
+
         # Использование диска
         try:
             disk_info = psutil.disk_usage('/')
@@ -96,35 +100,97 @@ def database_stats(request):
                 SELECT 
                     table_name,
                     pg_size_pretty(pg_total_relation_size('"' || table_schema || '"."' || table_name || '"')) as size,
-                    (SELECT n_live_tup FROM pg_stat_user_tables WHERE relname = t.table_name) as row_count
+                    (SELECT n_live_tup FROM pg_stat_user_tables WHERE relname = t.table_name) as row_count,
+                    pg_size_pretty(pg_relation_size('"' || table_schema || '"."' || table_name || '"')) as table_size,
+                    pg_size_pretty(pg_total_relation_size('"' || table_schema || '"."' || table_name || '"') - pg_relation_size('"' || table_schema || '"."' || table_name || '"')) as indexes_size
                 FROM information_schema.tables t
                 WHERE table_schema = 'public'
                 AND table_type = 'BASE TABLE'
                 ORDER BY pg_total_relation_size('"' || table_schema || '"."' || table_name || '"') DESC
-                LIMIT 5;
+                LIMIT 10;
             """)
 
             for row in cursor.fetchall():
-                table_name, size, row_count = row
+                table_name, size, row_count, table_size, indexes_size = row
                 table_stats[table_name] = {
-                    'size': size,
-                    'row_count': row_count or 0
+                    'total_size': size,
+                    'row_count': row_count or 0,
+                    'table_size': table_size,
+                    'indexes_size': indexes_size or '0 bytes'
                 }
+
+        # ФИКС: Правильное вычисление uptime
+        uptime_str = 'N/A'
+        if start_time:
+            try:
+                # Преобразуем start_time в наивный datetime если он offset-aware
+                if start_time.tzinfo is not None:
+                    # Если время с часовым поясом, конвертируем в наивное (местное)
+                    start_time_naive = start_time.replace(tzinfo=None)
+                else:
+                    start_time_naive = start_time
+
+                # Используем timezone.now() для осведомленного времени
+                from django.utils import timezone
+                now_aware = timezone.now()
+
+                # Если start_time_naive тоже нужно сделать осведомленным
+                # Предположим, что start_time_naive в том же часовом поясе, что и now_aware
+                import pytz
+                from django.conf import settings
+
+                # Получаем текущий часовой пояс Django
+                try:
+                    current_tz = timezone.get_current_timezone()
+                    start_time_aware = current_tz.localize(start_time_naive)
+                except:
+                    # Если не удалось, используем UTC
+                    start_time_aware = start_time_naive.replace(tzinfo=pytz.UTC)
+
+                # Вычисляем разницу
+                uptime = now_aware - start_time_aware
+
+                # Форматируем uptime
+                days = uptime.days
+                hours, remainder = divmod(uptime.seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+
+                if days > 0:
+                    uptime_str = f"{days}d {hours}h {minutes}m"
+                else:
+                    uptime_str = f"{hours}h {minutes}m {seconds}s"
+
+            except Exception as e:
+                logger.warning(f"Could not calculate uptime: {e}")
+                # Альтернативный расчет без учета часовых поясов
+                try:
+                    from datetime import datetime
+                    now_naive = datetime.now()
+                    uptime = now_naive - start_time_naive
+                    uptime_str = str(uptime).split('.')[0]
+                except:
+                    uptime_str = 'N/A'
 
         response_data = {
             'status': 'success',
             'database': {
+                'name': connection.settings_dict['NAME'],
                 'size': db_size_pretty,
                 'size_mb': round(db_size_mb, 2),
                 'tables_count': tables_count,
                 'total_records': total_records,
                 'active_connections': active_connections,
-                'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S') if start_time else 'N/A'
+                'start_time': start_time.strftime('%Y-%m-%d %H:%M:%S') if start_time else 'N/A',
+                'uptime': uptime_str,
+                'host': connection.settings_dict.get('HOST', 'localhost'),
+                'port': connection.settings_dict.get('PORT', 5432),
+                'available_databases': databases
             },
             'disk': {
                 'free_space_gb': round(free_space_gb, 2) if has_disk_info else 'N/A',
                 'total_space_gb': round(total_space_gb, 2) if has_disk_info else 'N/A',
-                'usage_percent': round(disk_percent, 2) if has_disk_info else 'N/A'
+                'usage_percent': round(disk_percent, 2) if has_disk_info else 'N/A',
+                'free_percent': round(100 - disk_percent, 2) if has_disk_info else 'N/A'
             },
             'table_stats': table_stats,
             'total_tables': tables_count
@@ -133,58 +199,114 @@ def database_stats(request):
         return JsonResponse(response_data)
 
     except Exception as e:
-        logger.error(f"Database stats error: {e}")
+        logger.error(f"Database stats error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка получения статистики: {str(e)}'
         })
 
+
+@require_GET
+@login_required
 def health_database(request):
-    """🗄️ Проверка здоровья базы данных
+    """🗄️ Проверка здоровья базы данных PostgreSQL
 
     🔌 Проверяет подключение к базе
     ✅ Простой запрос SELECT 1
+    📊 Проверка доступности
     """
-    from django.db import connection
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-            return JsonResponse({
-                'status': 'healthy',
-                'message': 'База данных работает нормально'
-            })
+            result = cursor.fetchone()
+
+            # Дополнительные проверки
+            cursor.execute("SELECT version();")
+            version = cursor.fetchone()[0]
+
+            cursor.execute("SELECT current_database();")
+            db_name = cursor.fetchone()[0]
+
+            cursor.execute("SELECT COUNT(*) FROM pg_stat_activity;")
+            connections = cursor.fetchone()[0]
+
+        return JsonResponse({
+            'status': 'healthy',
+            'message': 'База данных PostgreSQL работает нормально',
+            'details': {
+                'database': db_name,
+                'postgres_version': version,
+                'active_connections': connections,
+                'timestamp': datetime.now().isoformat()
+            }
+        })
     except Exception as e:
+        logger.error(f"Database health check failed: {e}")
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка базы данных: {str(e)}'
         }, status=500)
 
+
+@require_GET
+@login_required
 def health_backup(request):
-    """💾 Проверка системы бэкапов
+    """💾 Проверка системы бэкапов PostgreSQL
 
     📁 Проверяет существование директории бэкапов
     📊 Считает количество бэкапов
+    💽 Проверяет доступность pg_dump
     """
     try:
-        import os
-        backup_dir = 'backups'
-        if os.path.exists(backup_dir):
-            backups = [f for f in os.listdir(backup_dir) if f.endswith('.backup')]
+        backup_dir = BACKUP_DIR
+
+        # Проверяем доступность pg_dump
+        try:
+            result = subprocess.run(['pg_dump', '--version'],
+                                    capture_output=True, text=True, timeout=5)
+            pg_dump_available = result.returncode == 0
+        except:
+            pg_dump_available = False
+
+        if backup_dir.exists():
+            # Ищем PostgreSQL бэкапы
+            backups = []
+            for ext in ['.sql', '.sql.gz']:
+                backups.extend(list(backup_dir.glob(f'*{ext}')))
+
+            backup_count = len(backups)
+            latest_backup = max(backups, key=lambda x: x.stat().st_mtime) if backups else None
+
             return JsonResponse({
                 'status': 'healthy',
-                'message': f'Найдено {len(backups)} бэкапов',
-                'backup_count': len(backups)
+                'message': f'Найдено {backup_count} бэкапов PostgreSQL',
+                'details': {
+                    'backup_count': backup_count,
+                    'backup_dir': str(backup_dir),
+                    'pg_dump_available': pg_dump_available,
+                    'latest_backup': latest_backup.name if latest_backup else None,
+                    'latest_backup_size': f"{latest_backup.stat().st_size / 1024:.1f} KB" if latest_backup else None,
+                    'latest_backup_age':
+                        str(datetime.now() - datetime.fromtimestamp(latest_backup.stat().st_mtime)).split('.')[
+                            0] if latest_backup else None
+                }
             })
         else:
             return JsonResponse({
                 'status': 'warning',
-                'message': 'Директория бэкапов не найдена'
+                'message': 'Директория бэкапов не найдена',
+                'details': {
+                    'pg_dump_available': pg_dump_available,
+                    'suggestion': 'Создайте директорию database_backups/'
+                }
             })
     except Exception as e:
+        logger.error(f"Backup health check failed: {e}")
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка системы бэкапов: {str(e)}'
         }, status=500)
+
 
 # ========== ДОПОЛНИТЕЛЬНЫЕ ФУНКЦИИ ==========
 
@@ -208,50 +330,12 @@ def help_page(request):
     return render(request, 'dashboard/help.html')
 
 
-def encrypt_database(request):
-    """🔐 Шифрует базу данных
-
-    🔐 ТОЛЬКО для суперпользователей
-    🔒 Использование DatabaseSecurity для шифрования
-    """
-    if not request.user.is_superuser:
-        return JsonResponse({'status': 'error', 'message': 'Требуются права администратора'})
-
-    try:
-        from apps.website.encryption import DatabaseSecurity
-
-        security = DatabaseSecurity()
-        if security.encrypt_database():
-            return JsonResponse({'status': 'success', 'message': 'База данных зашифрована'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Ошибка шифрования'})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
-
-
-def decrypt_database(request):
-    """🔓 Расшифровывает базу данных
-
-    🔐 ТОЛЬКО для суперпользователей
-    🔓 Использование DatabaseSecurity для дешифрования
-    """
-    if not request.user.is_superuser:
-        return JsonResponse({'status': 'error', 'message': 'Требуются права администратора'})
-
-    try:
-        from apps.website.encryption import DatabaseSecurity
-
-        security = DatabaseSecurity()
-        if security.decrypt_database():
-            return JsonResponse({'status': 'success', 'message': 'База данных расшифрована'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Ошибка дешифрования или файл не найден'})
-    except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
-
-
+@require_POST
+@csrf_exempt
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def start_replication(request):
-    """🔄 Запускает репликацию базы данных
+    """🔄 Запускает репликацию базы данных PostgreSQL
 
     🔐 ТОЛЬКО для суперпользователей
     📡 Использование DatabaseReplication для репликации
@@ -262,17 +346,41 @@ def start_replication(request):
     try:
         from apps.website.database_replication import DatabaseReplication
 
-        replicator = DatabaseReplication()
+        # Получаем конфигурацию базы данных
+        from django.conf import settings
+        db_config = settings.DATABASES['default']
+
+        # Создаем конфигурацию для репликатора
+        primary_config = {
+            'dbname': db_config['NAME'],
+            'user': db_config['USER'],
+            'password': db_config['PASSWORD'],
+            'host': db_config.get('HOST', 'localhost'),
+            'port': db_config.get('PORT', '5432')
+        }
+
+        replicator = DatabaseReplication(primary_config)
         if replicator.start_replication():
-            return JsonResponse({'status': 'success', 'message': 'Репликация запущена'})
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Репликация PostgreSQL запущена'
+            })
         else:
-            return JsonResponse({'status': 'error', 'message': 'Репликация уже запущена'})
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Репликация уже запущена или не удалось запустить'
+            })
     except Exception as e:
+        logger.error(f"Start replication error: {e}", exc_info=True)
         return JsonResponse({'status': 'error', 'message': str(e)})
 
 
+@require_POST
+@csrf_exempt
+@login_required
+@user_passes_test(lambda u: u.is_superuser)
 def stop_replication(request):
-    """🛑 Останавливает репликацию базы данных
+    """🛑 Останавливает репликацию базы данных PostgreSQL
 
     🔐 ТОЛЬКО для суперпользователей
     ⏹️ Использование DatabaseReplication для остановки репликации
@@ -283,16 +391,34 @@ def stop_replication(request):
     try:
         from apps.website.database_replication import DatabaseReplication
 
-        replicator = DatabaseReplication()
+        # Получаем конфигурацию базы данных
+        from django.conf import settings
+        db_config = settings.DATABASES['default']
+
+        primary_config = {
+            'dbname': db_config['NAME'],
+            'user': db_config['USER'],
+            'password': db_config['PASSWORD'],
+            'host': db_config.get('HOST', 'localhost'),
+            'port': db_config.get('PORT', '5432')
+        }
+
+        replicator = DatabaseReplication(primary_config)
         replicator.stop_replication()
 
-        return JsonResponse({'status': 'success', 'message': 'Репликация остановлена'})
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Репликация PostgreSQL остановлена'
+        })
     except Exception as e:
+        logger.error(f"Stop replication error: {e}", exc_info=True)
         return JsonResponse({'status': 'error', 'message': str(e)})
 
 
+@require_GET
+@login_required
 def replication_status(request):
-    """📡 Возвращает статус репликации
+    """📡 Возвращает статус репликации PostgreSQL
 
     🔍 Получение текущего статуса репликации
     📊 Информация о процессе репликации
@@ -300,7 +426,18 @@ def replication_status(request):
     try:
         from apps.website.database_replication import DatabaseReplication
 
-        replicator = DatabaseReplication()
+        from django.conf import settings
+        db_config = settings.DATABASES['default']
+
+        primary_config = {
+            'dbname': db_config['NAME'],
+            'user': db_config['USER'],
+            'password': db_config['PASSWORD'],
+            'host': db_config.get('HOST', 'localhost'),
+            'port': db_config.get('PORT', '5432')
+        }
+
+        replicator = DatabaseReplication(primary_config)
         status = replicator.get_replication_status()
 
         return JsonResponse({
@@ -308,6 +445,7 @@ def replication_status(request):
             'replication_status': status
         })
     except Exception as e:
+        logger.error(f"Replication status error: {e}", exc_info=True)
         return JsonResponse({'status': 'error', 'message': str(e)})
 
 
@@ -321,8 +459,6 @@ def database_info(request):
     ⏰ Поиск записей старше 30 дней
     """
     try:
-        from ..models import FoundItem
-
         cutoff_date = timezone.now() - timedelta(days=30)
 
         with connection.cursor() as cursor:
@@ -330,12 +466,13 @@ def database_info(request):
             cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database()));")
             db_size = cursor.fetchone()[0]
 
-            # Получаем список таблиств
+            # Получаем список таблиц
             cursor.execute("""
                 SELECT table_name 
                 FROM information_schema.tables 
                 WHERE table_schema = 'public' 
-                AND table_type = 'BASE TABLE';
+                AND table_type = 'BASE TABLE'
+                ORDER BY table_name;
             """)
             tables = [row[0] for row in cursor.fetchall()]
 
@@ -344,9 +481,12 @@ def database_info(request):
 
             # Общее количество записей
             total_records = 0
+            table_counts = {}
             for table in tables:
-                cursor.execute(f"SELECT COUNT(*) FROM {table}")
-                total_records += cursor.fetchone()[0]
+                cursor.execute(f'SELECT COUNT(*) FROM "{table}"')
+                count = cursor.fetchone()[0]
+                table_counts[table] = count
+                total_records += count
 
         return JsonResponse({
             'status': 'success',
@@ -354,11 +494,12 @@ def database_info(request):
             'old_records_count': old_items_count,
             'total_records_count': total_records,
             'tables_count': len(tables),
-            'tables_list': tables[:10]  # Возвращаем только первые 10 таблиц
+            'tables_list': tables[:20],  # Возвращаем первые 20 таблиц
+            'table_counts': table_counts
         })
 
     except Exception as e:
-        logger.error(f"Database info error: {e}")
+        logger.error(f"Database info error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка получения информации: {str(e)}'
@@ -391,11 +532,11 @@ def clean_database(request):
             if clean_products:
                 # Удаляем старые товары
                 if days_to_keep == 0:  # Удалить все
-                    cursor.execute("DELETE FROM website_founditem;")
+                    cursor.execute('DELETE FROM "website_founditem";')
                     deleted_found = cursor.rowcount
                 else:
                     cursor.execute("""
-                        DELETE FROM website_founditem 
+                        DELETE FROM "website_founditem" 
                         WHERE found_at < %s;
                     """, [cutoff_date])
                     deleted_found = cursor.rowcount
@@ -405,10 +546,10 @@ def clean_database(request):
 
             # Очищаем старые поисковые запросы без привязанных товаров
             cursor.execute("""
-                DELETE FROM website_searchquery 
+                DELETE FROM "website_searchquery" 
                 WHERE id NOT IN (
                     SELECT DISTINCT search_query_id 
-                    FROM website_founditem 
+                    FROM "website_founditem" 
                     WHERE search_query_id IS NOT NULL
                 );
             """)
@@ -416,7 +557,7 @@ def clean_database(request):
             deleted_total += deleted_queries
             add_to_console(f"🗑️ Удалено поисковых запросов: {deleted_queries}")
 
-            # Оптимизируем базу
+            # Оптимизируем базу (VACUUM в PostgreSQL работает иначе)
             cursor.execute("VACUUM ANALYZE;")
             add_to_console("✅ База PostgreSQL оптимизирована")
 
@@ -434,7 +575,7 @@ def clean_database(request):
 
     except Exception as e:
         add_to_console(f"❌ Критическая ошибка очистки PostgreSQL: {e}")
-        logger.error(f"Clean database error: {e}")
+        logger.error(f"Clean database error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка очистки PostgreSQL: {str(e)}'
@@ -455,11 +596,9 @@ def force_clean_database(request):
     try:
         # Сначала создаем резервную копию
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_filename = f"postgres_emergency_backup_{timestamp}.sql"
-        backup_path = BACKUP_DIR / backup_filename
 
         from ..utils.backup_manager import backup_manager
-        backup_result = backup_manager.create_postgres_backup()
+        backup_result = backup_manager.create_postgres_backup(backup_name=f"emergency_backup_{timestamp}")
 
         if backup_result['status'] != 'success':
             return JsonResponse({
@@ -472,12 +611,26 @@ def force_clean_database(request):
             # Отключаем foreign key проверки для безопасности
             cursor.execute("SET session_replication_role = 'replica';")
 
-            # Удаляем данные из таблиц
-            cursor.execute("DELETE FROM website_founditem;")
-            deleted_found = cursor.rowcount
+            # Удаляем данные из таблиц в правильном порядке
+            tables_to_clean = [
+                'website_founditem',
+                'website_searchquery',
+                'website_todocard',
+                'website_todoboard',
+                'website_trackedproduct',
+                'website_userprofile',
+                'website_parsersettings'
+            ]
 
-            cursor.execute("DELETE FROM website_searchquery;")
-            deleted_queries = cursor.rowcount
+            deleted_total = 0
+            for table in tables_to_clean:
+                try:
+                    cursor.execute(f'DELETE FROM "{table}";')
+                    deleted = cursor.rowcount
+                    deleted_total += deleted
+                    logger.info(f"Deleted {deleted} rows from {table}")
+                except Exception as e:
+                    logger.warning(f"Could not clean table {table}: {e}")
 
             # Восстанавливаем foreign key проверки
             cursor.execute("SET session_replication_role = 'origin';")
@@ -490,8 +643,6 @@ def force_clean_database(request):
             cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database()));")
             db_size = cursor.fetchone()[0]
 
-        deleted_total = deleted_found + deleted_queries
-
         add_to_console(f"🔥 Экстренная очистка PostgreSQL: удалено {deleted_total} записей")
 
         return JsonResponse({
@@ -503,13 +654,14 @@ def force_clean_database(request):
         })
 
     except Exception as e:
-        logger.error(f"Force clean error: {e}")
+        logger.error(f"Force clean error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка экстренной очистки PostgreSQL: {str(e)}'
         })
 
 
+@require_GET
 @login_required
 @user_passes_test(lambda u: u.is_superuser)
 def diagnose_decimal_problems(request):
@@ -523,7 +675,6 @@ def diagnose_decimal_problems(request):
     try:
         import time
         from decimal import Decimal, InvalidOperation
-        from ..models import FoundItem
 
         start_time = time.time()
 
@@ -537,7 +688,7 @@ def diagnose_decimal_problems(request):
                     COUNT(CASE WHEN profit IS NULL OR profit::text = '' THEN 1 END) as profit_empty,
                     MIN(id) as min_id,
                     MAX(id) as max_id
-                FROM website_founditem
+                FROM "website_founditem"
             """)
 
             stats = cursor.fetchone()
@@ -620,7 +771,7 @@ def diagnose_decimal_problems(request):
 
     except Exception as e:
         import traceback
-        logger.error(f"Diagnose decimal error: {e}")
+        logger.error(f"Diagnose decimal error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка диагностики: {str(e)}',
@@ -638,25 +789,22 @@ def check_database_stats(request):
     📈 Общая статистика системы
     """
     try:
-        from ..models import FoundItem, SearchQuery, UserProfile, ParserSettings
-
         with connection.cursor() as cursor:
             # Получаем статистику с помощью Django ORM
             found_items_count = FoundItem.objects.count()
             search_queries_count = SearchQuery.objects.count()
-
-            # Для UserProfile и ParserSettings используем прямой запрос
-            cursor.execute("SELECT COUNT(*) FROM website_userprofile")
-            profiles_count = cursor.fetchone()[0]
-
-            cursor.execute("SELECT COUNT(*) FROM website_parsersettings")
-            settings_count = cursor.fetchone()[0]
+            profiles_count = UserProfile.objects.count()
+            settings_count = ParserSettings.objects.count()
 
             # Получаем размер базы данных
             cursor.execute("""
                 SELECT pg_size_pretty(pg_database_size(current_database()));
             """)
             db_size = cursor.fetchone()[0]
+
+            # Получаем информацию о сервере
+            cursor.execute("SELECT version();")
+            postgres_version = cursor.fetchone()[0]
 
         return JsonResponse({
             'status': 'success',
@@ -666,13 +814,14 @@ def check_database_stats(request):
                 'parser_settings': settings_count,
                 'user_profiles': profiles_count,
                 'total_records': found_items_count + search_queries_count + settings_count + profiles_count,
-                'database_size': db_size
+                'database_size': db_size,
+                'postgres_version': postgres_version.split(',')[0] if postgres_version else 'Unknown'
             },
             'message': f'Найдено товаров: {found_items_count}, Поисковых запросов: {search_queries_count}, Размер БД: {db_size}'
         })
 
     except Exception as e:
-        logger.error(f"Database stats error: {e}")
+        logger.error(f"Database stats error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка получения статистики: {str(e)}'
@@ -706,7 +855,8 @@ def backup_database(request):
             return JsonResponse({
                 'status': 'success',
                 'backup_path': backup_filename,
-                'file_size': f"{result['size'] / 1024:.1f} KB",
+                'file_size': f"{result['size'] / (1024 * 1024):.2f} MB" if result[
+                                                                               'size'] > 1024 * 1024 else f"{result['size'] / 1024:.1f} KB",
                 'full_path': str(backup_path),
                 'message': 'Резервная копия PostgreSQL создана успешно'
             })
@@ -718,7 +868,7 @@ def backup_database(request):
             })
 
     except Exception as e:
-        logger.error(f"Backup database error: {e}")
+        logger.error(f"Backup database error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка создания бэкапа PostgreSQL: {str(e)}'
@@ -749,10 +899,10 @@ def restore_backup(request):
             return JsonResponse({'status': 'error', 'message': 'Файл бэкапа не найден'})
 
         # Проверяем, что это PostgreSQL бэкап
-        if not filename.endswith('.sql.gz'):
+        if not (filename.endswith('.sql.gz') or filename.endswith('.sql')):
             return JsonResponse({
                 'status': 'error',
-                'message': 'Неправильный формат файла. Ожидается .sql.gz'
+                'message': 'Неправильный формат файла. Ожидается .sql или .sql.gz'
             })
 
         logger.info(f"🔄 Восстановление PostgreSQL из бэкапа: {filename}")
@@ -781,7 +931,7 @@ def restore_backup(request):
             })
 
     except Exception as e:
-        logger.error(f"Restore backup error: {e}")
+        logger.error(f"Restore backup error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка восстановления PostgreSQL: {str(e)}'
@@ -803,29 +953,35 @@ def list_backups(request):
 
         if BACKUP_DIR.exists():
             # Ищем файлы PostgreSQL бэкапов
-            for file in BACKUP_DIR.glob('*.sql.gz'):
-                if file.is_file():
-                    file_size = file.stat().st_size
-                    created_time = datetime.fromtimestamp(file.stat().st_mtime)
+            for pattern in ['*.sql.gz', '*.sql']:
+                for file in BACKUP_DIR.glob(pattern):
+                    if file.is_file():
+                        file_size = file.stat().st_size
+                        created_time = datetime.fromtimestamp(file.stat().st_mtime)
 
-                    # Определяем тип бэкапа по имени
-                    backup_type = 'unknown'
-                    if 'postgres' in file.name.lower():
-                        backup_type = 'postgres'
-                    elif 'vision' in file.name.lower():
-                        backup_type = 'vision'
-                    elif 'emergency' in file.name.lower():
-                        backup_type = 'emergency'
+                        # Определяем тип бэкапа по имени
+                        backup_type = 'unknown'
+                        filename_lower = file.name.lower()
 
-                    backups.append({
-                        'filename': file.name,
-                        'size': f'{file_size / 1024:.1f} KB',
-                        'size_bytes': file_size,
-                        'created': created_time.strftime("%d.%m.%Y %H:%M"),
-                        'created_timestamp': created_time.timestamp(),
-                        'type': backup_type,
-                        'is_postgres': 'postgres' in file.name.lower()
-                    })
+                        if 'postgres' in filename_lower or 'backup' in filename_lower:
+                            backup_type = 'postgres'
+                        elif 'vision' in filename_lower:
+                            backup_type = 'vision'
+                        elif 'emergency' in filename_lower:
+                            backup_type = 'emergency'
+                        elif 'schema' in filename_lower:
+                            backup_type = 'schema'
+
+                        backups.append({
+                            'filename': file.name,
+                            'size': f'{file_size / (1024 * 1024):.2f} MB' if file_size > 1024 * 1024 else f'{file_size / 1024:.1f} KB',
+                            'size_bytes': file_size,
+                            'created': created_time.strftime("%d.%m.%Y %H:%M"),
+                            'created_timestamp': created_time.timestamp(),
+                            'type': backup_type,
+                            'is_postgres': backup_type == 'postgres',
+                            'is_compressed': file.name.endswith('.gz')
+                        })
 
             # Сортировка по дате (новые сверху)
             backups.sort(key=lambda x: x['created_timestamp'], reverse=True)
@@ -835,11 +991,12 @@ def list_backups(request):
             'backups': backups,
             'total': len(backups),
             'postgres_count': len([b for b in backups if b['is_postgres']]),
+            'total_size_mb': round(sum(b['size_bytes'] for b in backups) / (1024 * 1024), 2),
             'directory': str(BACKUP_DIR.absolute())
         })
 
     except Exception as e:
-        logger.error(f"List backups error: {e}")
+        logger.error(f"List backups error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка получения списка бэкапов: {str(e)}'
@@ -853,7 +1010,7 @@ def download_backup(request):
 
     📥 Отправляет файл как attachment
     🔒 Проверяет существование файла
-    📦 Отправляет сжатый .gz файл
+    📦 Отправляет сжатый .gz файл или .sql
     """
     try:
         filename = request.GET.get('filename')
@@ -881,12 +1038,13 @@ def download_backup(request):
         # Дополнительные заголовки для безопасности
         response['X-Content-Type-Options'] = 'nosniff'
         response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['X-Frame-Options'] = 'DENY'
 
-        logger.info(f"📥 Скачивание бэкапа: {filename} ({backup_path.stat().st_size / 1024:.1f} KB)")
+        logger.info(f"📥 Скачивание бэкапа PostgreSQL: {filename} ({backup_path.stat().st_size / (1024 * 1024):.2f} MB)")
         return response
 
     except Exception as e:
-        logger.error(f"Download backup error: {e}")
+        logger.error(f"Download backup error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка скачивания: {str(e)}'
@@ -923,21 +1081,21 @@ def delete_backup(request):
         # Удаляем файл
         backup_path.unlink()
 
-        logger.info(f"🗑️ Удален бэкап PostgreSQL: {filename} ({file_size / 1024:.1f} KB)")
-        add_to_console(f"🗑️ Удален бэкап: {filename}")
+        logger.info(f"🗑️ Удален бэкап PostgreSQL: {filename} ({file_size / (1024 * 1024):.2f} MB)")
+        add_to_console(f"🗑️ Удален бэкап PostgreSQL: {filename}")
 
         return JsonResponse({
             'status': 'success',
             'message': f'Бэкап PostgreSQL {filename} удален',
             'deleted_file': {
                 'filename': filename,
-                'size_kb': round(file_size / 1024, 2),
+                'size_mb': round(file_size / (1024 * 1024), 2),
                 'created': created_time.strftime("%d.%m.%Y %H:%M")
             }
         })
 
     except Exception as e:
-        logger.error(f"Delete backup error: {e}")
+        logger.error(f"Delete backup error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка удаления: {str(e)}'
@@ -962,72 +1120,45 @@ def clean_old_backups(request):
         cutoff_date = datetime.now() - timedelta(days=days_to_keep)
         deleted_count = 0
         deleted_files = []
+        total_freed_bytes = 0
 
         if BACKUP_DIR.exists():
-            for file in BACKUP_DIR.glob('*.sql.gz'):
-                if file.is_file():
-                    created_time = datetime.fromtimestamp(file.stat().st_mtime)
+            for pattern in ['*.sql.gz', '*.sql']:
+                for file in BACKUP_DIR.glob(pattern):
+                    if file.is_file():
+                        created_time = datetime.fromtimestamp(file.stat().st_mtime)
 
-                    if created_time < cutoff_date:
-                        try:
-                            file_size = file.stat().st_size
-                            file.unlink()
-                            deleted_count += 1
-                            deleted_files.append({
-                                'filename': file.name,
-                                'size_kb': file_size / 1024,
-                                'created': created_time.strftime("%d.%m.%Y")
-                            })
-                        except Exception as e:
-                            logger.error(f"Error deleting {file.name}: {e}")
-                            continue
+                        if created_time < cutoff_date:
+                            try:
+                                file_size = file.stat().st_size
+                                file.unlink()
+                                deleted_count += 1
+                                total_freed_bytes += file_size
+                                deleted_files.append({
+                                    'filename': file.name,
+                                    'size_mb': round(file_size / (1024 * 1024), 2),
+                                    'created': created_time.strftime("%d.%m.%Y")
+                                })
+                            except Exception as e:
+                                logger.error(f"Error deleting {file.name}: {e}")
+                                continue
 
-        add_to_console(f"🧹 Очистка PostgreSQL бэкапов: удалено {deleted_count} файлов старше {days_to_keep} дней")
+        total_freed_mb = round(total_freed_bytes / (1024 * 1024), 2)
+        add_to_console(
+            f"🧹 Очистка PostgreSQL бэкапов: удалено {deleted_count} файлов старше {days_to_keep} дней, освобождено {total_freed_mb} MB")
 
         return JsonResponse({
             'status': 'success',
             'deleted_count': deleted_count,
             'days_to_keep': days_to_keep,
             'deleted_files': deleted_files,
-            'message': f'Удалено {deleted_count} старых PostgreSQL бэкапов (старше {days_to_keep} дней)'
+            'freed_space_mb': total_freed_mb,
+            'message': f'Удалено {deleted_count} старых PostgreSQL бэкапов (старше {days_to_keep} дней), освобождено {total_freed_mb} MB'
         })
 
     except Exception as e:
-        logger.error(f"Clean old backups error: {e}")
+        logger.error(f"Clean old backups error: {e}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': f'Ошибка очистки бэкапов: {str(e)}'
-        })
-
-
-@require_POST
-@csrf_exempt
-def backup_vision_database(request):
-    """💾 Создание бэкапа vision_knowledge.db
-
-    📁 Копирует базу данных Vision AI
-    🕒 Добавляет timestamp
-    📏 Возвращает размер файла
-    """
-    try:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_filename = f"vision_backup_{timestamp}.db"
-        backup_path = BACKUP_DIR / backup_filename
-
-        shutil.copy2('vision_knowledge.db', backup_path)
-
-        file_size = os.path.getsize(backup_path)
-        size_mb = round(file_size / (1024 * 1024), 2)
-
-        return JsonResponse({
-            'status': 'success',
-            'backup_path': backup_filename,
-            'file_size': f'{size_mb} MB',
-            'message': 'Vision AI database backup created successfully'
-        })
-
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': f'Vision backup error: {str(e)}'
         })

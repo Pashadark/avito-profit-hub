@@ -61,8 +61,7 @@ from .user_views import (
 from .database_views import (
     database_stats, backup_database, list_backups, download_backup,
     delete_backup, clean_old_backups, health_database, health_backup,
-    encrypt_database, decrypt_database, start_replication, stop_replication,
-    replication_status
+    start_replication, stop_replication, replication_status
 )
 from .telegram_views import (
     test_bot_connection, get_telegram_status, save_telegram_settings,
@@ -171,8 +170,6 @@ __all__ = [
     'clean_old_backups',
     'health_database',
     'health_backup',
-    'encrypt_database',
-    'decrypt_database',
     'start_replication',
     'stop_replication',
     'replication_status',

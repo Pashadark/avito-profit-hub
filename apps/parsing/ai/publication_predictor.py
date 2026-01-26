@@ -4,7 +4,6 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
-import sqlite3
 
 logger = logging.getLogger('parser.ai')
 

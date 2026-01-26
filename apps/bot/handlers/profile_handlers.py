@@ -1,5 +1,6 @@
 """
 Обработчики профиля пользователя
+Исправленная версия с правильной асинхронностью
 """
 import logging
 from telegram import Update
@@ -64,7 +65,10 @@ class ProfileHandlers:
 
         if subscription:
             from django.utils import timezone
-            days_left = (subscription.end_date - timezone.now()).days
+            # ✅ ИСПРАВЛЕНО: вычисляем days_left через sync_to_async
+            days_left = await sync_to_async(
+                lambda: (subscription.end_date - timezone.now()).days
+            )()
             subscription_text = f"🔔 Тариф: {subscription.plan.name} (осталось {days_left} дн.)"
         else:
             subscription_text = "🔔 Тариф: Не активна"
@@ -95,22 +99,33 @@ class ProfileHandlers:
             await query.edit_message_text("❌ Профиль не найден")
             return
 
-        # Получаем транзакции
-        transactions = await sync_to_async(UserService.get_user_transactions)(profile.user)
+        try:
+            # ✅ ИСПРАВЛЕНО: Добавляем импорт Transaction внутри функции
+            from apps.website.models import Transaction
 
-        transactions_text = ""
-        for i, transaction in enumerate(transactions, 1):
-            sign = "+" if transaction.amount > 0 else ""
-            type_icons = {
-                'topup': '💳',
-                'subscription': '🔔',
-                'refund': '↩️',
-                'daily_charge': '📅'
-            }
-            icon = type_icons.get(transaction.transaction_type, '💼')
-            transactions_text += f"{i}. {icon} {sign}{transaction.amount} ₽\n"
+            # Получаем транзакции через sync_to_async
+            transactions = await sync_to_async(
+                lambda: list(
+                    Transaction.objects.filter(
+                        user=profile.user,
+                        status='completed'
+                    ).order_by('-created_at')[:5]
+                )
+            )()
 
-        balance_text = f"""
+            transactions_text = ""
+            for i, transaction in enumerate(transactions, 1):
+                sign = "+" if transaction.amount > 0 else ""
+                type_icons = {
+                    'topup': '💳',
+                    'subscription': '🔔',
+                    'refund': '↩️',
+                    'daily_charge': '📅'
+                }
+                icon = type_icons.get(transaction.transaction_type, '💼')
+                transactions_text += f"{i}. {icon} {sign}{transaction.amount} ₽\n"
+
+            balance_text = f"""
 💰 **Баланс аккаунта**
 
 💵 **Текущий баланс:** {profile.balance or 0} ₽
@@ -119,15 +134,19 @@ class ProfileHandlers:
 {transactions_text or '• Нет операций'}
 
 💡 *Для пополнения баланса обратитесь к администратору*
-        """
+            """
 
-        keyboard = get_balance_keyboard()
+            keyboard = get_balance_keyboard()
 
-        await query.edit_message_text(
-            balance_text,
-            reply_markup=keyboard,
-            parse_mode='Markdown'
-        )
+            await query.edit_message_text(
+                balance_text,
+                reply_markup=keyboard,
+                parse_mode='Markdown'
+            )
+
+        except Exception as e:
+            logger.error(f"Ошибка показа баланса: {e}")
+            await query.edit_message_text("❌ Ошибка загрузки баланса")
 
     async def show_subscription(self, query, user):
         """Показать подписку"""
@@ -141,7 +160,10 @@ class ProfileHandlers:
 
         if subscription:
             from django.utils import timezone
-            days_left = (subscription.end_date - timezone.now()).days
+            # ✅ ИСПРАВЛЕНО: вычисляем days_left через sync_to_async
+            days_left = await sync_to_async(
+                lambda: (subscription.end_date - timezone.now()).days
+            )()
             status_icon = "✅" if days_left > 7 else "⚠️" if days_left > 0 else "❌"
 
             subscription_text = f"""
@@ -183,6 +205,7 @@ class ProfileHandlers:
             await query.edit_message_text("❌ Профиль не найден")
             return
 
+        # ✅ ИСПРАВЛЕНО: все вызовы UserService уже обернуты в sync_to_async
         items = await sync_to_async(UserService.get_user_items)(profile.user, limit=5)
 
         if not items:
@@ -197,7 +220,7 @@ class ProfileHandlers:
                 items_text += f"   {profit_text}\n"
                 items_text += f"   📅 {item.found_at.astimezone().strftime('%d.%m.%Y %H:%M')}\n\n"
 
-        # Статистика
+        # ✅ ИСПРАВЛЕНО: получение статистики через sync_to_async
         stats = await sync_to_async(UserService.get_user_stats)(profile.user)
 
         if stats:
