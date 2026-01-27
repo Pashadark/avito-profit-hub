@@ -79,21 +79,18 @@ class NotificationSender:
                 if match:
                     product_id = match.group(1)
                     if product_id and product_id.isdigit():
-                        logger.info(f"🎯 Извлечен ID из URL: {product_id} из {url[:80]}...")
+                        # УБРАЛ ЛОГ ОТСЮДА
                         return product_id
 
             # 🔥 ПРИОРИТЕТ: Используем product_id из данных товара если есть
             if hasattr(self, 'current_product_data') and self.current_product_data.get('product_id'):
                 product_id = self.current_product_data['product_id']
-                logger.info(f"🎯 Используем ID из product_data: {product_id}")
                 return str(product_id)
 
             fallback_id = hashlib.md5(url.encode()).hexdigest()[:12]
-            logger.warning(f"⚠️ Не удалось извлечь ID из {url[:80]}..., используем хэш: {fallback_id}")
             return fallback_id
 
         except Exception as e:
-            logger.warning(f"⚠️ Ошибка извлечения ID из {url[:80]}...: {e}")
             return hashlib.md5(url.encode()).hexdigest()[:12]
 
     def normalize_url_universal(self, url):
@@ -131,6 +128,7 @@ class NotificationSender:
             from apps.website.models import NotificationCache
 
             product_id = self.extract_product_id(url)
+            logger.info(f"🎯 Извлечен ID из URL: {product_id} из {url[:80]}...")
 
             @sync_to_async
             def check_db():
@@ -140,7 +138,7 @@ class NotificationSender:
 
         except Exception as e:
             logger.error(f"❌ Ошибка проверки дубликата: {e}")
-            return True  # При ошибке - пропускаем товар
+            return True
 
     async def get_cache_stats(self):
         """Получает статистику кэша из базы"""
@@ -275,25 +273,29 @@ class NotificationSender:
 
         image_urls = product_data.get('image_urls', [])
         if image_urls:
-            logger.info(f"📸 Найдено {len(image_urls)} изображений в image_urls")
+            success_count = 0
+            error_count = 0
+
             for image_url in image_urls[:5]:
                 try:
                     image_base64 = await self._url_to_base64(image_url)
                     if image_base64:
                         all_images.append(image_base64)
-                        logger.info(f"✅ Добавлено изображение из URL")
+                        success_count += 1
                 except Exception as e:
-                    logger.warning(f"⚠️ Ошибка конвертации изображения: {e}")
+                    error_count += 1
+                    if error_count == 1:
+                        logger.debug(f"⚠️ Ошибка конвертации изображения: {e}")
+
+            if error_count > 0:
+                logger.warning(f"⚠️ Не удалось конвертировать {error_count} изображений")
 
         if not all_images and image_data:
             all_images = [image_data]
-            logger.info("📸 Используем переданное image_data")
 
         if not all_images and product_data.get('image_data'):
             all_images = [product_data['image_data']]
-            logger.info("📸 Используем image_data из product_data")
 
-        logger.info(f"📸 Подготовлено {len(all_images)} изображений для отправки")
         return all_images
 
     def _generate_hashtags(self, product_data):
