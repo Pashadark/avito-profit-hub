@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 from .base_site_parser import BaseSiteParser
 from ..utils.product_validator import ProductValidator
@@ -15,6 +15,16 @@ from ..utils.image_processor import ImageProcessor
 from ..utils.moscow_metro import MOSCOW_METRO_DATABASE
 
 logger = logging.getLogger('parser.avito')
+
+# Проверка доступности cloudscraper
+try:
+    from apps.parsing.utils.cloudscraper_engine import CloudscraperEngine
+
+    CLOUDSCRAPER_AVAILABLE = True
+    logger.info("✅ CloudscraperEngine доступен для гибридного режима")
+except ImportError as e:
+    CLOUDSCRAPER_AVAILABLE = False
+    logger.info(f"ℹ️ CloudscraperEngine недоступен: {e}")
 
 try:
     from apps.parsing.utils.custom_user_agents import apply_user_agent_to_driver
@@ -25,7 +35,7 @@ except ImportError as e:
 
 
 class AvitoParser(BaseSiteParser):
-    """Оптимизированный парсер для Avito.ru с быстрыми селекторами"""
+    """Оптимизированный парсер для Avito.ru с быстрыми селекторами и гибридным режимом (cloudscraper + selenium)"""
 
     def __init__(self, driver, city=None):
         super().__init__(driver)
@@ -48,6 +58,21 @@ class AvitoParser(BaseSiteParser):
         self.base_url = "https://www.avito.ru"
 
         self.logger.info(f"🌍 AvitoParser: город {self.city}")
+
+        # Инициализация cloudscraper для гибридного режима
+        self.use_cloudscraper = CLOUDSCRAPER_AVAILABLE
+        if self.use_cloudscraper:
+            try:
+                self.cloudscraper_engine = CloudscraperEngine(city=self.city)
+                logger.info(f"✅ CloudscraperEngine инициализирован как резервный движок для {self.city}")
+                self.fallback_to_selenium = True  # Автопереключение при блокировке
+            except Exception as e:
+                logger.warning(f"⚠️ Не удалось инициализировать CloudscraperEngine: {e}")
+                self.use_cloudscraper = False
+                self.cloudscraper_engine = None
+        else:
+            self.cloudscraper_engine = None
+            self.fallback_to_selenium = True
 
         if USER_AGENTS_AVAILABLE:
             try:
@@ -132,11 +157,107 @@ class AvitoParser(BaseSiteParser):
             return f"{self.base_url}/moskva?q={quote_plus(query)}&s=104"
 
     async def search_items(self, query, **kwargs):
-        """Оптимизированный поиск товаров С ЛИСТАНИЕМ СТРАНИЦ"""
+        """Основной метод поиска с поддержкой гибридного режима"""
         try:
-            self.logger.info(f"🎯 Поиск: '{query}'")
+            # 🔥 ВРЕМЕННО ОТКЛЮЧАЕМ CLOUDSCRAPER (нет рабочих прокси)
+            # hybrid_mode = kwargs.get('hybrid_mode', True) and self.use_cloudscraper
 
-            max_pages = kwargs.get('max_pages', 3)  # НОВЫЙ ПАРАМЕТР
+            # if hybrid_mode:
+            #     cloudscraper_result = await self._try_cloudscraper_first(query, kwargs)
+            #     if cloudscraper_result is not None:
+            #         return cloudscraper_result
+
+            logger.info(f"🎯 Selenium поиск: '{query}' (cloudscraper временно отключен)")
+            return await self._search_with_selenium(query, **kwargs)
+
+        except Exception as e:
+            logger.error(f"❌ Ошибка search_items: {e}")
+            return await self._search_with_selenium(query, **kwargs)
+
+    async def _try_cloudscraper_first(self, query: str, kwargs: dict) -> Optional[List]:
+        """Пробует обработать запрос через cloudscraper перед Selenium"""
+        try:
+            if not self.use_cloudscraper or not self.cloudscraper_engine:
+                return None
+
+            max_pages = kwargs.get('max_pages', 2)  # Для cloudscraper меньше страниц
+            max_items = kwargs.get('max_items', 30)  # Ограничиваем для скорости
+
+            logger.info(f"⚡ Пробую cloudscraper для запроса: '{query}' (макс. {max_pages} стр.)")
+
+            start_time = time.time()
+            cloud_result = self.cloudscraper_engine.search_items_fast(
+                query,
+                max_pages=max_pages,
+                min_price=kwargs.get('min_price'),
+                max_price=kwargs.get('max_price')
+            )
+
+            elapsed = time.time() - start_time
+
+            if not cloud_result:
+                logger.warning(f"⚠️ Cloudscraper вернул пустой результат для '{query}'")
+                return None
+
+            if cloud_result.get('blocked'):
+                logger.warning(f"🚫 Cloudscraper заблокирован для '{query}': {cloud_result.get('blocked_reason')}")
+                return None
+
+            items = cloud_result.get('items', [])
+
+            if items:
+                # Конвертируем в формат AvitoParser
+                converted_items = []
+                for item in items[:max_items]:
+                    try:
+                        converted_item = {
+                            'name': item.get('name', ''),
+                            'price': item.get('price', 0),
+                            'target_price': item.get('price', 0),
+                            'url': item.get('url', ''),
+                            'item_id': item.get('item_id', ''),
+                            'product_id': item.get('item_id', ''),
+                            'category': query,
+                            'description': f"Найден через cloudscraper по запросу: '{query}'",
+                            'time_listed': 24.0,  # Дефолтное значение
+                            'freshness_score': 0.3,
+                            'is_fresh_by_indicators': False,
+                            'site': 'avito',
+                            'city': self.city,
+                            'engine_used': 'cloudscraper'  # Отметка о движке
+                        }
+
+                        # Если есть URL товара, получаем детали через Selenium
+                        if converted_item.get('url') and kwargs.get('get_details', True):
+                            try:
+                                self.logger.info(f"🔍 Получаю детали товара через Selenium: {converted_item['item_id']}")
+                                detailed_item = await self.get_product_details(converted_item)
+                                converted_item.update(detailed_item)
+                            except Exception as e:
+                                logger.warning(f"⚠️ Не удалось получить детали через Selenium: {e}")
+
+                        converted_items.append(converted_item)
+                    except Exception as e:
+                        logger.debug(f"❌ Ошибка конвертации товара: {e}")
+                        continue
+
+                logger.info(
+                    f"✅ Cloudscraper нашел {len(items)} товаров за {elapsed:.2f} сек, конвертировано: {len(converted_items)}")
+                return converted_items
+            else:
+                logger.warning(f"⚠️ Cloudscraper не нашел товаров для '{query}'")
+                return None
+
+        except Exception as e:
+            logger.error(f"❌ Ошибка в _try_cloudscraper_first: {e}")
+            return None
+
+    async def _search_with_selenium(self, query, **kwargs):
+        """Стандартный Selenium-поиск (оригинальный метод)"""
+        try:
+            self.logger.info(f"🎯 Selenium поиск: '{query}'")
+
+            max_pages = kwargs.get('max_pages', 3)
             max_items = kwargs.get('max_items', 100)
 
             all_items = []
@@ -144,7 +265,7 @@ class AvitoParser(BaseSiteParser):
             for page in range(1, max_pages + 1):
                 self.logger.info(f"📄 Страница {page}/{max_pages} для запроса '{query}'")
 
-                url = self.build_search_url(query, page=page)  # ПЕРЕДАЕМ СТРАНИЦУ
+                url = self.build_search_url(query, page=page)
                 self.logger.debug(f"🌐 Открываем: {url[:80]}...")
 
                 try:
@@ -181,29 +302,33 @@ class AvitoParser(BaseSiteParser):
 
                 # Если на этой странице мало товаров, дальше не листаем
                 if len(converted_items) < 10:
-                    self.logger.info(f"⚠️  На странице {page} мало товаров ({len(converted_items)}), останавливаемся")
+                    self.logger.info(f"⚠️ На странице {page} мало товаров ({len(converted_items)}), останавливаемся")
                     break
 
                 # Если уже собрали достаточно товаров
                 if len(all_items) >= max_items:
-                    self.logger.info(f"⚠️  Собрано {len(all_items)} товаров (лимит: {max_items})")
+                    self.logger.info(f"⚠️ Собрано {len(all_items)} товаров (лимит: {max_items})")
                     break
 
                 # Небольшая пауза между страницами
                 time.sleep(0.5)
 
-            self.logger.info(f"🎯 ИТОГО для '{query}': {len(all_items)} товаров с {max_pages} страниц")
-            return all_items[:max_items]  # Ограничиваем общее количество
+            # Отмечаем, что использован Selenium
+            for item in all_items:
+                item['engine_used'] = 'selenium'
+
+            self.logger.info(f"🎯 ИТОГО Selenium для '{query}': {len(all_items)} товаров с {max_pages} страниц")
+            return all_items[:max_items]
 
         except Exception as e:
-            self.logger.error(f"❌ Критическая ошибка: {e}", exc_info=True)
+            self.logger.error(f"❌ Критическая ошибка в _search_with_selenium: {e}", exc_info=True)
             return []
 
     async def parse_search_results(self, query):
         """Быстрый парсинг результатов поиска"""
         try:
             self._captcha_notification_sent = False
-            time.sleep(0.5)  # Уменьшено с 1 до 0.5
+            time.sleep(0.5)
 
             # Проверка на очевидную блокировки
             if self._check_real_captcha_block():
@@ -223,7 +348,7 @@ class AvitoParser(BaseSiteParser):
             exact_matches = []
             partial_matches = []
 
-            for item in items[:100]:  # Ограничиваем для скорости
+            for item in items[:100]:
                 try:
                     product = await self.parse_item_advanced(item, query)
                     if product:
@@ -651,7 +776,7 @@ class AvitoParser(BaseSiteParser):
 
             self.logger.info(f"🔍 Детали товара ID {product.get('product_id')}")
             self.driver.get(product['url'])
-            time.sleep(1.5)  # Увеличил для полной загрузки страницы
+            time.sleep(1.5)
 
             # Парсим основные данные
             condition = self._extract_condition()
@@ -663,15 +788,12 @@ class AvitoParser(BaseSiteParser):
             avito_category = self._extract_category()
 
             # 🔥 🔥 🔥 ВОССТАНАВЛИВАЕМ ИСПОЛЬЗОВАНИЕ ImageProcessor!
-            # ОБЯЗАТЕЛЬНО используем ImageProcessor - он уже умеет собирать все фото!
             try:
-                # Сначала пробуем основной метод
                 self.logger.info("📸 Используем ImageProcessor для сбора ВСЕХ фото...")
                 image_urls = self.image_processor.get_avito_images()
 
                 if not image_urls or len(image_urls) == 0:
                     self.logger.warning("⚠️ Основной метод не собрал фото, пробуем альтернативный")
-                    # Пробуем альтернативный метод
                     image_urls = self.image_processor.get_avito_images_fast()
 
                 if not image_urls:
@@ -702,7 +824,6 @@ class AvitoParser(BaseSiteParser):
                     'seller_rating': seller_rating,
                     'reviews_count': reviews_count or 0,
                     'avito_category': avito_category or product.get('category', 'Не указана'),
-                    # 🔥 ДОБАВЛЕНО КАТЕГОРИЯ!
                     'city': city or self.city,
                     'image_url': main_image_url,
                     'image_urls': image_urls,
@@ -736,33 +857,27 @@ class AvitoParser(BaseSiteParser):
         """Извлекает все возможные URL изображений из элемента"""
         urls = []
         try:
-            # Атрибут src
             src = element.get_attribute('src')
             if src:
                 urls.append(src)
 
-            # Data атрибуты
             for attr in ['data-src', 'data-url', 'data-original', 'data-large', 'data-image', 'data-img']:
                 data_url = element.get_attribute(attr)
                 if data_url:
                     urls.append(data_url)
 
-            # Атрибут href (для ссылок)
             href = element.get_attribute('href')
             if href and self._is_avito_image_url(href):
                 urls.append(href)
 
-            # Стиль с background-image
             style = element.get_attribute('style')
             if style and 'background-image' in style:
                 match = re.search(r'url\(["\']?(.*?)["\']?\)', style)
                 if match:
                     urls.append(match.group(1))
 
-            # HTML содержимое
             html = element.get_attribute('outerHTML')
             if html:
-                # Ищем URL в HTML
                 html_urls = re.findall(r'https?://[^"\'\s<>]*avito\.st[^"\'\s<>]*', html)
                 urls.extend(html_urls)
 
@@ -778,7 +893,6 @@ class AvitoParser(BaseSiteParser):
 
         url_lower = url.lower()
 
-        # Проверяем домены Avito
         avito_domains = [
             'avito.st',
             'img.avito.st',
@@ -788,16 +902,10 @@ class AvitoParser(BaseSiteParser):
             'avatars.yandex.net'
         ]
 
-        # Проверяем расширения изображений
         image_extensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
 
-        # Проверяем по доменам
         is_avito_domain = any(domain in url_lower for domain in avito_domains)
-
-        # Проверяем по расширениям
         is_image_extension = any(url_lower.endswith(ext) for ext in image_extensions)
-
-        # Также проверяем на наличие типичных паттернов Avito
         has_avito_pattern = any(pattern in url_lower for pattern in ['/image/', '/images/', '/get-image/', 'image/1/'])
 
         return is_avito_domain or (is_image_extension and has_avito_pattern)
@@ -807,21 +915,15 @@ class AvitoParser(BaseSiteParser):
         if not url:
             return None
 
-        # Убираем начальные пробелы
         url = url.strip()
 
-        # Добавляем протокол если нужно
         if url.startswith('//'):
             url = 'https:' + url
 
-        # Убираем параметры запроса для получения чистого URL
         if '?' in url:
             url = url.split('?')[0]
 
-        # Убираем лишние символы в конце
         url = url.rstrip('"\'')
-
-        # Преобразуем миниатюры в полноразмерные если возможно
         if any(pattern in url for pattern in ['64x64', '80x80', '100x100']):
             url = re.sub(r'\d+x\d+', '1280x960', url)
 
@@ -1064,7 +1166,7 @@ class AvitoParser(BaseSiteParser):
 
             if not location_data['metro_stations'] or not location_data['address']:
                 if self._expand_location_map_improved():
-                    time.sleep(1.0)  # Уменьшено с 3 до 1
+                    time.sleep(1.0)
                     self._find_location_after_map_expansion_improved(location_data)
 
             if not location_data['metro_stations']:
@@ -1072,7 +1174,6 @@ class AvitoParser(BaseSiteParser):
 
             self._build_final_location_improved(location_data)
 
-            # ✅ ТОЛЬКО ИТОГОВЫЙ ЛОГ
             metro_count = len(location_data['metro_stations'])
             if metro_count > 0:
                 station_names = [station['name'] for station in location_data['metro_stations']]
@@ -1315,7 +1416,7 @@ class AvitoParser(BaseSiteParser):
     def _find_location_after_map_expansion_improved(self, location_data):
         """УЛУЧШЕННЫЙ поиск местоположения после раскрытия карты"""
         try:
-            time.sleep(0.5)  # Уменьшено с 2 до 0.5
+            time.sleep(0.5)
 
             address_card_selectors = [
                 '[data-marker="sellerAddressInfoCard"]',
@@ -1330,13 +1431,12 @@ class AvitoParser(BaseSiteParser):
                             card_text = card.text.strip()
                             if card_text:
                                 self._parse_location_card_content_improved(card_text, location_data)
-                                # Логируем результат если нашли что-то полезное
                                 if location_data['address'] or location_data['metro_stations']:
                                     self.logger.info(
                                         f"📍 Найден адрес в '{selector}': {location_data['address'] or 'нет адреса'}")
                                     if location_data['metro_stations']:
                                         self.logger.info(f"🚇 Станции метро: {len(location_data['metro_stations'])}")
-                                    return  # Выходим если нашли
+                                    return
                         except Exception as e:
                             self.logger.debug(f"❌ Ошибка анализа карточки: {e}")
                             continue
@@ -1345,7 +1445,6 @@ class AvitoParser(BaseSiteParser):
                     self.logger.debug(f"❌ Селектор карточки '{selector}' не сработал: {e}")
                     continue
 
-            # Если не нашли в основном селекторе, ищем альтернативно
             expanded_selectors = [
                 '//*[contains(@class, "address")]',
                 '//*[contains(text(), "ул.")]',
@@ -1361,7 +1460,7 @@ class AvitoParser(BaseSiteParser):
                             if not location_data['address'] and self._is_valid_address_simple(text):
                                 location_data['address'] = text
                                 self.logger.info(f"📍 Адрес найден альтернативно в '{selector}': '{text}'")
-                                return  # Выходим если нашли адрес
+                                return
 
                             self._extract_metro_from_text_simple(text, location_data)
 
@@ -1452,17 +1551,14 @@ class AvitoParser(BaseSiteParser):
         try:
             parts = []
 
-            # Добавляем метро если есть
             if location_data['metro_stations']:
                 metro_names = [station['name'] for station in location_data['metro_stations']]
-                metro_str = ' | '.join(metro_names[:3])  # Максимум 3 станции
+                metro_str = ' | '.join(metro_names[:3])
                 parts.append(metro_str)
 
-            # Добавляем адрес если есть
             if location_data['address']:
                 parts.append(location_data['address'])
 
-            # Формируем итоговую строку
             if parts:
                 location_data['full_location'] = ' | '.join(parts)
             else:
@@ -1477,10 +1573,9 @@ class AvitoParser(BaseSiteParser):
     def extract_posted_date(self):
         """УЛУЧШЕННЫЙ метод извлечения даты размещения объявления"""
         try:
-            # 🔥 ШАГ 1: Основной селектор - ищем ЛЮБОЙ элемент с data-marker="item-view/item-date"
             primary_selectors = [
                 '[data-marker="item-view/item-date"]',
-                '*[data-marker="item-view/item-date"]',  # Все элементы с этим data-marker
+                '*[data-marker="item-view/item-date"]',
             ]
 
             for selector in primary_selectors:
@@ -1488,7 +1583,6 @@ class AvitoParser(BaseSiteParser):
                     date_elems = self.driver.find_elements(By.CSS_SELECTOR, selector)
 
                     for date_elem in date_elems:
-                        # 🔥 Ищем дату ВНУТРИ элемента (включая дочерние элементы)
                         date_info = self._extract_date_from_element(date_elem)
                         if date_info:
                             self.logger.info(f"✅ Дата найдена через '{selector}': '{date_info}'")
@@ -1498,7 +1592,6 @@ class AvitoParser(BaseSiteParser):
                     self.logger.debug(f"❌ Селектор '{selector}' не сработал: {e}")
                     continue
 
-            # 🔥 ШАГ 2: Если не нашли, пробуем альтернативные методы
             self.logger.warning("❌ Дата не найдена в основном селекторе, ищем альтернативно")
             return 'Дата не указана'
 
@@ -1509,16 +1602,13 @@ class AvitoParser(BaseSiteParser):
     def _extract_date_from_element(self, element):
         """Извлекает дату из элемента, включая ВСЕ дочерние элементы"""
         try:
-            # 🔥 Метод 1: Получаем ВЕСЬ текст элемента (включая дочерние)
             full_text = element.text.strip()
             if full_text:
                 cleaned = self._clean_date_text(full_text)
                 if cleaned and cleaned != 'Дата не указана':
                     return cleaned
 
-            # 🔥 Метод 2: Проверяем ВСЕ дочерние элементы
             try:
-                # Получаем ВСЕ текстовые узлы внутри элемента
                 all_text_nodes = self.driver.execute_script("""
                     var texts = [];
                     var walker = document.createTreeWalker(
@@ -1545,10 +1635,8 @@ class AvitoParser(BaseSiteParser):
             except Exception as e:
                 self.logger.debug(f"❌ Ошибка получения текстовых узлов: {e}")
 
-            # 🔥 Метод 3: Проверяем innerHTML
             inner_html = element.get_attribute('innerHTML')
             if inner_html:
-                # Убираем HTML теги, оставляем только текст
                 import re
                 text_only = re.sub(r'<[^>]+>', ' ', inner_html)
                 text_only = ' '.join(text_only.split()).strip()
@@ -1558,7 +1646,6 @@ class AvitoParser(BaseSiteParser):
                     if cleaned and cleaned != 'Дата не указана':
                         return cleaned
 
-            # 🔥 Метод 4: Ищем по XPath внутри элемента
             xpath_patterns = [
                 ".//text()[contains(., 'сегодня') or contains(., 'вчера') or contains(., 'час') or contains(., 'минут')]",
                 ".//*[contains(text(), 'сегодня') or contains(text(), 'вчера')]",
@@ -1588,25 +1675,17 @@ class AvitoParser(BaseSiteParser):
             return 'Дата не указана'
 
         try:
-            # Убираем лишние символы в начале/конце
             cleaned = date_text.strip()
-
-            # Убираем точки, звездочки и другие разделители в начале
             cleaned = re.sub(r'^[·•*\-–—\s]+', '', cleaned)
-
-            # Убираем лишние пробелы
             cleaned = re.sub(r'\s+', ' ', cleaned)
 
-            # Если начинается со слова "в" с маленькой буквы, делаем заглавной
             if cleaned.startswith('в '):
                 cleaned = 'В ' + cleaned[2:]
 
-            # Капитализируем первое слово
             if cleaned and len(cleaned) > 1:
                 if cleaned[0].islower():
                     cleaned = cleaned[0].upper() + cleaned[1:]
 
-            # Если текст слишком короткий
             if len(cleaned) < 3:
                 return 'Дата не указана'
 
@@ -1658,20 +1737,16 @@ class AvitoParser(BaseSiteParser):
 
                 self.logger.info(f"📊 Найдены хлебные крошки: {breadcrumbs}")
 
-                # Логика выбора категории:
-                # 1. Если есть 3 или больше элементов, берем предпоследний (обычно это подкатегория)
-                # 2. Если есть 2 элемента, берем первый (главная категория)
-                # 3. Если есть 1 элемент, берем его
                 if len(breadcrumbs) >= 3:
-                    category = breadcrumbs[-2]  # Предпоследний элемент
+                    category = breadcrumbs[-2]
                     self.logger.info(f"✅ Категория найдена (предпоследний элемент): '{category}'")
                     return category
                 elif len(breadcrumbs) == 2:
-                    category = breadcrumbs[0]  # Первый элемент
+                    category = breadcrumbs[0]
                     self.logger.info(f"✅ Категория найдена (первый элемент): '{category}'")
                     return category
                 elif len(breadcrumbs) == 1:
-                    category = breadcrumbs[0]  # Единственный элемент
+                    category = breadcrumbs[0]
                     self.logger.info(f"✅ Категория найдена (единственный элемент): '{category}'")
                     return category
                 else:
@@ -1875,7 +1950,6 @@ class AvitoParser(BaseSiteParser):
                 'seller_profile_url': None
             }
 
-            # 🔥 ПРОСТОЙ поиск аватарки
             avatar_selectors = [
                 '.style__seller-info-shop-img___XzY4OG',
                 '.style__seller-info-avatar-image___XzY4OG',
@@ -1886,14 +1960,12 @@ class AvitoParser(BaseSiteParser):
                     elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
 
                     for element in elements:
-                        # Способ 1: атрибут src
                         avatar_url = element.get_attribute('src')
                         if avatar_url and self._is_valid_avatar_url(avatar_url):
                             seller_info['seller_avatar'] = self._normalize_avatar_url(avatar_url)
                             self.logger.info(f"✅ Аватарка найдена через src: {seller_info['seller_avatar'][:50]}...")
                             break
 
-                        # Способ 2: background-image в style
                         style_attr = element.get_attribute('style')
                         if style_attr and 'background-image' in style_attr:
                             match = re.search(r'url\(["\']?(.*?)["\']?\)', style_attr)
@@ -1905,7 +1977,6 @@ class AvitoParser(BaseSiteParser):
                                         f"✅ Аватарка найдена через style: {seller_info['seller_avatar'][:50]}...")
                                     break
 
-                        # Способ 3: computed style через JS
                         try:
                             bg_image = self.driver.execute_script(
                                 "return window.getComputedStyle(arguments[0]).getPropertyValue('background-image');",
@@ -1932,7 +2003,6 @@ class AvitoParser(BaseSiteParser):
             if not seller_info['seller_avatar']:
                 self.logger.info("ℹ️ Аватарка не найдена")
 
-            # Имя продавца
             name_selectors = [
                 '[data-marker="seller-info/name"]',
                 '.seller-info-name',
@@ -1952,7 +2022,6 @@ class AvitoParser(BaseSiteParser):
                 except:
                     continue
 
-            # Тип продавца
             try:
                 seller_text = self.driver.page_source.lower()
                 if 'частное лицо' in seller_text:
@@ -1963,7 +2032,6 @@ class AvitoParser(BaseSiteParser):
                     seller_info['seller_type'] = "Компания"
                     self.logger.info("✅ Тип продавца: Компания")
                 else:
-                    # Дополнительная проверка по наличию слов "профиль компании" или "магазин"
                     seller_text_raw = self.driver.page_source
                     if 'профиль компании' in seller_text_raw or 'магазин' in seller_text_raw.lower():
                         seller_info['seller_type'] = "Компания"
@@ -1975,7 +2043,6 @@ class AvitoParser(BaseSiteParser):
                 self.logger.warning(f"⚠️ Ошибка определения типа продавца: {e}")
                 seller_info['seller_type'] = "Не определен"
 
-            # Ссылка на профиль продавца
             seller_profile_url = await self._extract_seller_profile_url()
             if seller_profile_url:
                 seller_info['seller_profile_url'] = seller_profile_url
@@ -1983,7 +2050,6 @@ class AvitoParser(BaseSiteParser):
             else:
                 self.logger.info("ℹ️ Ссылка на профиль продавца не найдена")
 
-            # Краткий итог
             if seller_info['seller_name'] != 'Не указан':
                 self.logger.info(f"📊 Итог по продавцу: {seller_info['seller_name']} ({seller_info['seller_type']})")
             else:
@@ -2057,7 +2123,6 @@ class AvitoParser(BaseSiteParser):
     def _extract_description_full(self):
         """Извлекает полное описание товара с минимальными логами"""
         try:
-            # Попытка нажать кнопку "Читать полностью"
             read_more_selectors = [
                 '//a[contains(text(), "Читать полностью")]',
                 '//button[contains(text(), "Читать полностью")]',
@@ -2082,7 +2147,6 @@ class AvitoParser(BaseSiteParser):
                 except:
                     continue
 
-            # Поиск описания
             description_selectors = [
                 '[data-marker="item-view/item-description"]',
                 '.item-description-text',
@@ -2106,7 +2170,6 @@ class AvitoParser(BaseSiteParser):
                 except:
                     continue
 
-            # Если не нашли обычное описание, ищем HTML-версию
             if not description:
                 html_selectors = [
                     '.style__item-description-html___XzQzYT',
@@ -2133,7 +2196,6 @@ class AvitoParser(BaseSiteParser):
                     except:
                         continue
 
-            # Если всё еще не нашли, ищем в родительских блоках
             if not description:
                 parent_selectors = [
                     '#bx_item-description',
@@ -2162,7 +2224,6 @@ class AvitoParser(BaseSiteParser):
                     except:
                         continue
 
-            # Логирование результата
             if description:
                 if selector_used == "HTML":
                     self.logger.info(f"✅ Описание из HTML: {len(description)} символов")

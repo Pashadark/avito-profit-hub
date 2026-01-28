@@ -7757,7 +7757,6 @@ a.invert-bg-dark:hover, a.invert-bg-dark:focus {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  text-transform: capitalize;
   letter-spacing: 0.4px;
 }
 .btn[class*=btn-]:not([class*=btn-label-]):not([class*=btn-outline-]):not([class*=btn-text-]):not(.btn-icon):not(:disabled):not(.disabled) {
