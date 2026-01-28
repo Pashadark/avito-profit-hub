@@ -68,6 +68,14 @@ class SafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
         # Всегда используем delay=True и добавляем таймаут
         kwargs['delay'] = True
         kwargs.setdefault('encoding', 'utf-8')
+
+        # 🔥 ДОБАВЛЕНО: Для Windows добавляем PID к имени файла
+        original_filename = kwargs.get('filename') or args[0] if args else None
+        if original_filename and os.name == 'nt':
+            pid = os.getpid()
+            base, ext = os.path.splitext(original_filename)
+            kwargs['filename'] = f"{base}.{pid}{ext}"
+
         super().__init__(*args, **kwargs)
 
         self._last_rollover_check = time.time()
@@ -82,7 +90,7 @@ class SafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
             _active_handlers.append(self)
 
     def _open(self):
-        """Открытие файла с защитой от блокировок"""
+        """Открытие файла с защитой от блокировок."""
         with self._file_lock:
             # Если файл уже открыт - возвращаем его
             if self.stream is not None and not self.stream.closed:
@@ -96,16 +104,31 @@ class SafeRotatingFileHandler(logging.handlers.RotatingFileHandler):
                         if attempt < self._max_retries - 1:
                             time.sleep(self._retry_delay)
                             continue
+                        else:
+                            # 🔥 ИСПРАВЛЕНО: Файл заблокирован после всех попыток
+                            # Создаем временный файл для этого процесса
+                            temp_filename = f"{self.baseFilename}.tmp.{os.getpid()}"
+                            error_msg = f"File {self.baseFilename} is locked, using {temp_filename}"
+                            sys.stderr.write(f"WARNING: {error_msg}\n")
 
+                            # Создаем директорию если не существует
+                            os.makedirs(os.path.dirname(temp_filename) or '.', exist_ok=True)
+                            return open(temp_filename, mode=self.mode, encoding=self.encoding)
+
+                    # Файл не заблокирован, открываем нормально
                     stream = super()._open()
                     _registry.register(self.baseFilename, self)
                     return stream
 
                 except (OSError, IOError, PermissionError) as e:
                     if attempt == self._max_retries - 1:
-                        sys.stderr.write(f"❌ Невозможно открыть файл логов {self.baseFilename}: {e}\n")
+                        error_msg = f"Cannot open log file {self.baseFilename}: {e}"
+                        sys.stderr.write(f"ERROR: {error_msg}\n")
                         raise
                     time.sleep(self._retry_delay)
+
+            # 🔥 ИСПРАВЛЕНО: Всегда возвращаем или выбрасываем исключение
+            raise IOError(f"Failed to open log file after {self._max_retries} attempts")
 
     def _close_file(self):
         """Безопасное закрытие файла"""
@@ -461,7 +484,6 @@ def setup_logging(process_name=None):
                 'filters': ['django_server_filter']
             },
 
-            # 🔒 ВСЕ файловые обработчики используют SafeRotatingFileHandler
             'postgresql_file': {
                 '()': SafeRotatingFileHandler,
                 'filename': 'logs/postgresql/postgresql.log',
