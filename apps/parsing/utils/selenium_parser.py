@@ -340,6 +340,8 @@ class SeleniumAvitoParser(BaseParser):
         self.force_stop = False
         self.stop_requested = False
         self.current_operations = set()  # Для отслеживания текущих операций
+        self.original_settings_backup = None  # Бэкап оригинальных настроек
+        self.runtime_settings_snapshot = None  # Снимок настроек во время работы
 
         # 🔥 ДОБАВЬ ЭТИ СТРОКИ ДЛЯ ПОДДЕРЖКИ САЙТОВ
         self.current_site = 'avito'  # По умолчанию Avito
@@ -2171,28 +2173,46 @@ class SeleniumAvitoParser(BaseParser):
             return False
 
     def _update_local_settings(self):
-        """Обновление настроек с передачей цен в валидатор"""
+        """Обновление настроек с улучшенным логированием"""
         try:
+            logger.info("🔄 Начинаем обновление локальных настроек...")
+
+            # Сохраняем текущие настройки перед обновлением
+            previous_queries = self.search_queries.copy() if self.search_queries else []
+            previous_count = len(previous_queries)
+
+            # Обновляем настройки
             self.search_queries = self.settings_manager.search_queries
             self.exclude_keywords = self.settings_manager.exclude_keywords
             self.browser_windows = min(self.settings_manager.browser_windows, 4)
 
-            # 🔥 ПЕРЕДАЕМ НАСТРОЙКИ ЦЕН В ВАЛИДАТОР
+            # 🔥 ДОБАВИЛ ГОРОД
+            if hasattr(self.settings_manager, 'city') and self.settings_manager.city:
+                self.current_city = self.settings_manager.city
+                logger.info(f"🏙️ Город обновлен: {self.current_city}")
+
+            # Цены
             min_price = self.settings_manager.min_price
             max_price = self.settings_manager.max_price
 
             # Обновляем фильтры цен в валидаторе
-            self.product_validator.update_price_filters(min_price, max_price)
+            if hasattr(self, 'product_validator'):
+                self.product_validator.update_price_filters(min_price, max_price)
 
             # Сохраняем локально для совместимости
             self.min_price = min_price if min_price else 0
             self.max_price = max_price if max_price else 1000000000
 
-            logger.info(f"🔄 Настройки обновлены: {len(self.search_queries)} запросов")
-            logger.info(f"💰 Диапазон цен: {self.min_price}-{self.max_price}₽")
+            # Логирование изменений
+            new_count = len(self.search_queries) if self.search_queries else 0
+            logger.info(f"🔄 Локальные настройки обновлены:")
+            logger.info(f"   Запросы: {previous_count} → {new_count}")
+            logger.info(f"   Цены: {self.min_price}-{self.max_price}₽")
+            logger.info(f"   Окна: {self.browser_windows}")
+            logger.info(f"   Город: {getattr(self, 'current_city', 'не указан')}")
 
         except Exception as e:
-            logger.error(f"❌ Ошибка обновления настроек: {e}")
+            logger.error(f"❌ Ошибка обновления локальных настроек: {e}")
 
     async def init_async_session(self):
         """Инициализирует асинхронную сессию"""
@@ -2844,18 +2864,116 @@ class SeleniumAvitoParser(BaseParser):
         )
 
     async def _fast_settings_check(self):
-        """ПРОВЕРКА НАСТРОЕК"""
+        """🔄 ПРОВЕРКА НАСТРОЕК С СОХРАНЕНИЕМ И ВОССТАНОВЛЕНИЕМ ТЕКУЩИХ"""
         try:
-            old_queries = set(self.search_queries)
-            await sync_to_async(self.settings_manager.reload_settings_from_db)()
-            await sync_to_async(self._update_local_settings)()
-            new_queries = set(self.search_queries)
+            logger.info("🔍 Начинаем проверку настроек...")
 
-            if old_queries != new_queries:
-                logger.info(f"🔄 Настройки обновлены! Новые запросы: {self.search_queries}")
+            # 🔥 ШАГ 1: СОХРАНЯЕМ ТЕКУЩИЕ НАСТРОЙКИ ПЕРЕД ЛЮБЫМИ ИЗМЕНЕНИЯМИ
+            current_settings = {
+                'search_queries': self.search_queries.copy() if self.search_queries else [],
+                'exclude_keywords': self.exclude_keywords.copy() if self.exclude_keywords else [],
+                'min_price': self.min_price,
+                'max_price': self.max_price,
+                'min_rating': self.min_rating,
+                'seller_type': self.seller_type,
+                'browser_windows': self.browser_windows,
+                'current_site': self.current_site,
+                'current_city': getattr(self, 'current_city', 'Москва')
+            }
+
+            logger.info(f"📝 Сохранены текущие настройки: {len(current_settings['search_queries'])} запросов")
+            logger.info(
+                f"📍 Текущий сайт: {current_settings['current_site']}, город: {current_settings['current_city']}")
+
+            # 🔥 ШАГ 2: ЗАПОМИНАЕМ СТАРЫЕ ЗАПРОСЫ ДЛЯ СРАВНЕНИЯ
+            old_queries_set = set(self.search_queries) if self.search_queries else set()
+
+            # 🔥 ШАГ 3: ВЫЗЫВАЕМ ПЕРЕЗАГРУЗКУ ИЗ БАЗЫ (НО ОНА ЗАГРУЗИТ ДЕФОЛТЫ)
+            logger.info("🔄 Вызываем reload_settings_from_db()...")
+            reload_success = await sync_to_async(self.settings_manager.reload_settings_from_db)()
+
+            if reload_success:
+                logger.info("✅ Настройки перезагружены из базы")
+
+                # 🔥 ШАГ 4: ОБНОВЛЯЕМ ЛОКАЛЬНЫЕ НАСТРОЙКИ (НО ЭТО ДЕФОЛТЫ!)
+                await sync_to_async(self._update_local_settings)()
+
+                # 🔥 ШАГ 5: ВОССТАНАВЛИВАЕМ СОХРАНЕННЫЕ НАСТРОЙКИ
+                logger.info("🔄 Восстанавливаем сохраненные настройки...")
+
+                # Восстанавливаем поисковые запросы
+                if current_settings['search_queries']:
+                    self.search_queries = current_settings['search_queries']
+                    self.settings_manager.search_queries = current_settings['search_queries']
+                    logger.info(f"✅ Восстановлено {len(self.search_queries)} запросов")
+                else:
+                    logger.warning("⚠️ Нет сохраненных запросов для восстановления")
+
+                # Восстанавливаем исключаемые слова
+                if current_settings['exclude_keywords']:
+                    self.exclude_keywords = current_settings['exclude_keywords']
+                    self.settings_manager.exclude_keywords = current_settings['exclude_keywords']
+
+                # Восстанавливаем цены
+                self.min_price = current_settings['min_price']
+                self.max_price = current_settings['max_price']
+                self.settings_manager.min_price = current_settings['min_price']
+                self.settings_manager.max_price = current_settings['max_price']
+
+                # Восстанавливаем остальные настройки
+                self.min_rating = current_settings['min_rating']
+                self.seller_type = current_settings['seller_type']
+                self.browser_windows = current_settings['browser_windows']
+                self.current_site = current_settings['current_site']
+
+                # Восстанавливаем город если есть
+                if hasattr(self, 'current_city'):
+                    self.current_city = current_settings['current_city']
+                    self.settings_manager.city = current_settings['current_city']
+
+                # 🔥 ШАГ 6: ОБНОВЛЯЕМ ВАЛИДАТОР ЦЕН
+                if hasattr(self, 'product_validator'):
+                    self.product_validator.update_price_filters(
+                        current_settings['min_price'],
+                        current_settings['max_price']
+                    )
+
+                # 🔥 ШАГ 7: СРАВНИВАЕМ СТАРЫЕ И НОВЫЕ НАСТРОЙКИ
+                new_queries_set = set(self.search_queries) if self.search_queries else set()
+
+                if old_queries_set != new_queries_set:
+                    logger.info(f"🔄 Настройки обновлены после восстановления:")
+                    logger.info(f"   Запросы: {self.search_queries}")
+                    logger.info(f"   Цены: {self.min_price}-{self.max_price}₽")
+                    logger.info(f"   Сайт: {self.current_site}")
+                    logger.info(f"   Город: {getattr(self, 'current_city', 'Москва')}")
+                else:
+                    logger.info("✅ Настройки успешно восстановлены без изменений")
+
+            else:
+                logger.warning("⚠️ Не удалось перезагрузить настройки из базы")
+
+                # 🔥 ВОССТАНАВЛИВАЕМ ИЗ СОХРАНЕННЫХ В ЛЮБОМ СЛУЧАЕ
+                if current_settings['search_queries']:
+                    self.search_queries = current_settings['search_queries']
+                    logger.info(f"🔄 Восстановлены запросы из backup: {len(self.search_queries)} шт")
 
         except Exception as e:
-            logger.warning(f"⚠️ Ошибка проверки настроек: {e}")
+            logger.error(f"❌ Критическая ошибка в проверке настроек: {e}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+
+            # 🔥 ПОСЛЕДНЯЯ ПОПЫТКА ВОССТАНОВЛЕНИЯ
+            try:
+                # Пробуем восстановить базовые настройки
+                if hasattr(self, 'search_queries') and self.search_queries:
+                    logger.info("🔄 Экстренное восстановление настроек...")
+                else:
+                    # Используем дефолтные, но хотя бы что-то
+                    self.search_queries = ["Видеокарта", "iPhone", "кроссовки"]
+                    logger.info("⚠️ Используем дефолтные настройки из-за ошибки")
+            except:
+                pass
 
     async def _handle_error(self):
         """ОБРАБОТКА ОШИБОК"""
