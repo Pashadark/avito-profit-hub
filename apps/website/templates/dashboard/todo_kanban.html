@@ -10,9 +10,14 @@
             <div class="card-header">
                 <div class="d-flex justify-content-between align-items-center">
                     <h4 class="card-title mb-0">Доска системных задач</h4>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">
-                        <i class="ri-add-line me-2"></i>Новая задача
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-warning" id="scanLogsBtn" title="Сканировать логи на ошибки">
+                            <i class="ri-bug-line me-2"></i>Сканировать логи
+                        </button>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createCardModal">
+                            <i class="ri-add-line me-2"></i>Новая задача
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -33,39 +38,34 @@
                 {% for card in todo_cards %}
                 <div class="card mb-3 todo-card" data-card-id="{{ card.id }}" data-priority="{{ card.priority }}">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="card-title mb-0">{{ card.title }}</h6>
-                            <div class="dropdown">
-                                <button class="btn btn-xs btn-outline-secondary dropdown-toggle p-1 waves-effect" type="button"
-                                        data-bs-toggle="dropdown">
-                                    <i class="ri-more-2-fill fs-6"></i>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item edit-card waves-effect" href="#" data-card-id="{{ card.id }}">
-                                        <i class="ri-edit-line me-2"></i>Редактировать
-                                    </a></li>
-                                    <li><a class="dropdown-item start-card waves-effect" href="#" data-card-id="{{ card.id }}">
-                                        <i class="ri-play-line me-2"></i>Начать выполнение
-                                    </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger delete-card waves-effect" href="#"
-                                           data-card-id="{{ card.id }}">
-                                        <i class="ri-delete-bin-line me-2"></i>Удалить
-                                    </a></li>
-                                </ul>
-                            </div>
-                        </div>
+                        <div class="card-header-section mb-3">
+                            <h6 class="card-title mb-2">{{ card.title }}</h6>
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
+                                    <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
+                                    {% if card.priority == 4 %}Критический
+                                    {% elif card.priority == 3 %}Высокий
+                                    {% elif card.priority == 2 %}Обычный
+                                    {% elif card.priority == 1 %}Низкий
+                                    {% endif %}
+                                </span>
 
-                        <!-- Бейдж приоритета -->
-                        <div class="mb-2">
-                            <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
-                                <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
-                                {% if card.priority == 4 %}Критический
-                                {% elif card.priority == 3 %}Высокий
-                                {% elif card.priority == 2 %}Обычный
-                                {% elif card.priority == 1 %}Низкий
+                                {% if card.task_type and card.task_type != 'other' %}
+                                <span class="type-badge badge-{{ card.task_type }}">
+                                    <i class="
+                                        {% if card.task_type == 'error' %}ri-error-warning-fill
+                                        {% elif card.task_type == 'warning' %}ri-alert-fill
+                                        {% elif card.task_type == 'fix' %}ri-tools-fill
+                                        {% elif card.task_type == 'refactor' %}ri-refresh-fill
+                                        {% elif card.task_type == 'test' %}ri-flask-fill
+                                        {% elif card.task_type == 'feature' %}ri-add-circle-fill
+                                        {% elif card.task_type == 'documentation' %}ri-book-read-fill
+                                        {% else %}ri-sticky-note-fill{% endif %}
+                                        me-1"></i>
+                                    {{ card.get_task_type_display }}
+                                </span>
                                 {% endif %}
-                            </span>
+                            </div>
                         </div>
 
                         {% if card.description %}
@@ -73,10 +73,31 @@
                             {{ card.description|linebreaks }}
                         </div>
                         {% endif %}
-                        <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="card-footer-section d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                             <small class="text-muted">
                                 Создано: {{ card.created_at|date:"d.m.Y H:i" }}
                             </small>
+
+                            <div class="card-actions d-flex gap-1">
+                                {% if card.status == 'todo' %}
+                                    <button class="btn btn-icon btn-xs btn-outline-primary edit-card"
+                                            data-card-id="{{ card.id }}"
+                                            title="Редактировать">
+                                        <i class="ri-pencil-line fs-6"></i>
+                                    </button>
+                                    <button class="btn btn-icon btn-xs btn-outline-success start-card"
+                                            data-card-id="{{ card.id }}"
+                                            title="Начать выполнение">
+                                        <i class="ri-play-line fs-6"></i>
+                                    </button>
+                                {% endif %}
+                                <button class="btn btn-icon btn-xs btn-outline-danger delete-card"
+                                        data-card-id="{{ card.id }}"
+                                        title="Удалить">
+                                    <i class="ri-delete-bin-line fs-6"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -103,42 +124,34 @@
                 {% for card in in_progress_cards %}
                 <div class="card mb-3 todo-card" data-card-id="{{ card.id }}" data-priority="{{ card.priority }}">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="card-title mb-0">{{ card.title }}</h6>
-                            <div class="dropdown">
-                                <button class="btn btn-xs btn-outline-warning dropdown-toggle p-1 waves-effect" type="button"
-                                        data-bs-toggle="dropdown">
-                                    <i class="ri-more-2-fill fs-6"></i>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item edit-card waves-effect" href="#" data-card-id="{{ card.id }}">
-                                        <i class="ri-edit-line me-2"></i>Редактировать
-                                    </a></li>
-                                    <li><a class="dropdown-item complete-card waves-effect" href="#" data-card-id="{{ card.id }}">
-                                        <i class="ri-checkbox-circle-line me-2"></i>Завершить
-                                    </a></li>
-                                    <li><a class="dropdown-item pause-card waves-effect" href="#" data-card-id="{{ card.id }}">
-                                        <i class="ri-pause-circle-line me-2"></i>Вернуть в очередь
-                                    </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger delete-card waves-effect" href="#"
-                                           data-card-id="{{ card.id }}">
-                                        <i class="ri-delete-bin-line me-2"></i>Удалить
-                                    </a></li>
-                                </ul>
-                            </div>
-                        </div>
+                        <div class="card-header-section mb-3">
+                            <h6 class="card-title mb-2">{{ card.title }}</h6>
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
+                                    <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
+                                    {% if card.priority == 4 %}Критический
+                                    {% elif card.priority == 3 %}Высокий
+                                    {% elif card.priority == 2 %}Обычный
+                                    {% elif card.priority == 1 %}Низкий
+                                    {% endif %}
+                                </span>
 
-                        <!-- Бейдж приоритета -->
-                        <div class="mb-2">
-                            <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
-                                <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
-                                {% if card.priority == 4 %}Критический
-                                {% elif card.priority == 3 %}Высокий
-                                {% elif card.priority == 2 %}Обычный
-                                {% elif card.priority == 1 %}Низкий
+                                {% if card.task_type and card.task_type != 'other' %}
+                                <span class="type-badge badge-{{ card.task_type }}">
+                                    <i class="
+                                        {% if card.task_type == 'error' %}ri-error-warning-fill
+                                        {% elif card.task_type == 'warning' %}ri-alert-fill
+                                        {% elif card.task_type == 'fix' %}ri-tools-fill
+                                        {% elif card.task_type == 'refactor' %}ri-refresh-fill
+                                        {% elif card.task_type == 'test' %}ri-flask-fill
+                                        {% elif card.task_type == 'feature' %}ri-add-circle-fill
+                                        {% elif card.task_type == 'documentation' %}ri-book-read-fill
+                                        {% else %}ri-sticky-note-fill{% endif %}
+                                        me-1"></i>
+                                    {{ card.get_task_type_display }}
+                                </span>
                                 {% endif %}
-                            </span>
+                            </div>
                         </div>
 
                         {% if card.description %}
@@ -146,14 +159,35 @@
                             {{ card.description|linebreaks }}
                         </div>
                         {% endif %}
-                        <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="card-footer-section d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                             <small class="text-warning">
                                 <i class="ri-time-line me-1"></i>
                                 {{ card.get_completion_time }}
                             </small>
-                            <small class="text-muted">
-                                Начато: {{ card.started_at|date:"d.m.Y H:i" }}
-                            </small>
+
+                            <div class="card-actions d-flex gap-1">
+                                <button class="btn btn-icon btn-xs btn-outline-primary edit-card"
+                                        data-card-id="{{ card.id }}"
+                                        title="Редактировать">
+                                    <i class="ri-pencil-line fs-6"></i>
+                                </button>
+                                <button class="btn btn-icon btn-xs btn-outline-success complete-card"
+                                        data-card-id="{{ card.id }}"
+                                        title="Завершить">
+                                    <i class="ri-check-line fs-6"></i>
+                                </button>
+                                <button class="btn btn-icon btn-xs btn-outline-warning pause-card"
+                                        data-card-id="{{ card.id }}"
+                                        title="Вернуть в очередь">
+                                    <i class="ri-pause-line fs-6"></i>
+                                </button>
+                                <button class="btn btn-icon btn-xs btn-outline-danger delete-card"
+                                        data-card-id="{{ card.id }}"
+                                        title="Удалить">
+                                    <i class="ri-delete-bin-line fs-6"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -180,36 +214,34 @@
                 {% for card in done_cards %}
                 <div class="card mb-3 todo-card" data-card-id="{{ card.id }}" data-priority="{{ card.priority }}">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <h6 class="card-title mb-0 text-decoration-line-through">{{ card.title }}</h6>
-                            <div class="dropdown">
-                                <button class="btn btn-xs btn-outline-success dropdown-toggle p-1 waves-effect" type="button"
-                                        data-bs-toggle="dropdown">
-                                    <i class="ri-more-2-fill fs-6"></i>
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item reopen-card waves-effect" href="#" data-card-id="{{ card.id }}">
-                                        <i class="ri-refresh-line me-2"></i>Переоткрыть
-                                    </a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger delete-card waves-effect" href="#"
-                                           data-card-id="{{ card.id }}">
-                                        <i class="ri-delete-bin-line me-2"></i>Удалить
-                                    </a></li>
-                                </ul>
-                            </div>
-                        </div>
+                        <div class="card-header-section mb-3">
+                            <h6 class="card-title mb-2 text-decoration-line-through">{{ card.title }}</h6>
+                            <div class="d-flex flex-wrap gap-2 mb-2">
+                                <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
+                                    <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
+                                    {% if card.priority == 4 %}Критический
+                                    {% elif card.priority == 3 %}Высокий
+                                    {% elif card.priority == 2 %}Обычный
+                                    {% elif card.priority == 1 %}Низкий
+                                    {% endif %}
+                                </span>
 
-                        <!-- Бейдж приоритета -->
-                        <div class="mb-2">
-                            <span class="priority-badge badge-{% if card.priority == 4 %}critical{% elif card.priority == 3 %}high{% elif card.priority == 2 %}normal{% elif card.priority == 1 %}low{% endif %}">
-                                <i class="{% if card.priority == 4 %}ri-fire-fill{% elif card.priority == 3 %}ri-alert-fill{% elif card.priority == 2 %}ri-flag-fill{% elif card.priority == 1 %}ri-leaf-fill{% endif %} me-1"></i>
-                                {% if card.priority == 4 %}Критический
-                                {% elif card.priority == 3 %}Высокий
-                                {% elif card.priority == 2 %}Обычный
-                                {% elif card.priority == 1 %}Низкий
+                                {% if card.task_type and card.task_type != 'other' %}
+                                <span class="type-badge badge-{{ card.task_type }}">
+                                    <i class="
+                                        {% if card.task_type == 'error' %}ri-error-warning-fill
+                                        {% elif card.task_type == 'warning' %}ri-alert-fill
+                                        {% elif card.task_type == 'fix' %}ri-tools-fill
+                                        {% elif card.task_type == 'refactor' %}ri-refresh-fill
+                                        {% elif card.task_type == 'test' %}ri-flask-fill
+                                        {% elif card.task_type == 'feature' %}ri-add-circle-fill
+                                        {% elif card.task_type == 'documentation' %}ri-book-read-fill
+                                        {% else %}ri-sticky-note-fill{% endif %}
+                                        me-1"></i>
+                                    {{ card.get_task_type_display }}
+                                </span>
                                 {% endif %}
-                            </span>
+                            </div>
                         </div>
 
                         {% if card.description %}
@@ -217,14 +249,25 @@
                             {{ card.description|linebreaks }}
                         </div>
                         {% endif %}
-                        <div class="d-flex justify-content-between align-items-center">
+
+                        <div class="card-footer-section d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                             <small class="text-success">
                                 <i class="ri-timer-line me-1"></i>
                                 Выполнено за: {{ card.get_completion_time }}
                             </small>
-                            <small class="text-muted">
-                                Завершено: {{ card.completed_at|date:"d.m.Y H:i" }}
-                            </small>
+
+                            <div class="card-actions d-flex gap-1">
+                                <button class="btn btn-icon btn-xs btn-outline-warning reopen-card"
+                                        data-card-id="{{ card.id }}"
+                                        title="Переоткрыть">
+                                    <i class="ri-refresh-line fs-6"></i>
+                                </button>
+                                <button class="btn btn-icon btn-xs btn-outline-danger delete-card"
+                                        data-card-id="{{ card.id }}"
+                                        title="Удалить">
+                                    <i class="ri-delete-bin-line fs-6"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -254,16 +297,28 @@
                         <label for="cardTitle" class="form-label">Название задачи <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="cardTitle" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="cardPriority" class="form-label">Важность задачи</label>
-                        <select class="form-select" id="cardPriority">
-                            <option value="1"><i class="ri-leaf-fill me-1"></i> Низкий</option>
-                            <option value="2" selected><i class="ri-flag-fill me-1"></i> Обычный</option>
-                            <option value="3"><i class="ri-alert-fill me-1"></i> Высокий</option>
-                            <option value="4"><i class="ri-fire-fill me-1"></i> Критический</option>
-                        </select>
-                        <div class="form-text small">
-                            1 - Можно подождать, 2 - Стандартная, 3 - Срочно, 4 - Критично
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cardPriority" class="form-label">Приоритет</label>
+                            <select class="form-select" id="cardPriority">
+                                <option value="1"><i class="ri-leaf-fill me-1"></i> Низкий</option>
+                                <option value="2" selected><i class="ri-flag-fill me-1"></i> Обычный</option>
+                                <option value="3"><i class="ri-alert-fill me-1"></i> Высокий</option>
+                                <option value="4"><i class="ri-fire-fill me-1"></i> Критический</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cardTaskType" class="form-label">Тип задачи</label>
+                            <select class="form-select" id="cardTaskType">
+                                <option value="other">Обычная задача</option>
+                                <option value="error">Ошибка</option>
+                                <option value="warning">Предупреждение</option>
+                                <option value="fix">Исправление</option>
+                                <option value="refactor">Рефакторинг</option>
+                                <option value="test">Тестирование</option>
+                                <option value="feature">Новая функция</option>
+                                <option value="documentation">Документация</option>
+                            </select>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -296,14 +351,29 @@
                         <label for="editCardTitle" class="form-label">Название задачи <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="editCardTitle" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="editCardPriority" class="form-label">Важность задачи</label>
-                        <select class="form-select" id="editCardPriority">
-                            <option value="1"><i class="ri-leaf-fill me-1"></i> Низкий</option>
-                            <option value="2"><i class="ri-flag-fill me-1"></i> Обычный</option>
-                            <option value="3"><i class="ri-alert-fill me-1"></i> Высокий</option>
-                            <option value="4"><i class="ri-fire-fill me-1"></i> Критический</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="editCardPriority" class="form-label">Приоритет</label>
+                            <select class="form-select" id="editCardPriority">
+                                <option value="1"><i class="ri-leaf-fill me-1"></i> Низкий</option>
+                                <option value="2"><i class="ri-flag-fill me-1"></i> Обычный</option>
+                                <option value="3"><i class="ri-alert-fill me-1"></i> Высокий</option>
+                                <option value="4"><i class="ri-fire-fill me-1"></i> Критический</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="editCardTaskType" class="form-label">Тип задачи</label>
+                            <select class="form-select" id="editCardTaskType">
+                                <option value="other">Обычная задача</option>
+                                <option value="error">Ошибка</option>
+                                <option value="warning">Предупреждение</option>
+                                <option value="fix">Исправление</option>
+                                <option value="refactor">Рефакторинг</option>
+                                <option value="test">Тестирование</option>
+                                <option value="feature">Новая функция</option>
+                                <option value="documentation">Документация</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="editCardDescription" class="form-label">Описание</label>
@@ -333,17 +403,20 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-/* Карточка растет по контенту */
 .todo-card .card-body {
     padding: 1rem;
 }
 
-/* Отступ карточек от заголовка колонки */
 .kanban-column .card-body {
     padding: 0.75rem !important;
 }
 
-/* Текст описания */
+/* Заголовочная часть */
+.card-header-section {
+    margin-bottom: 1rem !important;
+}
+
+/* Текст описания - СВЕРХУ, без отступа сверху */
 .card-description {
     color: #6c757d !important;
     font-size: 0.875rem !important;
@@ -352,9 +425,10 @@
     white-space: pre-wrap !important;
     text-align: left !important;
     margin-bottom: 1rem !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
 }
 
-/* Сбрасываем стили для <p> внутри карточки */
 .card-description p,
 .todo-card p {
     margin: 0 !important;
@@ -363,8 +437,9 @@
     line-height: inherit !important;
 }
 
-/* ========== БЕЙДЖИ ПРИОРИТЕТОВ ========== */
-.priority-badge {
+/* ========== БЕЙДЖИ ========== */
+.priority-badge,
+.type-badge {
     display: inline-flex !important;
     align-items: center !important;
     gap: 4px !important;
@@ -378,16 +453,7 @@
     border: none !important;
 }
 
-/* Адаптив для мобилок */
-@media (max-width: 768px) {
-    .priority-badge {
-        padding: 4px 8px !important;
-        font-size: 10px !important;
-        height: 20px !important;
-    }
-}
-
-/* Цвета бейджей - БЕЗ ::before с эмоджи! */
+/* Приоритеты */
 .badge-critical {
     background: rgba(231, 76, 60, 0.1) !important;
     color: #e74c3c !important;
@@ -424,7 +490,100 @@
     font-size: 12px;
 }
 
-/* ========== МАЛЕНЬКАЯ КНОПКА ========== */
+/* Типы задач */
+.badge-error {
+    background: rgba(231, 76, 60, 0.1) !important;
+    color: #e74c3c !important;
+}
+.badge-error i {
+    color: #e74c3c !important;
+    font-size: 12px;
+}
+
+.badge-warning {
+    background: rgba(243, 156, 18, 0.1) !important;
+    color: #f39c12 !important;
+}
+.badge-warning i {
+    color: #f39c12 !important;
+    font-size: 12px;
+}
+
+.badge-fix {
+    background: rgba(52, 152, 219, 0.1) !important;
+    color: #3498db !important;
+}
+.badge-fix i {
+    color: #3498db !important;
+    font-size: 12px;
+}
+
+.badge-refactor {
+    background: rgba(155, 89, 182, 0.1) !important;
+    color: #9b59b6 !important;
+}
+.badge-refactor i {
+    color: #9b59b6 !important;
+    font-size: 12px;
+}
+
+.badge-test {
+    background: rgba(46, 204, 113, 0.1) !important;
+    color: #2ecc71 !important;
+}
+.badge-test i {
+    color: #2ecc71 !important;
+    font-size: 12px;
+}
+
+.badge-feature {
+    background: rgba(52, 73, 94, 0.1) !important;
+    color: #34495e !important;
+}
+.badge-feature i {
+    color: #34495e !important;
+    font-size: 12px;
+}
+
+.badge-documentation {
+    background: rgba(241, 196, 15, 0.1) !important;
+    color: #f1c40f !important;
+}
+.badge-documentation i {
+    color: #f1c40f !important;
+    font-size: 12px;
+}
+
+.badge-other {
+    background: rgba(149, 165, 166, 0.1) !important;
+    color: #95a5a6 !important;
+}
+.badge-other i {
+    color: #95a5a6 !important;
+    font-size: 12px;
+}
+
+/* ========== КНОПКИ-ИКОНКИ ========== */
+.btn-icon {
+    padding: 4px 6px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+}
+
+.btn-icon i {
+    font-size: 14px !important;
+    line-height: 1 !important;
+}
+
+.btn-icon:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
 .btn-xs {
     padding: 0.2rem 0.4rem !important;
     font-size: 0.75rem !important;
@@ -437,11 +596,30 @@
     font-size: 14px !important;
     line-height: 1 !important;
 }
+
+/* Адаптив */
+@media (max-width: 768px) {
+    .priority-badge,
+    .type-badge {
+        padding: 4px 8px !important;
+        font-size: 10px !important;
+        height: 20px !important;
+    }
+
+    .btn-icon {
+        min-width: 28px !important;
+        min-height: 28px !important;
+        padding: 3px 5px !important;
+    }
+
+    .btn-icon i {
+        font-size: 13px !important;
+    }
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Функция для получения CSRF токена
     function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== '') {
@@ -462,6 +640,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const title = document.getElementById('cardTitle').value;
         const description = document.getElementById('cardDescription').value;
         const priority = parseInt(document.getElementById('cardPriority').value);
+        const taskType = document.getElementById('cardTaskType').value;
 
         if (!title) {
             alert('Введите название задачи');
@@ -478,6 +657,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 title: title,
                 description: description,
                 priority: priority,
+                task_type: taskType,
                 status: 'todo'
             })
         })
@@ -494,26 +674,62 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Редактирование карточки
-    document.querySelectorAll('.edit-card').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const cardId = this.dataset.cardId;
+    // Обработчики кнопок
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.edit-card')) {
+            const btn = e.target.closest('.edit-card');
+            const cardId = btn.dataset.cardId;
+            openEditModal(cardId);
+        }
 
-            fetch(`/api/todo/get/${cardId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        document.getElementById('editCardId').value = cardId;
-                        document.getElementById('editCardTitle').value = data.card.title;
-                        document.getElementById('editCardDescription').value = data.card.description || '';
-                        document.getElementById('editCardPriority').value = data.card.priority;
+        if (e.target.closest('.start-card')) {
+            const btn = e.target.closest('.start-card');
+            const cardId = btn.dataset.cardId;
+            updateCardStatus(cardId, 'in_progress');
+        }
 
-                        const modal = new bootstrap.Modal(document.getElementById('editCardModal'));
-                        modal.show();
-                    }
-                });
-        });
+        if (e.target.closest('.complete-card')) {
+            const btn = e.target.closest('.complete-card');
+            const cardId = btn.dataset.cardId;
+            updateCardStatus(cardId, 'done');
+        }
+
+        if (e.target.closest('.pause-card')) {
+            const btn = e.target.closest('.pause-card');
+            const cardId = btn.dataset.cardId;
+            updateCardStatus(cardId, 'todo');
+        }
+
+        if (e.target.closest('.reopen-card')) {
+            const btn = e.target.closest('.reopen-card');
+            const cardId = btn.dataset.cardId;
+            updateCardStatus(cardId, 'todo');
+        }
+
+        if (e.target.closest('.delete-card')) {
+            const btn = e.target.closest('.delete-card');
+            const cardId = btn.dataset.cardId;
+            deleteCard(cardId);
+        }
     });
+
+    // Открытие модального окна редактирования
+    function openEditModal(cardId) {
+        fetch(`/api/todo/get/${cardId}/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('editCardId').value = cardId;
+                    document.getElementById('editCardTitle').value = data.card.title;
+                    document.getElementById('editCardDescription').value = data.card.description || '';
+                    document.getElementById('editCardPriority').value = data.card.priority;
+                    document.getElementById('editCardTaskType').value = data.card.task_type || 'other';
+
+                    const modal = new bootstrap.Modal(document.getElementById('editCardModal'));
+                    modal.show();
+                }
+            });
+    }
 
     // Сохранение изменений карточки
     document.getElementById('updateCardBtn').addEventListener('click', function() {
@@ -521,6 +737,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const title = document.getElementById('editCardTitle').value;
         const description = document.getElementById('editCardDescription').value;
         const priority = parseInt(document.getElementById('editCardPriority').value);
+        const taskType = document.getElementById('editCardTaskType').value;
 
         fetch(`/api/todo/update/${cardId}/`, {
             method: 'POST',
@@ -531,7 +748,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 title: title,
                 description: description,
-                priority: priority
+                priority: priority,
+                task_type: taskType
             })
         })
         .then(response => response.json())
@@ -544,7 +762,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Управление статусами карточек
+    // Обновление статуса карточки
     function updateCardStatus(cardId, newStatus) {
         fetch(`/api/todo/update-status/${cardId}/`, {
             method: 'POST',
@@ -566,57 +784,65 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Обработчики для кнопок статусов
-    document.querySelectorAll('.start-card').forEach(btn => {
-        btn.addEventListener('click', function() {
-            updateCardStatus(this.dataset.cardId, 'in_progress');
-        });
-    });
-
-    document.querySelectorAll('.complete-card').forEach(btn => {
-        btn.addEventListener('click', function() {
-            updateCardStatus(this.dataset.cardId, 'done');
-        });
-    });
-
-    document.querySelectorAll('.pause-card').forEach(btn => {
-        btn.addEventListener('click', function() {
-            updateCardStatus(this.dataset.cardId, 'todo');
-        });
-    });
-
-    document.querySelectorAll('.reopen-card').forEach(btn => {
-        btn.addEventListener('click', function() {
-            updateCardStatus(this.dataset.cardId, 'todo');
-        });
-    });
-
     // Удаление карточки
-    document.querySelectorAll('.delete-card').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (confirm('Удалить эту задачу?')) {
-                const cardId = this.dataset.cardId;
+    function deleteCard(cardId) {
+        if (confirm('Удалить эту задачу?')) {
+            fetch(`/api/todo/delete/${cardId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            });
+        }
+    }
 
-                fetch(`/api/todo/delete/${cardId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        location.reload();
-                    } else {
-                        alert('Ошибка: ' + data.message);
-                    }
-                });
+    // Сканирование логов на ошибки
+    document.getElementById('scanLogsBtn').addEventListener('click', function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ri-loader-3-line me-2"></i>Сканирование...';
+
+        fetch('/api/todo/scan-logs/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
             }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                if (data.tasks_created > 0) {
+                    alert(`✅ Найдено ${data.tasks_created} новых ошибок в логах!`);
+                    location.reload();
+                } else {
+                    alert('✅ Ошибок в логах не найдено');
+                }
+            } else {
+                alert('❌ Ошибка при сканировании: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('❌ Ошибка сети: ' + error.message);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         });
     });
 
-    // Drag and Drop функциональность
+    // Drag and Drop
     let draggedCard = null;
 
     document.querySelectorAll('.todo-card').forEach(card => {

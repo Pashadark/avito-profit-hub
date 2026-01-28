@@ -1092,6 +1092,24 @@ class TodoCard(models.Model):
         (4, 'Критический'),
     ]
 
+    TASK_TYPE_CHOICES = [
+        ('error', 'Ошибка'),
+        ('warning', 'Предупреждение'),
+        ('fix', 'Исправление'),
+        ('refactor', 'Рефакторинг'),
+        ('test', 'Тестирование'),
+        ('feature', 'Новая функция'),
+        ('documentation', 'Документация'),
+        ('other', 'Другое'),
+    ]
+
+    task_type = models.CharField(
+        max_length=20,
+        choices=TASK_TYPE_CHOICES,
+        default='other',
+        verbose_name='Тип задачи'
+    )
+    error_hash = models.CharField(max_length=64, blank=True, null=True, unique=True)
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='todo')

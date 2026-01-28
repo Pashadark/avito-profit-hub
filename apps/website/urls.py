@@ -33,7 +33,7 @@ from .views import (
     check_database_stats, force_clean_database, test_settings_api, start_replication,
     stop_replication, replication_status, dynamic_search_api, site_search_api,
     user_parser_stats_api, user_ml_stats_api, export_project_structure, get_cities_list,
-    admin_dashboard_data,
+    admin_dashboard_data, scan_logs_api,
 
     # Функции из search.py тоже должны импортироваться через __init__.py
     universal_search_api, header_search_api, table_search_api,
@@ -195,6 +195,7 @@ urlpatterns = [
     path('api/todo/delete/<int:card_id>/', delete_todo_card_api, name='delete_todo_card'),
     path('api/todo/list/', list_todo_cards_api, name='list_todo_cards'),
     path('api/todo/update-order/', update_todo_card_order_api, name='update_todo_order'),
+    path('api/todo/scan-logs/', scan_logs_api, name='scan_logs_api'),
 
     # -------------------- ОТЛАДКА И ТЕСТИРОВАНИЕ --------------------
     path('api/test-database/', test_database, name='test_database'),
