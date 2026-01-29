@@ -516,10 +516,53 @@ class AvitoParser(BaseSiteParser):
         return "other"
 
     async def parse_item_advanced(self, item, category):
-        """Оптимизированный парсинг товара"""
+        """Оптимизированный парсинг товара с фильтрацией рекламы"""
         try:
+            # 🔥 ПРОВЕРЯЕМ НА РЕКЛАМУ И БАННЕРЫ ПЕРЕД ПАРСИНГОМ
+            item_html = item.get_attribute('outerHTML')
+            if item_html:
+                # 1. Проверяем HTML на рекламные маркеры
+                html_lower = item_html.lower()
+                if any(marker in html_lower for marker in [
+                    'data-marker="recommendation"',
+                    'class="ads-',
+                    'class="banner-',
+                    'class="promo-',
+                    'data-marker="delivery"',
+                    'data-marker="advertisement"',
+                    'реклама',
+                    'рекомендаци'
+                ]):
+                    self.logger.debug("🚫 Пропущен рекламный баннер")
+                    return None
+
+            # 2. Проверяем CSS классы
+            item_class = item.get_attribute('class') or ''
+            if any(ad_class in item_class for ad_class in [
+                'recommendation', 'ads-', 'ad-', 'banner-', 'promo-', 'delivery-'
+            ]):
+                self.logger.debug("🚫 Пропущен по классу рекламы")
+                return None
+
+            # 3. Проверяем data-маркеры
+            data_marker = item.get_attribute('data-marker') or ''
+            if any(marker in data_marker for marker in [
+                'recommendation', 'ads', 'ad', 'delivery', 'shop', 'company'
+            ]):
+                self.logger.debug("🚫 Пропущен по data-marker")
+                return None
+
+            # 🔥 ТЕПЕРЬ ПАРСИМ ОСНОВНЫЕ ДАННЫЕ
             title = self._extract_title(item)
             if not title:
+                return None
+
+            # 4. Проверяем заголовок на рекламные слова
+            title_lower = title.lower()
+            if any(word in title_lower for word in [
+                'реклама', 'баннер', 'доставка', 'магазин', 'акция', 'скидка', 'распродажа'
+            ]):
+                self.logger.debug(f"🚫 Рекламный заголовок: {title[:50]}...")
                 return None
 
             price = self._extract_price(item)
@@ -530,6 +573,14 @@ class AvitoParser(BaseSiteParser):
             if not link:
                 return None
 
+            # 5. Проверяем URL на рекламу
+            if link and any(ad_marker in link for ad_marker in [
+                '/ads/', '/promo/', '/banner/', '/recommendations/'
+            ]):
+                self.logger.debug(f"🚫 Рекламный URL: {link[:80]}...")
+                return None
+
+            # 🔥 ОСТАЛЬНОЙ ПАРСИНГ
             target_price = self._calculate_target_price(price)
             time_listed = self._parse_time_listed(item)
 
@@ -2123,13 +2174,16 @@ class AvitoParser(BaseSiteParser):
     def _extract_description_full(self):
         """Извлекает полное описание товара с минимальными логами"""
         try:
-            read_more_selectors = [
-                '//a[contains(text(), "Читать полностью")]',
+            # 🔥 ПРОБУЕМ НАЙТИ И НАЖАТЬ КНОПКУ "ЧИТАТЬ ПОЛНОСТЬЮ"
+            expand_selectors = [
                 '//button[contains(text(), "Читать полностью")]',
+                '//a[contains(text(), "Читать полностью")]',
                 '[data-marker="item-description/expand"]',
+                'button[aria-label*="развернуть"]',
             ]
 
-            for selector in read_more_selectors:
+            clicked = False
+            for selector in expand_selectors:
                 try:
                     if selector.startswith('//'):
                         buttons = self.driver.find_elements(By.XPATH, selector)
@@ -2140,17 +2194,44 @@ class AvitoParser(BaseSiteParser):
                         try:
                             self.driver.execute_script("arguments[0].click();", button)
                             time.sleep(0.5)
+                            clicked = True
+                            self.logger.info("✅ Кнопка 'Читать полностью' нажата")
                             break
                         except:
                             continue
-                    break
+                    if clicked:
+                        break
                 except:
                     continue
 
+            time.sleep(0.5)  # 🔥 ЖДЕМ ОБНОВЛЕНИЯ СТРАНИЦЫ
+
+            # 🔥 ПЕРВЫЙ ПРИОРИТЕТ: ИЩЕМ В <p> внутри data-marker
+            try:
+                # Ищем div с data-marker="item-view/item-description"
+                desc_divs = self.driver.find_elements(By.CSS_SELECTOR, '[data-marker="item-view/item-description"]')
+                for desc_div in desc_divs:
+                    # Ищем ВСЕ <p> внутри этого div
+                    p_elements = desc_div.find_elements(By.TAG_NAME, 'p')
+                    paragraphs = []
+                    for p in p_elements:
+                        p_text = p.text.strip()
+                        if p_text:
+                            paragraphs.append(p_text)
+
+                    if paragraphs:
+                        description = '\n\n'.join(paragraphs)
+                        self.logger.info(f"✅ Описание из <p> тегов: {len(description)} символов")
+                        return description
+            except:
+                pass
+
+            # 🔥 ВТОРОЙ ПРИОРИТЕТ: БЕРЕМ ВЕСЬ ТЕКСТ ИЗ data-marker
             description_selectors = [
                 '[data-marker="item-view/item-description"]',
-                '.item-description-text',
+                '.style__item-description-text___XzQzYT',
                 '[itemprop="description"]',
+                '.item-description-text',
             ]
 
             description = None
@@ -2170,32 +2251,7 @@ class AvitoParser(BaseSiteParser):
                 except:
                     continue
 
-            if not description:
-                html_selectors = [
-                    '.style__item-description-html___XzQzYT',
-                    '[data-marker="item-view/item-description-html"]',
-                ]
-
-                for selector in html_selectors:
-                    try:
-                        html_elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                        for html_elem in html_elements:
-                            html_content = html_elem.get_attribute('innerHTML')
-                            if html_content:
-                                from bs4 import BeautifulSoup
-                                soup = BeautifulSoup(html_content, 'html.parser')
-                                for br in soup.find_all("br"):
-                                    br.replace_with("\n")
-                                text_content = soup.get_text(separator='\n', strip=False)
-                                if text_content and len(text_content) > 10:
-                                    description = text_content.strip()
-                                    selector_used = "HTML"
-                                    break
-                        if description:
-                            break
-                    except:
-                        continue
-
+            # 🔥 ТРЕТИЙ ПРИОРИТЕТ: РОДИТЕЛЬСКИЙ БЛОК
             if not description:
                 parent_selectors = [
                     '#bx_item-description',
@@ -2207,26 +2263,44 @@ class AvitoParser(BaseSiteParser):
                     try:
                         parent_elems = self.driver.find_elements(By.CSS_SELECTOR, selector)
                         for parent_elem in parent_elems:
-                            full_text = parent_elem.text
+                            # Ищем ВСЕ <p> внутри родительского блока
+                            p_elements = parent_elem.find_elements(By.TAG_NAME, 'p')
+                            paragraphs = []
+                            for p in p_elements:
+                                p_text = p.text.strip()
+                                if p_text:
+                                    paragraphs.append(p_text)
+
+                            if paragraphs:
+                                description = '\n\n'.join(paragraphs)
+                                selector_used = "parent_p_tags"
+                                break
+
+                            # Если нет <p>, берем весь текст
+                            full_text = parent_elem.text.strip()
                             if full_text and len(full_text) > 50:
+                                # Убираем заголовок "Описание"
                                 lines = full_text.split('\n')
-                                description_lines = []
-                                for line in lines:
-                                    clean_line = line.strip()
-                                    if clean_line and clean_line.lower() not in ['описание', 'description']:
-                                        description_lines.append(clean_line)
-                                if description_lines:
-                                    description = '\n'.join(description_lines)
-                                    selector_used = "parent_block"
-                                    break
+                                if len(lines) > 1:
+                                    # Проверяем первая линия это заголовок
+                                    if lines[0].lower().strip() in ['описание', 'description']:
+                                        description = '\n'.join(lines[1:]).strip()
+                                    else:
+                                        description = full_text
+                                else:
+                                    description = full_text
+                                selector_used = "parent_block"
+                                break
+
                         if description:
                             break
                     except:
                         continue
 
+            # 🔥 ЛОГИ
             if description:
-                if selector_used == "HTML":
-                    self.logger.info(f"✅ Описание из HTML: {len(description)} символов")
+                if selector_used == "parent_p_tags":
+                    self.logger.info(f"✅ Описание из <p> тегов родителя: {len(description)} символов")
                 elif selector_used == "parent_block":
                     self.logger.info(f"✅ Описание из блока: {len(description)} символов")
                 else:

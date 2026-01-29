@@ -237,12 +237,14 @@
         <!-- КОНТЕНТ КАРТОЧКИ -->
         <div class="card-body modern-card-body" onclick="window.location.href='{% url 'website:found_item_detail' item.id %}'">
 
-            <!-- ЗАГОЛОВОК -->
             <div class="mb-3">
-                <h6 class="card-title modern-title mb-2">
-                    {{ item.title }}
-                </h6>
+            <h6 class="card-title modern-title mb-2">
+                {{ item.title }}
+            </h6>
+            <div class="current-price fw-bold text-dark">
+                {{ item.price|intcomma|default:"-" }} ₽
             </div>
+        </div>
 
             <!-- БЛОК БЕЙДЖЕЙ -->
         <div class="d-flex align-items-center gap-2 flex-wrap">

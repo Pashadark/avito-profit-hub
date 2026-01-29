@@ -1895,7 +1895,7 @@ class SeleniumAvitoParser(BaseParser):
                         detailed_product,
                         economy,
                         economy_percent,
-                        user_id  # ← ВОТ ОН! Добавляем user_id
+                        user_id
                     )
 
                     if success:
